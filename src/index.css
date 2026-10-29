@@ -1,0 +1,4 @@
+@import 'primeviasoft-brand/brand.css';
+
+*, *::before, *::after { box-sizing: border-box; }
+body { margin: 0; font-family: var(--font-sans); font-size: 17px; line-height: 1.6; color: var(--ink); background: var(--surface-alt); }
