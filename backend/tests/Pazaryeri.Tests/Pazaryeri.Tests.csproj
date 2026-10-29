@@ -20,6 +20,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\src\Pazaryeri.Infrastructure\Pazaryeri.Infrastructure.csproj" />
+    <ProjectReference Include="..\..\src\Pazaryeri.Api\Pazaryeri.Api.csproj" />
   </ItemGroup>
 
 </Project>

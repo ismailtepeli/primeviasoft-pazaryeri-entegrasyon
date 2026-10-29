@@ -8,7 +8,9 @@
 .app__nav-link:hover { background: var(--navy-700); color: var(--on-inverse); }
 .app__nav-link.active { background: var(--navy-700); color: var(--on-inverse); box-shadow: inset 3px 0 0 var(--amber); }
 .app__nav-link:focus-visible { outline: 3px solid var(--amber); outline-offset: 3px; }
-.app__footer { margin-top: auto; padding: 0 var(--space-2); }
+.app__footer { margin-top: auto; padding: 0 var(--space-2); display: flex; flex-direction: column; align-items: flex-start; gap: var(--space-3); }
+.app__logout { background: none; border: 0; padding: 0; color: var(--on-inverse-muted); font: 500 14px var(--font-sans); cursor: pointer; text-decoration: underline; }
+.app__logout:hover { color: var(--on-inverse); }
 .app__main { flex: 1; min-width: 0; display: flex; flex-direction: column; }
 .app__header { display: flex; align-items: center; justify-content: space-between; gap: var(--space-4); padding: var(--space-6); background: var(--surface); border-bottom: 1px solid var(--line); }
 .app__header h1 { margin: 0; font-family: var(--font-display); font-weight: 700; font-size: 28px; letter-spacing: -0.02em; color: var(--ink); }

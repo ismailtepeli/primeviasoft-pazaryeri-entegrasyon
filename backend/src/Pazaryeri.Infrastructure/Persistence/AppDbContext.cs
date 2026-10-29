@@ -12,6 +12,7 @@ public class AppDbContext(DbContextOptions<AppDbContext> options, ITenantProvide
     public DbSet<User> Users => Set<User>();
     public DbSet<SyncJob> SyncJobs => Set<SyncJob>();
     public DbSet<ApiCallLog> ApiCallLogs => Set<ApiCallLog>();
+    public DbSet<ChannelConnection> ChannelConnections => Set<ChannelConnection>();
 
     // Filtre ifadesi bu özelliğe bağlanır; EF her sorguda geçerli context örneğinin değerini okur.
     // Oturum yoksa Guid.Empty olur ve hiçbir kayıt eşleşmez.
@@ -50,6 +51,14 @@ public class AppDbContext(DbContextOptions<AppDbContext> options, ITenantProvide
             b.Property(l => l.Error).HasMaxLength(2000);
             b.HasIndex(l => new { l.TenantId, l.SellerId, l.CreatedAt });
             b.HasOne<Tenant>().WithMany().HasForeignKey(l => l.TenantId).OnDelete(DeleteBehavior.Restrict);
+        });
+
+        builder.Entity<ChannelConnection>(b =>
+        {
+            b.Property(c => c.Channel).HasMaxLength(40).IsRequired();
+            b.Property(c => c.Status).HasConversion<string>().HasMaxLength(20);
+            b.HasIndex(c => new { c.TenantId, c.Channel }).IsUnique(); // kiracı başına kanal başına tek bağlantı
+            b.HasOne<Tenant>().WithMany().HasForeignKey(c => c.TenantId).OnDelete(DeleteBehavior.Restrict);
         });
 
         // TenantId taşıyan her varlığa otomatik global filtre.

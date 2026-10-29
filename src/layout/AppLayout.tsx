@@ -1,11 +1,15 @@
-import { NavLink, Outlet, useLocation } from 'react-router-dom'
+import { Navigate, NavLink, Outlet, useLocation } from 'react-router-dom'
+import { useAuth } from '../auth/AuthContext'
 import { Button, ThemeToggle } from '../components'
 import { routes } from '../routes'
 import './AppLayout.css'
 
 export default function AppLayout() {
   const { pathname } = useLocation()
+  const { authenticated, logout } = useAuth()
   const current = routes.find((r) => r.path === pathname) ?? routes[0]
+
+  if (!authenticated) return <Navigate to="/giris" replace />
 
   return (
     <div className="app">
@@ -25,7 +29,7 @@ export default function AppLayout() {
             </NavLink>
           ))}
         </nav>
-        <div className="app__footer"><ThemeToggle /></div>
+        <div className="app__footer"><ThemeToggle /><button type="button" className="app__logout" onClick={logout}>Çıkış yap</button></div>
       </aside>
       <div className="app__main">
         <header className="app__header">

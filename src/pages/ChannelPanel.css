@@ -1,0 +1,10 @@
+.channel-panel__title { margin: 0 0 var(--space-4); font: 700 21px var(--font-display); letter-spacing: -0.01em; }
+.channel-panel__error { color: var(--danger); margin: 0; }
+.channel-panel__loading { color: var(--ink-muted); margin: 0; }
+.channel-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; }
+.channel { display: flex; align-items: center; justify-content: space-between; gap: var(--space-4); padding: var(--space-3) 0; border-bottom: 1px solid var(--line); flex-wrap: wrap; }
+.channel:last-child { border-bottom: 0; }
+.channel__main { display: flex; align-items: center; gap: var(--space-3); }
+.channel__name { font-weight: 600; }
+.channel__meta { font-size: 14px; color: var(--ink-muted); }
+.channel__meta a { color: var(--accent); }
