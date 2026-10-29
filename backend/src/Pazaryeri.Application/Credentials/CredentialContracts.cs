@@ -28,6 +28,8 @@ public record ChannelCredentialSpec(
         new("Trendyol", ["sellerId"], ["apiKey", "apiSecret"], "sellerId", "apiKey", "apiSecret"),
         new("Hepsiburada", ["merchantId"], ["serviceKey"], "merchantId", "merchantId", "serviceKey"),
         new("N11", [], ["appKey", "appSecret"], null, "appKey", "appSecret"),
+        // Amazon anahtarla değil OAuth ile bağlanır: refresh token yetki akışının sonunda sunucu tarafından yazılır.
+        new("Amazon", ["sellingPartnerId"], ["refreshToken"], "sellingPartnerId", null, "refreshToken"),
     ];
 
     public static ChannelCredentialSpec? For(string channel) =>

@@ -1,10 +1,12 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Pazaryeri.Application.Amazon;
 using Pazaryeri.Application.Auth;
 using Pazaryeri.Application.Credentials;
 using Pazaryeri.Application.Jobs;
 using Pazaryeri.Application.Marketplace;
+using Pazaryeri.Infrastructure.Amazon;
 using Pazaryeri.Infrastructure.Auth;
 using Pazaryeri.Infrastructure.Credentials;
 using Pazaryeri.Infrastructure.Security;
@@ -74,6 +76,12 @@ public static class DependencyInjection
             .AddHttpMessageHandler<ApiLogHandler>();
         services.AddSingleton<IMarketplaceClientFactory, MarketplaceClientFactory>();
         services.AddScoped<IChannelConnectionTester, ChannelConnectionTester>();
+
+        // Amazon LWA (OAuth) yetkilendirmesi.
+        services.Configure<AmazonLwaOptions>(config.GetSection(AmazonLwaOptions.Section));
+        services.AddHttpClient<AmazonLwaClient>(AmazonLwaClient.HttpClientName);
+        services.AddSingleton(TimeProvider.System);
+        services.AddScoped<IAmazonOAuthService, AmazonOAuthService>();
 
         return services;
     }

@@ -3,6 +3,7 @@ import { api, ApiError } from '../api/client'
 import type { ConnectionTestResult, CredentialView } from '../api/types'
 import { Button, SecretInput, Select, TextInput } from '../components'
 import { formFor, userAgentPreview, validate, type FieldDef } from '../channels/channelForms'
+import AmazonAuth from './AmazonAuth'
 import './ChannelForm.css'
 
 interface InputProps {
@@ -67,6 +68,8 @@ export default function ChannelForm({ channel, onSubmit, onCancel, onTested }: C
       })
     return () => { cancelled = true }
   }, [channel, environment, def])
+
+  if (!def && channel === 'Amazon') return <AmazonAuth onCancel={onCancel} onChanged={onTested} />
 
   if (!def) {
     return (

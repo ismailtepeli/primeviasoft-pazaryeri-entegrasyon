@@ -51,6 +51,17 @@ export interface ConnectionTestResult {
   statusCode: number | null
 }
 
+export interface AmazonOAuthStatus {
+  /** Sunucuda LWA uygulama ayarları tanımlı mı. */
+  configured: boolean
+  authorized: boolean
+  sellingPartnerId: string | null
+  clientSecretExpiresAt: string | null
+  /** Negatifse client secret'ın süresi dolmuş. */
+  daysUntilSecretExpiry: number | null
+  secretReminder: boolean
+}
+
 export interface LoginResponse {
   accessToken: string
   expiresAt: string
