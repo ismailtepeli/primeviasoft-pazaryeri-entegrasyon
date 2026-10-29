@@ -1,6 +1,7 @@
 using System.Diagnostics;
 using Microsoft.Extensions.Logging;
 using Pazaryeri.Application.Marketplace;
+using Pazaryeri.Application.RateLimiting;
 
 namespace Pazaryeri.Infrastructure.Marketplace.Http;
 
@@ -9,6 +10,8 @@ public static class MarketplaceRequestOptions
 {
     public static readonly HttpRequestOptionsKey<string> Channel = new("pz.channel");
     public static readonly HttpRequestOptionsKey<string> SellerId = new("pz.seller");
+    /// <summary>Bu isteğin hangi kovalardan hak alacağı (servis grubu, uç nokta...).</summary>
+    public static readonly HttpRequestOptionsKey<IReadOnlyList<RateLimitRule>> RateLimits = new("pz.ratelimits");
 }
 
 /// <summary>
@@ -52,6 +55,25 @@ public class RetryOn429Handler : DelegatingHandler
             foreach (var h in source.Content!.Headers) copy.Content.Headers.TryAddWithoutValidation(h.Key, h.Value);
         }
         return copy;
+    }
+}
+
+/// <summary>
+/// İstek gitmeden önce adapter'ın bildirdiği kovalardan hak alır (kanal × satıcı × kural anahtarı).
+/// Retry katmanının içinde durur; böylece 429 sonrası her yeniden deneme de limite takılır.
+/// </summary>
+public class RateLimitHandler(IRateLimiter limiter) : DelegatingHandler
+{
+    protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken ct)
+    {
+        if (request.Options.TryGetValue(MarketplaceRequestOptions.Channel, out var channel)
+            && request.Options.TryGetValue(MarketplaceRequestOptions.SellerId, out var seller)
+            && request.Options.TryGetValue(MarketplaceRequestOptions.RateLimits, out var rules))
+        {
+            foreach (var rule in rules)
+                await limiter.AcquireAsync($"{channel}:{seller}:{rule.Key}", rule.Limit, ct);
+        }
+        return await base.SendAsync(request, ct);
     }
 }
 

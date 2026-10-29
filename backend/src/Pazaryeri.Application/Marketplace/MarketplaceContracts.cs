@@ -7,7 +7,8 @@ public record MarketplaceCredentials(
     string ApiKey,
     string ApiSecret,
     string CompanyName,
-    bool UseStaging = false);
+    bool UseStaging = false,
+    ListingTier Tier = ListingTier.Up50k);
 
 public record ProductAttribute(long AttributeId, long? ValueId = null, string? CustomValue = null);
 

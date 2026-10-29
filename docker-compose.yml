@@ -1,4 +1,4 @@
-# Yerel geliştirme için RabbitMQ. Yönetim arayüzü: http://localhost:15672 (guest / guest)
+# Yerel geliştirme için RabbitMQ ve Redis (rate limiter). Yönetim arayüzü: http://localhost:15672 (guest / guest)
 # Veri kalıcı değildir; kuyruklar API açılışında yeniden oluşturulur.
 services:
   rabbitmq:
@@ -7,3 +7,7 @@ services:
     ports:
       - "5672:5672"
       - "15672:15672"
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"

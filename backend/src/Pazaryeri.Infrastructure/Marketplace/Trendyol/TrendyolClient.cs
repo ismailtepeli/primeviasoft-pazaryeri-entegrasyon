@@ -50,7 +50,7 @@ public class TrendyolClient(HttpClient http, MarketplaceCredentials credentials)
                 attributeValue = a.CustomValue,
             }),
         });
-        using var doc = await SendAsync(HttpMethod.Post, $"/integration/product/sellers/{Seller}/v2/products", new { items }, ct);
+        using var doc = await SendAsync(HttpMethod.Post, $"/integration/product/sellers/{Seller}/v2/products", new { items }, TrendyolServiceGroup.ProductWrite, ct);
         return ReadBatch(doc);
     }
 
@@ -60,13 +60,13 @@ public class TrendyolClient(HttpClient http, MarketplaceCredentials credentials)
         {
             items = items.Select(i => new { barcode = i.Barcode, quantity = i.Quantity, salePrice = i.SalePrice, listPrice = i.ListPrice }),
         };
-        using var doc = await SendAsync(HttpMethod.Post, $"/integration/inventory/sellers/{Seller}/products/price-and-inventory", body, ct);
+        using var doc = await SendAsync(HttpMethod.Post, $"/integration/inventory/sellers/{Seller}/products/price-and-inventory", body, TrendyolServiceGroup.InventoryPriceWrite, ct);
         return ReadBatch(doc);
     }
 
     public async Task<BatchStatus> GetBatchResultAsync(string batchId, CancellationToken ct = default)
     {
-        using var doc = await SendAsync(HttpMethod.Get, $"/integration/product/sellers/{Seller}/products/batch-requests/{Uri.EscapeDataString(batchId)}", null, ct);
+        using var doc = await SendAsync(HttpMethod.Get, $"/integration/product/sellers/{Seller}/products/batch-requests/{Uri.EscapeDataString(batchId)}", null, TrendyolServiceGroup.ProductRead, ct);
         var root = doc.RootElement;
         var items = new List<BatchItemResult>();
         if (root.TryGetProperty("items", out var arr))
@@ -91,7 +91,7 @@ public class TrendyolClient(HttpClient http, MarketplaceCredentials credentials)
         if (query.From is not null) qs.Add($"startDate={ToEpochMs(query.From.Value)}");
         if (query.To is not null) qs.Add($"endDate={ToEpochMs(query.To.Value)}");
 
-        using var doc = await SendAsync(HttpMethod.Get, $"/integration/order/sellers/{Seller}/orders?{string.Join('&', qs)}", null, ct);
+        using var doc = await SendAsync(HttpMethod.Get, $"/integration/order/sellers/{Seller}/orders?{string.Join('&', qs)}", null, TrendyolServiceGroup.Other, ct);
         var root = doc.RootElement;
 
         var orders = new List<MarketplaceOrder>();
@@ -126,10 +126,10 @@ public class TrendyolClient(HttpClient http, MarketplaceCredentials credentials)
             status = update.Status,
         };
         var packageId = Uri.EscapeDataString(update.PackageId);
-        using var _ = await SendAsync(HttpMethod.Put, $"/integration/order/sellers/{Seller}/shipment-packages/{packageId}", body, ct);
+        using var _ = await SendAsync(HttpMethod.Put, $"/integration/order/sellers/{Seller}/shipment-packages/{packageId}", body, TrendyolServiceGroup.Other, ct);
     }
 
-    private async Task<JsonDocument> SendAsync(HttpMethod method, string path, object? body, CancellationToken ct)
+    private async Task<JsonDocument> SendAsync(HttpMethod method, string path, object? body, TrendyolServiceGroup group, CancellationToken ct)
     {
         using var request = new HttpRequestMessage(method, BaseUrl + path);
         var token = Convert.ToBase64String(Encoding.UTF8.GetBytes($"{credentials.ApiKey}:{credentials.ApiSecret}"));
@@ -137,6 +137,7 @@ public class TrendyolClient(HttpClient http, MarketplaceCredentials credentials)
         request.Headers.TryAddWithoutValidation("User-Agent", $"{credentials.SellerId} - {credentials.CompanyName}");
         request.Options.Set(MarketplaceRequestOptions.Channel, ChannelName);
         request.Options.Set(MarketplaceRequestOptions.SellerId, credentials.SellerId);
+        request.Options.Set(MarketplaceRequestOptions.RateLimits, TrendyolRateLimits.RulesFor(credentials.Tier, group, method, path));
         if (body is not null)
             request.Content = new StringContent(JsonSerializer.Serialize(body, Json), Encoding.UTF8, "application/json");
 

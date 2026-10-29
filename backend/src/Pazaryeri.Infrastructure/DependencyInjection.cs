@@ -8,8 +8,11 @@ using Pazaryeri.Infrastructure.Auth;
 using Pazaryeri.Infrastructure.Jobs;
 using Pazaryeri.Infrastructure.Marketplace;
 using Pazaryeri.Infrastructure.Marketplace.Http;
+using Pazaryeri.Application.RateLimiting;
 using Pazaryeri.Infrastructure.Messaging;
 using Pazaryeri.Infrastructure.Persistence;
+using Pazaryeri.Infrastructure.RateLimiting;
+using StackExchange.Redis;
 using Quartz;
 
 namespace Pazaryeri.Infrastructure;
@@ -40,12 +43,27 @@ public static class DependencyInjection
             .WithSimpleSchedule(s => s.WithInterval(TimeSpan.FromMinutes(5)).RepeatForever())));
         services.AddQuartzHostedService(o => o.WaitForJobsToComplete = true);
 
-        // Pazaryeri adapter'ları: 429'da üstel bekleme (dış katman), her çağrının logu (iç katman).
+        // Rate limiter: Redis:ConnectionString varsa Redis (örnekler arası paylaşım), yoksa süreç içi.
+        var redisConn = config["Redis:ConnectionString"];
+        if (!string.IsNullOrWhiteSpace(redisConn))
+        {
+            services.AddSingleton<IConnectionMultiplexer>(_ =>
+                ConnectionMultiplexer.Connect(ConfigurationOptions.Parse(redisConn + ",abortConnect=false")));
+            services.AddSingleton<IRateLimiter, RedisRateLimiter>();
+        }
+        else
+        {
+            services.AddSingleton<IRateLimiter, InMemoryRateLimiter>();
+        }
+
+        // Pazaryeri adapter'ları: 429'da üstel bekleme (dış), rate limit (orta), her çağrının logu (iç).
         services.AddSingleton<IApiCallLogger, ApiCallLogger>();
         services.AddTransient<RetryOn429Handler>();
+        services.AddTransient<RateLimitHandler>();
         services.AddTransient<ApiLogHandler>();
         services.AddHttpClient(MarketplaceClientFactory.HttpClientName)
             .AddHttpMessageHandler<RetryOn429Handler>()
+            .AddHttpMessageHandler<RateLimitHandler>()
             .AddHttpMessageHandler<ApiLogHandler>();
         services.AddSingleton<IMarketplaceClientFactory, MarketplaceClientFactory>();
 
