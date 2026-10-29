@@ -15,19 +15,23 @@ interface DataTableProps<T> {
   selected?: string[]
   onSelectionChange?: (keys: string[]) => void
   pageSize?: number
+  /** Verilirse sayfalama sunucuda yapılır: rows yalnızca geçerli sayfadır, total tüm kayıt sayısıdır. */
+  serverPaging?: { page: number; total: number; onPageChange: (page: number) => void }
   emptyTitle?: string
   emptyText?: string
 }
 
 export function DataTable<T>({
   columns, rows, rowKey, selectable, selected = [], onSelectionChange,
-  pageSize = 10, emptyTitle = 'Kayıt bulunamadı', emptyText = 'Filtreleri değiştirmeyi deneyin.',
+  pageSize = 10, serverPaging, emptyTitle = 'Kayıt bulunamadı', emptyText = 'Filtreleri değiştirmeyi deneyin.',
 }: DataTableProps<T>) {
   const [requestedPage, setPage] = useState(0)
-  const pageCount = Math.max(1, Math.ceil(rows.length / pageSize))
-  const page = Math.min(requestedPage, pageCount - 1)
+  const total = serverPaging ? serverPaging.total : rows.length
+  const pageCount = Math.max(1, Math.ceil(total / pageSize))
+  const page = serverPaging ? serverPaging.page : Math.min(requestedPage, pageCount - 1)
+  const goTo = serverPaging ? serverPaging.onPageChange : setPage
 
-  const visible = rows.slice(page * pageSize, (page + 1) * pageSize)
+  const visible = serverPaging ? rows : rows.slice(page * pageSize, (page + 1) * pageSize)
   const visibleKeys = visible.map(rowKey)
   const allSelected = visibleKeys.length > 0 && visibleKeys.every((k) => selected.includes(k))
 
@@ -70,15 +74,15 @@ export function DataTable<T>({
           </tbody>
         </table>
       </div>
-      {rows.length === 0 && (
+      {total === 0 && (
         <div className="table__empty"><strong>{emptyTitle}</strong>{emptyText}</div>
       )}
-      {rows.length > 0 && (
+      {total > 0 && (
         <div className="pager">
-          <span>{page * pageSize + 1}–{Math.min((page + 1) * pageSize, rows.length)} / {rows.length}</span>
+          <span>{page * pageSize + 1}–{Math.min((page + 1) * pageSize, total)} / {total}</span>
           <div className="pager__buttons">
-            <Button disabled={page === 0} onClick={() => setPage(page - 1)}>Önceki</Button>
-            <Button disabled={page >= pageCount - 1} onClick={() => setPage(page + 1)}>Sonraki</Button>
+            <Button disabled={page === 0} onClick={() => goTo(page - 1)}>Önceki</Button>
+            <Button disabled={page >= pageCount - 1} onClick={() => goTo(page + 1)}>Sonraki</Button>
           </div>
         </div>
       )}

@@ -5,6 +5,7 @@ import Login from './pages/Login'
 import Overview from './pages/Overview'
 import PagePlaceholder from './pages/PagePlaceholder'
 import { AuthProvider } from './auth/AuthContext'
+import Products from './pages/Products'
 import Stores from './pages/Stores'
 import SyncErrors from './pages/SyncErrors'
 import { routes } from './routes'
@@ -12,6 +13,7 @@ import { routes } from './routes'
 function pageFor(path: string, label: string) {
   if (path === '/') return <Overview />
   if (path === '/magazalar') return <Stores />
+  if (path === '/urunler') return <Products />
   return <PagePlaceholder name={label} />
 }
 

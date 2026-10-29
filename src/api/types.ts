@@ -23,6 +23,28 @@ export interface SyncErrorPage {
   total: number
 }
 
+export type ListingState = 'Pending' | 'Live' | 'Error'
+
+export interface ProductChannel {
+  channel: string
+  status: ListingState
+  errorMessage: string | null
+}
+
+export interface Product {
+  id: string
+  name: string
+  barcode: string
+  stock: number
+  price: number
+  channels: ProductChannel[]
+}
+
+export interface ProductPage {
+  items: Product[]
+  total: number
+}
+
 export interface SyncNowResult {
   enqueued: number
   skipped: number

@@ -14,6 +14,8 @@ public class AppDbContext(DbContextOptions<AppDbContext> options, ITenantProvide
     public DbSet<ApiCallLog> ApiCallLogs => Set<ApiCallLog>();
     public DbSet<ChannelConnection> ChannelConnections => Set<ChannelConnection>();
     public DbSet<ChannelCredential> ChannelCredentials => Set<ChannelCredential>();
+    public DbSet<Product> Products => Set<Product>();
+    public DbSet<ProductListing> ProductListings => Set<ProductListing>();
 
     // Filtre ifadesi bu özelliğe bağlanır; EF her sorguda geçerli context örneğinin değerini okur.
     // Oturum yoksa Guid.Empty olur ve hiçbir kayıt eşleşmez.
@@ -72,6 +74,25 @@ public class AppDbContext(DbContextOptions<AppDbContext> options, ITenantProvide
             b.Property(c => c.SecretHintsJson).HasMaxLength(2000).IsRequired();
             b.HasIndex(c => new { c.TenantId, c.Channel, c.Environment }).IsUnique(); // canlı ve test ayrı satır
             b.HasOne<Tenant>().WithMany().HasForeignKey(c => c.TenantId).OnDelete(DeleteBehavior.Restrict);
+        });
+
+        builder.Entity<Product>(b =>
+        {
+            b.Property(p => p.Name).HasMaxLength(500).IsRequired();
+            b.Property(p => p.Barcode).HasMaxLength(100).IsRequired();
+            b.Property(p => p.Price).HasPrecision(18, 2);
+            b.HasIndex(p => new { p.TenantId, p.Barcode }).IsUnique(); // barkod kiracı içinde tekil
+            b.HasOne<Tenant>().WithMany().HasForeignKey(p => p.TenantId).OnDelete(DeleteBehavior.Restrict);
+            b.HasMany(p => p.Listings).WithOne().HasForeignKey(l => l.ProductId).OnDelete(DeleteBehavior.Cascade);
+        });
+
+        builder.Entity<ProductListing>(b =>
+        {
+            b.Property(l => l.Channel).HasMaxLength(40).IsRequired();
+            b.Property(l => l.Status).HasConversion<string>().HasMaxLength(20);
+            b.Property(l => l.ErrorMessage).HasMaxLength(2000);
+            b.HasIndex(l => new { l.ProductId, l.Channel }).IsUnique();
+            b.HasOne<Tenant>().WithMany().HasForeignKey(l => l.TenantId).OnDelete(DeleteBehavior.Restrict);
         });
 
         // TenantId taşıyan her varlığa otomatik global filtre.
