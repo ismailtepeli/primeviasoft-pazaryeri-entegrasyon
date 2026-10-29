@@ -8,6 +8,7 @@ import './ChannelPanel.css'
 
 const labels: Record<ChannelState, { text: string; variant: BadgeVariant }> = {
   Connected: { text: 'Bağlı', variant: 'success' },
+  Unverified: { text: 'Doğrulanmadı', variant: 'warning' },
   AuthError: { text: 'Kimlik hatası', variant: 'error' },
   NotConnected: { text: 'Bağlanmadı', variant: 'inactive' },
 }
@@ -22,6 +23,7 @@ export function ChannelRow({ channel }: { channel: ChannelStatus }) {
       </div>
       <div className="channel__meta">
         {channel.status === 'Connected' && (channel.lastSyncAt ? `Son senkron: ${timeAgo(channel.lastSyncAt)}` : 'Henüz senkron yapılmadı')}
+        {channel.status === 'Unverified' && <Link to={`/magazalar?kanal=${encodeURIComponent(channel.channel)}`}>Bağlantıyı test et</Link>}
         {channel.status === 'AuthError' && <Link to="/magazalar">API bilgilerini yenile</Link>}
         {channel.status === 'NotConnected' && <Link to="/magazalar">Mağazalar ekranında bağla</Link>}
       </div>

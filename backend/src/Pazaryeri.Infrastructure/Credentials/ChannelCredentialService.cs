@@ -56,11 +56,12 @@ public class ChannelCredentialService(AppDbContext db, ITenantProvider tenant, I
         row.SecretHintsJson = JsonSerializer.Serialize(secrets.ToDictionary(s => s.Key, s => LastFour(s.Value)));
         row.UpdatedAt = DateTime.UtcNow;
 
-        // Kaydedilen ortam, kanalın etkin ortamı olur. Durumu bağlantı testi (#14) kesinleştirir.
+        // Kaydedilen ortam, kanalın etkin ortamı olur. Bilgiler yeni olduğu için "doğrulanmadı" sayılır;
+        // "Bağlı" yalnızca başarılı bir bağlantı testinden sonra yazılır.
         var connection = await db.ChannelConnections.FirstOrDefaultAsync(c => c.Channel == channel, ct)
             ?? db.ChannelConnections.Add(new ChannelConnection { TenantId = TenantId, Channel = channel }).Entity;
         connection.Environment = environment;
-        connection.Status = ConnectionStatus.Connected;
+        connection.Status = ConnectionStatus.Unverified;
 
         await db.SaveChangesAsync(ct);
         return ToView(spec, row);

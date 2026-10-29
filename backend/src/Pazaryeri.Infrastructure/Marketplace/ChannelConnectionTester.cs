@@ -23,7 +23,8 @@ public class ChannelConnectionTester(AppDbContext db, IChannelCredentialService 
         }
         catch (MarketplaceApiException e)
         {
-            // Yalnızca kimlik reddi durumu "Hata"ya çevirir; 503/429 gibi geçici sorunlar mevcut durumu bozmaz.
+            // Kimlik reddi "Hata" olur. 503/429 gibi geçici sorunlar bilgilerin yanlış olduğunu göstermez; bağlı da sayılmaz.
+            // Daha önce doğrulanmış bir bağlantı geçici sorunla bozulmaz.
             if (e.StatusCode is 401 or 403) await SetStatusAsync(creds.Channel, ConnectionStatus.AuthError, ct);
             return new ConnectionTestResult(false, Explain(e.StatusCode, creds.UseStaging), e.StatusCode);
         }

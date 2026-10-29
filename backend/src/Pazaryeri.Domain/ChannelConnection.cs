@@ -5,6 +5,8 @@ namespace Pazaryeri.Domain;
 public enum ConnectionStatus
 {
     Connected,
+    /// <summary>Bilgiler kaydedildi ama henüz kanalda doğrulanmadı (ya da doğrulama geçici bir sorunla yapılamadı).</summary>
+    Unverified,
     /// <summary>Kanal API bilgilerini reddetti (401/403); kullanıcının bilgileri yenilemesi gerekir.</summary>
     AuthError,
 }

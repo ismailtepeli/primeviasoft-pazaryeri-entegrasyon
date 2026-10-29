@@ -1,4 +1,4 @@
-export type ChannelState = 'Connected' | 'AuthError' | 'NotConnected'
+export type ChannelState = 'Connected' | 'Unverified' | 'AuthError' | 'NotConnected'
 
 export interface ChannelStatus {
   channel: string

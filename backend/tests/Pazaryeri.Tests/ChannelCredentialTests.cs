@@ -252,7 +252,7 @@ public class ChannelCredentialServiceTests : IAsyncLifetime
     }
 
     [Fact]
-    public async Task Kayit_kanali_bagli_yapar_ve_ortami_isler()
+    public async Task Kayit_kanali_dogrulanmadi_yapar_ve_ortami_isler()
     {
         var tenant = await NewTenantAsync("Sifre K");
         await using var db = NewDb(tenant);
@@ -260,7 +260,7 @@ public class ChannelCredentialServiceTests : IAsyncLifetime
         await Service(db, tenant).SaveAsync("Trendyol", ChannelEnvironment.Staging, TrendyolFields(), default);
 
         var connection = await db.ChannelConnections.SingleAsync();
-        Assert.Equal(ConnectionStatus.Connected, connection.Status);
+        Assert.Equal(ConnectionStatus.Unverified, connection.Status); // test edilmeden "Bağlı" olmaz
         Assert.Equal(ChannelEnvironment.Staging, connection.Environment);
     }
 }

@@ -105,7 +105,7 @@ public class ConnectionTesterTests : IAsyncLifetime
     }
 
     [Fact]
-    public async Task Stage_ortaminda_503_IP_yetkisi_olarak_aciklanir_ve_durum_degismez()
+    public async Task Stage_ortaminda_503_IP_yetkisi_olarak_aciklanir_ve_baglı_sayilmaz()
     {
         var tenant = await TenantWithTrendyolAsync("Test C", ChannelEnvironment.Staging);
         await using var db = NewDb(tenant);
@@ -114,7 +114,20 @@ public class ConnectionTesterTests : IAsyncLifetime
 
         Assert.False(result.Success);
         Assert.Contains("IP", result.Message);
-        Assert.Equal(ConnectionStatus.Connected, (await NewDb(tenant).ChannelConnections.SingleAsync()).Status); // geçici sorun durumu bozmaz
+        Assert.Equal(ConnectionStatus.Unverified, (await NewDb(tenant).ChannelConnections.SingleAsync()).Status); // doğrulanamadı: bağlı sayılmaz
+    }
+
+    [Fact]
+    public async Task Daha_once_dogrulanmis_baglanti_gecici_503le_bozulmaz()
+    {
+        var tenant = await TenantWithTrendyolAsync("Test C2");
+        await using var db = NewDb(tenant);
+        db.ChannelConnections.Single().Status = ConnectionStatus.Connected;
+        await db.SaveChangesAsync();
+
+        await Tester(db, tenant, new FakeFactory(new MarketplaceApiException("Trendyol", 503, ""))).TestAsync("Trendyol");
+
+        Assert.Equal(ConnectionStatus.Connected, (await NewDb(tenant).ChannelConnections.SingleAsync()).Status);
     }
 
     [Fact]
