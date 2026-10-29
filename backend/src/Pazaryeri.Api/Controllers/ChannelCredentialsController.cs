@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Mvc;
 using Pazaryeri.Application.Credentials;
+using Pazaryeri.Application.Marketplace;
 using Pazaryeri.Domain;
 
 namespace Pazaryeri.Api.Controllers;
@@ -10,7 +11,7 @@ public record SaveCredentialsRequest(string Environment, Dictionary<string, stri
 
 [ApiController]
 [Route("api/channels/{channel}/credentials")]
-public class ChannelCredentialsController(IChannelCredentialService credentials) : ControllerBase
+public class ChannelCredentialsController(IChannelCredentialService credentials, IChannelConnectionTester tester) : ControllerBase
 {
     /// <summary>Maskeli görünüm: gizli alanlar yalnızca "••••1234" biçiminde döner.</summary>
     [HttpGet]
@@ -36,4 +37,8 @@ public class ChannelCredentialsController(IChannelCredentialService credentials)
             return BadRequest(new { error = e.Message });
         }
     }
+
+    /// <summary>Kayıtlı bilgilerle bağlantıyı dener ve sonucu kanal durumuna yazar. Başarısızlık da 200 ile, Success=false olarak döner.</summary>
+    [HttpPost("/api/channels/{channel}/test")]
+    public Task<ConnectionTestResult> Test(string channel, CancellationToken ct) => tester.TestAsync(channel, ct);
 }

@@ -65,7 +65,7 @@ export default function Stores() {
     <>
       {selected && (
         <ChannelForm key={`${selected}-${formVersion}`} channel={selected} onCancel={() => navigate('/magazalar')}
-          onSubmit={(values) => save(selected, values)} />
+          onSubmit={(values) => save(selected, values)} onTested={reload} />
       )}
       {notice && <p role="status" className="store-notice">{notice}</p>}
       <div className="store-grid">

@@ -73,6 +73,7 @@ public static class DependencyInjection
             .AddHttpMessageHandler<RateLimitHandler>()
             .AddHttpMessageHandler<ApiLogHandler>();
         services.AddSingleton<IMarketplaceClientFactory, MarketplaceClientFactory>();
+        services.AddScoped<IChannelConnectionTester, ChannelConnectionTester>();
 
         return services;
     }

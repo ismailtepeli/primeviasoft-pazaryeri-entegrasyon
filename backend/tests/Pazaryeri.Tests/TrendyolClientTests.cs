@@ -191,6 +191,19 @@ public class TrendyolClientTests
     }
 
     [Fact]
+    public async Task Baglanti_testi_marka_listesine_GET_atar()
+    {
+        var (client, server, _, _) = Build(Creds(), Json(HttpStatusCode.OK, """{"brands":[]}"""));
+
+        await client.TestConnectionAsync();
+
+        var req = Assert.Single(server.Requests);
+        Assert.Equal(HttpMethod.Get, req.Method);
+        Assert.Contains("/integration/product/brands", req.Url);
+        Assert.Equal("12345 - Acme", req.UserAgent);
+    }
+
+    [Fact]
     public async Task Basarisiz_yanit_MarketplaceApiException_olur()
     {
         var (client, _, _, _) = Build(Creds(), Json(HttpStatusCode.BadRequest, """{"errors":["barcode hatalı"]}"""));

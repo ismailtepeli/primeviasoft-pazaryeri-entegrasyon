@@ -64,6 +64,12 @@ public class TrendyolClient(HttpClient http, MarketplaceCredentials credentials)
         return ReadBatch(doc);
     }
 
+    /// <summary>Marka listesinin ilk sayfası: kimlik, User-Agent ve ortam doğruysa hafif ve zararsız bir okuma.</summary>
+    public async Task TestConnectionAsync(CancellationToken ct = default)
+    {
+        using var _ = await SendAsync(HttpMethod.Get, "/integration/product/brands?page=0&size=1", null, TrendyolServiceGroup.ProductRead, ct);
+    }
+
     public async Task<BatchStatus> GetBatchResultAsync(string batchId, CancellationToken ct = default)
     {
         using var doc = await SendAsync(HttpMethod.Get, $"/integration/product/sellers/{Seller}/products/batch-requests/{Uri.EscapeDataString(batchId)}", null, TrendyolServiceGroup.ProductRead, ct);

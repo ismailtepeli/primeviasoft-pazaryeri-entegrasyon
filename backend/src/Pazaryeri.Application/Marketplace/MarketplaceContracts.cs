@@ -67,6 +67,8 @@ public interface IMarketplaceClient
     string Channel { get; }
     Task<BatchResult> SendProductsAsync(IReadOnlyList<ProductItem> products, CancellationToken ct = default);
     Task<BatchResult> UpdateStockAndPriceAsync(IReadOnlyList<StockPriceItem> items, CancellationToken ct = default);
+    /// <summary>Basit bir okuma çağrısıyla kimlik bilgilerini doğrular; başarısızsa MarketplaceApiException fırlatır.</summary>
+    Task TestConnectionAsync(CancellationToken ct = default);
     Task<BatchStatus> GetBatchResultAsync(string batchId, CancellationToken ct = default);
     Task<OrderPage> GetOrdersAsync(OrderQuery query, CancellationToken ct = default);
     Task UpdateOrderStatusAsync(OrderStatusUpdate update, CancellationToken ct = default);

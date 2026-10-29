@@ -44,6 +44,13 @@ export interface CredentialView {
   fields: CredentialField[]
 }
 
+export interface ConnectionTestResult {
+  success: boolean
+  message: string
+  /** Kanalın HTTP kodu; ağ hatasında null. */
+  statusCode: number | null
+}
+
 export interface LoginResponse {
   accessToken: string
   expiresAt: string

@@ -5,3 +5,5 @@
 .channel-form__ua code { font-family: var(--font-mono, monospace); color: var(--ink); background: var(--surface-alt); border: 1px solid var(--line); border-radius: var(--radius-sm); padding: var(--space-2) var(--space-3); }
 .channel-form__actions { display: flex; justify-content: flex-end; gap: var(--space-3); }
 .channel-form__error { margin: 0; color: var(--danger); font-size: 14px; }
+.channel-form__ok { margin: 0; color: var(--success); font-size: 14px; }
+.channel-form__actions { flex-wrap: wrap; }

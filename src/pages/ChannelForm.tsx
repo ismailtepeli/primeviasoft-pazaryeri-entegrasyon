@@ -1,6 +1,6 @@
 import { useEffect, useState, type FormEvent } from 'react'
 import { api, ApiError } from '../api/client'
-import type { CredentialView } from '../api/types'
+import type { ConnectionTestResult, CredentialView } from '../api/types'
 import { Button, SecretInput, Select, TextInput } from '../components'
 import { formFor, userAgentPreview, validate, type FieldDef } from '../channels/channelForms'
 import './ChannelForm.css'
@@ -33,16 +33,20 @@ export interface ChannelFormProps {
   /** Başarısız olursa hata fırlatmalı; mesaj formda gösterilir. */
   onSubmit: (values: Record<string, string>) => void | Promise<void>
   onCancel: () => void
+  /** Bağlantı testi bitince (kanal durumu değişmiş olabilir) çağrılır. */
+  onTested?: () => void
 }
 
 /** Kanala göre alanları değişen bağlantı formu. Seçili ortamın kayıtlı bilgileri maskeli gelir. */
-export default function ChannelForm({ channel, onSubmit, onCancel }: ChannelFormProps) {
+export default function ChannelForm({ channel, onSubmit, onCancel, onTested }: ChannelFormProps) {
   const def = formFor(channel)
   const [values, setValues] = useState<Record<string, string>>({ environment: 'live' })
   const [stored, setStored] = useState<CredentialView>()
   const [errors, setErrors] = useState<Record<string, string>>({})
   const [submitError, setSubmitError] = useState<string>()
   const [busy, setBusy] = useState(false)
+  const [testing, setTesting] = useState(false)
+  const [testResult, setTestResult] = useState<ConnectionTestResult>()
   const environment = values.environment
 
   // Ortam değişince (canlı/test) o ortamın kayıtlı bilgilerini getir; ikisi ayrı tutulur.
@@ -78,6 +82,20 @@ export default function ChannelForm({ channel, onSubmit, onCancel }: ChannelForm
   const storedSecrets = new Set(stored?.fields.filter((f) => f.secret).map((f) => f.name))
   const preview = userAgentPreview(def, values)
 
+  /** Kayıtlı (etkin ortamdaki) bilgilerle bağlantıyı dener; formdaki kaydedilmemiş değişiklikleri test etmez. */
+  async function testConnection() {
+    setTesting(true)
+    setTestResult(undefined)
+    try {
+      setTestResult(await api<ConnectionTestResult>(`/channels/${encodeURIComponent(channel)}/test`, { method: 'POST' }))
+      onTested?.()
+    } catch (err) {
+      setTestResult({ success: false, message: err instanceof Error ? err.message : 'Test yapılamadı.', statusCode: null })
+    } finally {
+      setTesting(false)
+    }
+  }
+
   async function submit(e: FormEvent) {
     e.preventDefault()
     setSubmitError(undefined)
@@ -102,7 +120,13 @@ export default function ChannelForm({ channel, onSubmit, onCancel }: ChannelForm
         </p>
       )}
       {submitError && <p className="channel-form__error" role="alert">{submitError}</p>}
+      {testResult && (
+        <p className={testResult.success ? 'channel-form__ok' : 'channel-form__error'} role="status">{testResult.message}</p>
+      )}
       <div className="channel-form__actions">
+        <Button onClick={testConnection} disabled={!stored || testing} title={stored ? undefined : 'Önce bilgileri kaydedin'}>
+          {testing ? 'Test ediliyor…' : 'Bağlantıyı test et'}
+        </Button>
         <Button onClick={onCancel}>Vazgeç</Button>
         <Button variant="primary" type="submit" disabled={busy}>{busy ? 'Kaydediliyor…' : 'Kaydet'}</Button>
       </div>
