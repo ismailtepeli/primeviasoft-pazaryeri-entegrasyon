@@ -2,9 +2,12 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Pazaryeri.Application.Auth;
+using Pazaryeri.Application.Credentials;
 using Pazaryeri.Application.Jobs;
 using Pazaryeri.Application.Marketplace;
 using Pazaryeri.Infrastructure.Auth;
+using Pazaryeri.Infrastructure.Credentials;
+using Pazaryeri.Infrastructure.Security;
 using Pazaryeri.Infrastructure.Jobs;
 using Pazaryeri.Infrastructure.Marketplace;
 using Pazaryeri.Infrastructure.Marketplace.Http;
@@ -29,6 +32,10 @@ public static class DependencyInjection
         services.AddSingleton<ITokenService, JwtTokenService>();
         services.AddScoped<IAuthService, AuthService>();
         services.AddScoped<DevDataSeeder>();
+
+        // API bilgileri AES-256-GCM ile şifrelenir; anahtar yapılandırmadan (üretimde Key Vault/ortam değişkeni) gelir.
+        services.AddSingleton<ICredentialProtector>(AesGcmCredentialProtector.FromBase64(config[$"{CredentialEncryptionOptions.Section}:Key"]));
+        services.AddScoped<IChannelCredentialService, ChannelCredentialService>();
 
         // Kuyruk: bağlantı tembel açılır; işçi yalnızca RabbitMq:Enabled ise çalışır.
         services.Configure<RabbitMqOptions>(config.GetSection(RabbitMqOptions.Section));

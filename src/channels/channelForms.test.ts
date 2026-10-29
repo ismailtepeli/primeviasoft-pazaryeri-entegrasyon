@@ -24,6 +24,15 @@ describe('channelForms', () => {
     expect(Object.keys(errors)).toEqual(['apiKey', 'apiSecret'])
   })
 
+  it('kayıtlı gizli alan boş bırakılabilir', () => {
+    const errors = validate(formFor('Trendyol')!, { sellerId: '12345' }, new Set(['apiKey', 'apiSecret']))
+    expect(errors).toEqual({})
+  })
+
+  it('kayıtlı olan hiçbir alan tekrar istenmez', () => {
+    expect(validate(formFor('Trendyol')!, {}, new Set(['sellerId', 'apiKey', 'apiSecret']))).toEqual({})
+  })
+
   it('tüm alanlar doluysa hata yok', () => {
     expect(validate(formFor('N11')!, { appKey: 'a', appSecret: 'b' })).toEqual({})
   })

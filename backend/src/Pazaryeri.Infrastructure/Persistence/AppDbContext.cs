@@ -13,6 +13,7 @@ public class AppDbContext(DbContextOptions<AppDbContext> options, ITenantProvide
     public DbSet<SyncJob> SyncJobs => Set<SyncJob>();
     public DbSet<ApiCallLog> ApiCallLogs => Set<ApiCallLog>();
     public DbSet<ChannelConnection> ChannelConnections => Set<ChannelConnection>();
+    public DbSet<ChannelCredential> ChannelCredentials => Set<ChannelCredential>();
 
     // Filtre ifadesi bu özelliğe bağlanır; EF her sorguda geçerli context örneğinin değerini okur.
     // Oturum yoksa Guid.Empty olur ve hiçbir kayıt eşleşmez.
@@ -57,7 +58,19 @@ public class AppDbContext(DbContextOptions<AppDbContext> options, ITenantProvide
         {
             b.Property(c => c.Channel).HasMaxLength(40).IsRequired();
             b.Property(c => c.Status).HasConversion<string>().HasMaxLength(20);
+            b.Property(c => c.Environment).HasConversion<string>().HasMaxLength(20);
             b.HasIndex(c => new { c.TenantId, c.Channel }).IsUnique(); // kiracı başına kanal başına tek bağlantı
+            b.HasOne<Tenant>().WithMany().HasForeignKey(c => c.TenantId).OnDelete(DeleteBehavior.Restrict);
+        });
+
+        builder.Entity<ChannelCredential>(b =>
+        {
+            b.Property(c => c.Channel).HasMaxLength(40).IsRequired();
+            b.Property(c => c.Environment).HasConversion<string>().HasMaxLength(20);
+            b.Property(c => c.PublicFieldsJson).HasMaxLength(2000).IsRequired();
+            b.Property(c => c.EncryptedSecrets).IsRequired();
+            b.Property(c => c.SecretHintsJson).HasMaxLength(2000).IsRequired();
+            b.HasIndex(c => new { c.TenantId, c.Channel, c.Environment }).IsUnique(); // canlı ve test ayrı satır
             b.HasOne<Tenant>().WithMany().HasForeignKey(c => c.TenantId).OnDelete(DeleteBehavior.Restrict);
         });
 

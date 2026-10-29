@@ -29,6 +29,21 @@ export interface SyncNowResult {
   channels: number
 }
 
+export interface CredentialField {
+  name: string
+  secret: boolean
+  /** Açık alanların değeri; gizli alanlarda null. */
+  value: string | null
+  /** Gizli alanlar için "••••1234"; sunucu tam değeri asla göndermez. */
+  masked: string | null
+}
+
+export interface CredentialView {
+  channel: string
+  environment: 'Live' | 'Staging'
+  fields: CredentialField[]
+}
+
 export interface LoginResponse {
   accessToken: string
   expiresAt: string

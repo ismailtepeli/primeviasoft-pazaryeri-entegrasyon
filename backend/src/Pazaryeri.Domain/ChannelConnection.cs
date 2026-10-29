@@ -14,6 +14,8 @@ public class ChannelConnection : TenantEntity
 {
     public string Channel { get; set; } = string.Empty;
     public ConnectionStatus Status { get; set; } = ConnectionStatus.Connected;
+    /// <summary>Çağrıların hangi ortam bilgileriyle yapıldığı.</summary>
+    public ChannelEnvironment Environment { get; set; } = ChannelEnvironment.Live;
 }
 
 public static class SupportedChannels

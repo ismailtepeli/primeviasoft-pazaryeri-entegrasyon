@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { api } from '../api/client'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import type { ChannelState, ChannelStatus } from '../api/types'
 import { useChannels } from '../api/useChannels'
@@ -40,11 +41,22 @@ export function ChannelCard({ channel, selected }: { channel: ChannelStatus; sel
 }
 
 export default function Stores() {
-  const { channels, error } = useChannels()
+  const { channels, error, reload } = useChannels()
   const [params] = useSearchParams()
   const selected = params.get('kanal')
   const navigate = useNavigate()
   const [notice, setNotice] = useState<string>()
+  const [formVersion, setFormVersion] = useState(0)
+
+  async function save(channel: string, values: Record<string, string>) {
+    const { environment, ...fields } = values
+    // Boş gizli alan gönderilmez; sunucu kayıtlı değeri korur.
+    const body = { environment: environment === 'staging' ? 'Staging' : 'Live', fields: Object.fromEntries(Object.entries(fields).filter(([, v]) => v.trim() !== '')) }
+    await api(`/channels/${encodeURIComponent(channel)}/credentials`, { method: 'PUT', body: JSON.stringify(body) })
+    setNotice(`${channel} bilgileri şifrelenerek kaydedildi.`)
+    setFormVersion((v) => v + 1) // formu yeniden kur: yazılan gizli değerler silinir, maskeli hali gelir
+    reload()
+  }
 
   if (error) return <p role="alert" style={{ color: 'var(--danger)' }}>{error}</p>
   if (!channels) return <p style={{ color: 'var(--ink-muted)' }}>Yükleniyor…</p>
@@ -52,8 +64,8 @@ export default function Stores() {
   return (
     <>
       {selected && (
-        <ChannelForm key={selected} channel={selected} onCancel={() => navigate('/magazalar')}
-          onSubmit={() => setNotice('Bilgiler doğrulandı; kaydetme henüz etkin değil.')} />
+        <ChannelForm key={`${selected}-${formVersion}`} channel={selected} onCancel={() => navigate('/magazalar')}
+          onSubmit={(values) => save(selected, values)} />
       )}
       {notice && <p role="status" className="store-notice">{notice}</p>}
       <div className="store-grid">

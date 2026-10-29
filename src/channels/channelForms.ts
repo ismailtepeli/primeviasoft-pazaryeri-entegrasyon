@@ -51,11 +51,14 @@ export const channelForms: ChannelFormDef[] = [
 
 export const formFor = (channel: string) => channelForms.find((f) => f.channel === channel)
 
-/** Alanları boş olan zorunlu alanlar için hata metni döner. */
-export function validate(def: ChannelFormDef, values: Record<string, string>): Record<string, string> {
+/**
+ * Boş zorunlu alanlar için hata metni döner. `stored`: sunucuda zaten kayıtlı gizli alanlar;
+ * bunlar boş bırakılabilir (eski değer korunur).
+ */
+export function validate(def: ChannelFormDef, values: Record<string, string>, stored: ReadonlySet<string> = new Set()): Record<string, string> {
   const errors: Record<string, string> = {}
   for (const f of def.fields) {
-    if (f.kind === 'environment') continue
+    if (f.kind === 'environment' || stored.has(f.name)) continue
     if (!values[f.name]?.trim()) errors[f.name] = `${f.label} zorunlu.`
   }
   return errors

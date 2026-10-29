@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { api } from './client'
 import type { ChannelStatus } from './types'
 
@@ -7,11 +7,13 @@ export function useChannels() {
   const [channels, setChannels] = useState<ChannelStatus[]>()
   const [error, setError] = useState<string>()
 
-  useEffect(() => {
+  const reload = useCallback(() => {
     api<ChannelStatus[]>('/dashboard/channels')
       .then(setChannels)
       .catch((e: Error) => setError(e.message))
   }, [])
 
-  return { channels, error }
+  useEffect(reload, [reload])
+
+  return { channels, error, reload }
 }
