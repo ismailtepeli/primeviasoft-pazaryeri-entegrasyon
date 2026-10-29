@@ -10,6 +10,10 @@ public enum ListingStatus
     Live,
     /// <summary>Kanal ürünü reddetti ya da gönderim başarısız oldu.</summary>
     Error,
+    /// <summary>Kanal için zorunlu bilgi (eşleme, özellik vb.) eksik; gönderilemez.</summary>
+    Missing,
+    /// <summary>Kanalda yayından kaldırılmış.</summary>
+    Passive,
 }
 
 /// <summary>Kiracının ana katalogundaki ürün.</summary>
@@ -28,5 +32,6 @@ public class ProductListing : TenantEntity
     public Guid ProductId { get; set; }
     public string Channel { get; set; } = string.Empty;
     public ListingStatus Status { get; set; } = ListingStatus.Pending;
+    /// <summary>Kanalın bildirdiği hata nedenleri (batch failureReasons); birden fazlaysa satır satır.</summary>
     public string? ErrorMessage { get; set; }
 }

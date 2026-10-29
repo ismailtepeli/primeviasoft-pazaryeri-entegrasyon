@@ -23,7 +23,7 @@ export interface SyncErrorPage {
   total: number
 }
 
-export type ListingState = 'Pending' | 'Live' | 'Error'
+export type ListingState = 'Live' | 'Missing' | 'Pending' | 'Passive' | 'Error'
 
 export interface ProductChannel {
   channel: string
