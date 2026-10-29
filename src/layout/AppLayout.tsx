@@ -1,4 +1,5 @@
 import { NavLink, Outlet, useLocation } from 'react-router-dom'
+import { Button, ThemeToggle } from '../components'
 import { routes } from '../routes'
 import './AppLayout.css'
 
@@ -24,6 +25,7 @@ export default function AppLayout() {
             </NavLink>
           ))}
         </nav>
+        <div className="app__footer"><ThemeToggle /></div>
       </aside>
       <div className="app__main">
         <header className="app__header">
@@ -31,7 +33,7 @@ export default function AppLayout() {
             <h1>{current.title}</h1>
             <p>{current.subtitle}</p>
           </div>
-          <button type="button" className="ps-btn ps-btn--primary">{current.action}</button>
+          <Button variant="primary">{current.action}</Button>
         </header>
         <main className="app__content">
           <Outlet />
