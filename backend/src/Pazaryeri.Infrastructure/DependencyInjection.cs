@@ -3,8 +3,11 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Pazaryeri.Application.Auth;
 using Pazaryeri.Application.Jobs;
+using Pazaryeri.Application.Marketplace;
 using Pazaryeri.Infrastructure.Auth;
 using Pazaryeri.Infrastructure.Jobs;
+using Pazaryeri.Infrastructure.Marketplace;
+using Pazaryeri.Infrastructure.Marketplace.Http;
 using Pazaryeri.Infrastructure.Messaging;
 using Pazaryeri.Infrastructure.Persistence;
 using Quartz;
@@ -36,6 +39,15 @@ public static class DependencyInjection
             .WithIdentity("stale-job-sweeper")
             .WithSimpleSchedule(s => s.WithInterval(TimeSpan.FromMinutes(5)).RepeatForever())));
         services.AddQuartzHostedService(o => o.WaitForJobsToComplete = true);
+
+        // Pazaryeri adapter'ları: 429'da üstel bekleme (dış katman), her çağrının logu (iç katman).
+        services.AddSingleton<IApiCallLogger, ApiCallLogger>();
+        services.AddTransient<RetryOn429Handler>();
+        services.AddTransient<ApiLogHandler>();
+        services.AddHttpClient(MarketplaceClientFactory.HttpClientName)
+            .AddHttpMessageHandler<RetryOn429Handler>()
+            .AddHttpMessageHandler<ApiLogHandler>();
+        services.AddSingleton<IMarketplaceClientFactory, MarketplaceClientFactory>();
 
         return services;
     }

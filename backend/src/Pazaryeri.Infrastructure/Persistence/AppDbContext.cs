@@ -11,6 +11,7 @@ public class AppDbContext(DbContextOptions<AppDbContext> options, ITenantProvide
     public DbSet<Tenant> Tenants => Set<Tenant>();
     public DbSet<User> Users => Set<User>();
     public DbSet<SyncJob> SyncJobs => Set<SyncJob>();
+    public DbSet<ApiCallLog> ApiCallLogs => Set<ApiCallLog>();
 
     // Filtre ifadesi bu özelliğe bağlanır; EF her sorguda geçerli context örneğinin değerini okur.
     // Oturum yoksa Guid.Empty olur ve hiçbir kayıt eşleşmez.
@@ -38,6 +39,17 @@ public class AppDbContext(DbContextOptions<AppDbContext> options, ITenantProvide
             b.HasIndex(j => new { j.TenantId, j.Status });
             b.HasIndex(j => j.BatchId);
             b.HasOne<Tenant>().WithMany().HasForeignKey(j => j.TenantId).OnDelete(DeleteBehavior.Restrict);
+        });
+
+        builder.Entity<ApiCallLog>(b =>
+        {
+            b.Property(l => l.Channel).HasMaxLength(40).IsRequired();
+            b.Property(l => l.SellerId).HasMaxLength(100).IsRequired();
+            b.Property(l => l.Method).HasMaxLength(10).IsRequired();
+            b.Property(l => l.Url).HasMaxLength(2000).IsRequired();
+            b.Property(l => l.Error).HasMaxLength(2000);
+            b.HasIndex(l => new { l.TenantId, l.SellerId, l.CreatedAt });
+            b.HasOne<Tenant>().WithMany().HasForeignKey(l => l.TenantId).OnDelete(DeleteBehavior.Restrict);
         });
 
         // TenantId taşıyan her varlığa otomatik global filtre.
