@@ -1,0 +1,8 @@
+# Yerel geliştirme için RabbitMQ. Yönetim arayüzü: http://localhost:15672 (guest / guest)
+# Veri kalıcı değildir; kuyruklar API açılışında yeniden oluşturulur.
+services:
+  rabbitmq:
+    image: rabbitmq:4-management
+    ports:
+      - "5672:5672"
+      - "15672:15672"

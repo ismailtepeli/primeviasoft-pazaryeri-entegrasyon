@@ -10,6 +10,7 @@ public class AppDbContext(DbContextOptions<AppDbContext> options, ITenantProvide
 {
     public DbSet<Tenant> Tenants => Set<Tenant>();
     public DbSet<User> Users => Set<User>();
+    public DbSet<SyncJob> SyncJobs => Set<SyncJob>();
 
     // Filtre ifadesi bu özelliğe bağlanır; EF her sorguda geçerli context örneğinin değerini okur.
     // Oturum yoksa Guid.Empty olur ve hiçbir kayıt eşleşmez.
@@ -25,6 +26,18 @@ public class AppDbContext(DbContextOptions<AppDbContext> options, ITenantProvide
             b.Property(u => u.FullName).HasMaxLength(200).IsRequired();
             b.HasIndex(u => u.Email).IsUnique(); // giriş e-postayla yapıldığı için tüm kiracılarda tekil
             b.HasOne<Tenant>().WithMany().HasForeignKey(u => u.TenantId).OnDelete(DeleteBehavior.Restrict);
+        });
+
+        builder.Entity<SyncJob>(b =>
+        {
+            b.Property(j => j.Type).HasConversion<string>().HasMaxLength(40);
+            b.Property(j => j.Status).HasConversion<string>().HasMaxLength(20);
+            b.Property(j => j.Channel).HasMaxLength(40).IsRequired();
+            b.Property(j => j.BatchId).HasMaxLength(100);
+            b.Property(j => j.Error).HasMaxLength(2000);
+            b.HasIndex(j => new { j.TenantId, j.Status });
+            b.HasIndex(j => j.BatchId);
+            b.HasOne<Tenant>().WithMany().HasForeignKey(j => j.TenantId).OnDelete(DeleteBehavior.Restrict);
         });
 
         // TenantId taşıyan her varlığa otomatik global filtre.
