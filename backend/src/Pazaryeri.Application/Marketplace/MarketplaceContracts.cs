@@ -29,6 +29,12 @@ public record ProductItem(
     decimal? DimensionalWeight = null,
     string CurrencyType = "TRY");
 
+/// <summary>Toplu işlemdeki tek kalemin sonucu; hatalıysa nedenleri FailureReasons'tadır.</summary>
+public record BatchItemResult(string Barcode, string Status, IReadOnlyList<string> FailureReasons);
+
+/// <summary>Toplu işlemin sonucu. Stok-fiyat batch'lerinde genel Status boş gelebilir; kalemlere bakılır.</summary>
+public record BatchStatus(string BatchId, string Status, IReadOnlyList<BatchItemResult> Items);
+
 public record StockPriceItem(string Barcode, int Quantity, decimal SalePrice, decimal ListPrice);
 
 /// <summary>Kanalın toplu işlem (batch) kimliği; sonucu sonradan bu kimlikle sorgulanır.</summary>
@@ -60,6 +66,7 @@ public interface IMarketplaceClient
     string Channel { get; }
     Task<BatchResult> SendProductsAsync(IReadOnlyList<ProductItem> products, CancellationToken ct = default);
     Task<BatchResult> UpdateStockAndPriceAsync(IReadOnlyList<StockPriceItem> items, CancellationToken ct = default);
+    Task<BatchStatus> GetBatchResultAsync(string batchId, CancellationToken ct = default);
     Task<OrderPage> GetOrdersAsync(OrderQuery query, CancellationToken ct = default);
     Task UpdateOrderStatusAsync(OrderStatusUpdate update, CancellationToken ct = default);
 }

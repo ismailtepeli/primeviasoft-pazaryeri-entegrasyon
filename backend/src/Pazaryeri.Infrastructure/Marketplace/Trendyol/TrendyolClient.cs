@@ -46,11 +46,11 @@ public class TrendyolClient(HttpClient http, MarketplaceCredentials credentials)
             attributes = p.Attributes.Select(a => new
             {
                 attributeId = a.AttributeId,
-                attributeValueId = a.ValueId,
-                customAttributeValue = a.CustomValue,
+                attributeValueIds = a.ValueId is null ? null : new[] { a.ValueId.Value },
+                attributeValue = a.CustomValue,
             }),
         });
-        using var doc = await SendAsync(HttpMethod.Post, $"/integration/product/sellers/{Seller}/products", new { items }, ct);
+        using var doc = await SendAsync(HttpMethod.Post, $"/integration/product/sellers/{Seller}/v2/products", new { items }, ct);
         return ReadBatch(doc);
     }
 
@@ -62,6 +62,26 @@ public class TrendyolClient(HttpClient http, MarketplaceCredentials credentials)
         };
         using var doc = await SendAsync(HttpMethod.Post, $"/integration/inventory/sellers/{Seller}/products/price-and-inventory", body, ct);
         return ReadBatch(doc);
+    }
+
+    public async Task<BatchStatus> GetBatchResultAsync(string batchId, CancellationToken ct = default)
+    {
+        using var doc = await SendAsync(HttpMethod.Get, $"/integration/product/sellers/{Seller}/products/batch-requests/{Uri.EscapeDataString(batchId)}", null, ct);
+        var root = doc.RootElement;
+        var items = new List<BatchItemResult>();
+        if (root.TryGetProperty("items", out var arr))
+        {
+            foreach (var i in arr.EnumerateArray())
+            {
+                var barcode = i.TryGetProperty("requestItem", out var ri) && ri.TryGetProperty("product", out var pr) ? Str(pr, "barcode")
+                    : i.TryGetProperty("requestItem", out ri) ? Str(ri, "barcode") : Str(i, "barcode");
+                var reasons = i.TryGetProperty("failureReasons", out var fr) && fr.ValueKind == JsonValueKind.Array
+                    ? fr.EnumerateArray().Select(r => r.ValueKind == JsonValueKind.String ? r.GetString() ?? "" : r.ToString()).ToList()
+                    : [];
+                items.Add(new BatchItemResult(barcode, Str(i, "status"), reasons));
+            }
+        }
+        return new BatchStatus(batchId, Str(root, "status"), items);
     }
 
     public async Task<OrderPage> GetOrdersAsync(OrderQuery query, CancellationToken ct = default)

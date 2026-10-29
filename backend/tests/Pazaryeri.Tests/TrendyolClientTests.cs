@@ -79,8 +79,26 @@ public class TrendyolClientTests
         await client.SendProductsAsync([new ProductItem("bc1", "Ürün", "main", "sku", 1, 2, "açıklama", 3, 100, 90, 20, ["https://x/i.jpg"], [new ProductAttribute(10, 20)])]);
 
         var req = Assert.Single(server.Requests);
-        Assert.StartsWith(expectedPrefix + "integration/product/sellers/12345/products", req.Url);
+        Assert.StartsWith(expectedPrefix + "integration/product/sellers/12345/v2/products", req.Url);
         Assert.Contains("\"barcode\":\"bc1\"", req.Body);
+        Assert.Contains("\"attributeValueIds\":[20]", req.Body);
+    }
+
+    [Fact]
+    public async Task Batch_sonucu_okunur_ve_hatali_kalem_nedenleri_gelir()
+    {
+        const string body = """
+        {"status":"COMPLETED","items":[{"requestItem":{"product":{"barcode":"bc1"}},"status":"SUCCESS","failureReasons":[]},
+         {"requestItem":{"product":{"barcode":"bc2"}},"status":"FAILED","failureReasons":["Kategori hatalı"]}]}
+        """;
+        var (client, server, _, _) = Build(Creds(), Json(HttpStatusCode.OK, body));
+
+        var result = await client.GetBatchResultAsync("b-1");
+
+        Assert.EndsWith("/products/batch-requests/b-1", server.Requests[0].Url);
+        Assert.Equal("COMPLETED", result.Status);
+        Assert.Equal("FAILED", result.Items[1].Status);
+        Assert.Equal(["Kategori hatalı"], result.Items[1].FailureReasons);
     }
 
     [Fact]
