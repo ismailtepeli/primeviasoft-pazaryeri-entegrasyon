@@ -117,6 +117,9 @@ namespace Pazaryeri.Infrastructure.Persistence.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uniqueidentifier");
 
+                    b.Property<int>("AffectedCount")
+                        .HasColumnType("int");
+
                     b.Property<int>("Attempts")
                         .HasColumnType("int");
 

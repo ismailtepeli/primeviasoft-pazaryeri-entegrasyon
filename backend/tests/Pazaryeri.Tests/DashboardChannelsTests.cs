@@ -82,6 +82,55 @@ public class DashboardChannelsTests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task Senkron_hatalari_yeniden_eskiye_ve_ilgili_ekranla_gelir()
+    {
+        var tenant = await NewTenantAsync("Hatali Firma");
+        var t0 = new DateTime(2026, 10, 30, 8, 0, 0, DateTimeKind.Utc);
+        await using (var seed = NewDb(tenant))
+        {
+            seed.SyncJobs.AddRange(
+                new SyncJob { Channel = "Trendyol", Type = SyncJobType.ProductSend, Status = SyncJobStatus.Failed, Error = "Kategori hatalı", AffectedCount = 12, FinishedAt = t0 },
+                new SyncJob { Channel = "Hepsiburada", Type = SyncJobType.OrderSync, Status = SyncJobStatus.Failed, Error = "401", FinishedAt = t0.AddHours(1) },
+                new SyncJob { Channel = "Trendyol", Type = SyncJobType.OrderSync, Status = SyncJobStatus.Succeeded, FinishedAt = t0.AddHours(2) });
+            await seed.SaveChangesAsync();
+        }
+
+        await using var db = NewDb(tenant);
+        var page = await new DashboardController(db).SyncErrors(0, 5, default);
+
+        Assert.Equal(2, page.Total); // başarılı iş hata sayılmaz
+        Assert.Equal(["Hepsiburada", "Trendyol"], page.Items.Select(i => i.Channel));
+        var product = page.Items[1];
+        Assert.Equal("Kategori hatalı", product.Message);
+        Assert.Equal(12, product.AffectedCount);
+        Assert.Equal("/urunler", product.Target);
+        Assert.Equal("/siparisler", page.Items[0].Target);
+    }
+
+    [Fact]
+    public async Task Senkron_hatalari_sayfalanir_ve_baska_kiracininki_gorunmez()
+    {
+        var a = await NewTenantAsync("Sayfa A");
+        var b = await NewTenantAsync("Sayfa B");
+        await using (var seed = NewDb(a))
+        {
+            for (var i = 0; i < 7; i++)
+                seed.SyncJobs.Add(new SyncJob { Channel = "Trendyol", Type = SyncJobType.StockPriceSync, Status = SyncJobStatus.Failed, Error = $"e{i}", FinishedAt = DateTime.UtcNow.AddMinutes(-i) });
+            await seed.SaveChangesAsync();
+        }
+
+        await using var dbA = NewDb(a);
+        var first = await new DashboardController(dbA).SyncErrors(0, 5, default);
+        var second = await new DashboardController(dbA).SyncErrors(5, 5, default);
+        await using var dbB = NewDb(b);
+
+        Assert.Equal(7, first.Total);
+        Assert.Equal(5, first.Items.Count);
+        Assert.Equal(2, second.Items.Count);
+        Assert.Equal(0, (await new DashboardController(dbB).SyncErrors(0, 5, default)).Total);
+    }
+
+    [Fact]
     public async Task Baska_kiracinin_baglantisi_gorunmez()
     {
         var a = await NewTenantAsync("A Firma");

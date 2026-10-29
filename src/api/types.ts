@@ -7,6 +7,22 @@ export interface ChannelStatus {
   lastSyncAt: string | null
 }
 
+export interface SyncError {
+  id: string
+  channel: string
+  type: string
+  message: string
+  affectedCount: number
+  occurredAt: string
+  /** Hatanın çözüleceği ekranın rotası, örn. "/urunler". */
+  target: string
+}
+
+export interface SyncErrorPage {
+  items: SyncError[]
+  total: number
+}
+
 export interface LoginResponse {
   accessToken: string
   expiresAt: string

@@ -6,6 +6,11 @@ export interface RouteDef {
   action: string
 }
 
+/** Sol menüde görünmeyen ama başlık/alt başlık taşıyan ekranlar. */
+export const hiddenRoutes: RouteDef[] = [
+  { path: '/senkron-hatalari', label: 'Senkron hataları', title: 'Senkron hataları', subtitle: 'Kanallarla yapılan senkronlarda oluşan tüm hatalar.', action: 'Yenile' },
+]
+
 export const routes: RouteDef[] = [
   { path: '/', label: 'Genel bakış', title: 'Genel bakış', subtitle: 'Mağaza, stok ve sipariş durumunuza tek bakışta ulaşın.', action: 'Şimdi senkronla' },
   { path: '/magazalar', label: 'Mağazalar', title: 'Mağazalar', subtitle: 'Pazaryeri bağlantılarınızı yönetin.', action: 'Mağaza ekle' },

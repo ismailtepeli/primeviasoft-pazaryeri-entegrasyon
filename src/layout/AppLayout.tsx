@@ -1,13 +1,13 @@
 import { Navigate, NavLink, Outlet, useLocation } from 'react-router-dom'
 import { useAuth } from '../auth/AuthContext'
 import { Button, ThemeToggle } from '../components'
-import { routes } from '../routes'
+import { hiddenRoutes, routes } from '../routes'
 import './AppLayout.css'
 
 export default function AppLayout() {
   const { pathname } = useLocation()
   const { authenticated, logout } = useAuth()
-  const current = routes.find((r) => r.path === pathname) ?? routes[0]
+  const current = [...routes, ...hiddenRoutes].find((r) => r.path === pathname) ?? routes[0]
 
   if (!authenticated) return <Navigate to="/giris" replace />
 

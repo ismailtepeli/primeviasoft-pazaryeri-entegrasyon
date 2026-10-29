@@ -31,6 +31,8 @@ public class SyncJob : TenantEntity
     public string? BatchId { get; set; }
     public string? Error { get; set; }
     public int Attempts { get; set; }
+    /// <summary>Hatadan etkilenen kayıt sayısı (örn. reddedilen ürün adedi); bilinmiyorsa 0.</summary>
+    public int AffectedCount { get; set; }
     public DateTime? StartedAt { get; set; }
     public DateTime? FinishedAt { get; set; }
 }
