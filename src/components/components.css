@@ -26,6 +26,12 @@
 .kpi__value { font: 700 28px/1.2 var(--font-display); letter-spacing: -0.02em; color: var(--ink); }
 .kpi__hint { font-size: 13.5px; color: var(--ink-soft); }
 
+/* Şimdi senkronla */
+.sync-now { display: flex; align-items: center; gap: var(--space-3); }
+.sync-now__result { font-size: 14px; }
+.sync-now__result--success { color: var(--success); }
+.sync-now__result--error { color: var(--danger); }
+
 /* Status badge */
 .badge { display: inline-flex; align-items: center; gap: 6px; font: 500 13.5px/1.4 var(--font-sans); padding: 4px 12px; border-radius: var(--radius-pill); }
 .badge::before { content: ''; width: 8px; height: 8px; border-radius: 50%; background: currentColor; }

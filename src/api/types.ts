@@ -23,6 +23,12 @@ export interface SyncErrorPage {
   total: number
 }
 
+export interface SyncNowResult {
+  enqueued: number
+  skipped: number
+  channels: number
+}
+
 export interface LoginResponse {
   accessToken: string
   expiresAt: string

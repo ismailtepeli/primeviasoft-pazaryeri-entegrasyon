@@ -1,6 +1,6 @@
 import { Navigate, NavLink, Outlet, useLocation } from 'react-router-dom'
 import { useAuth } from '../auth/AuthContext'
-import { Button, ThemeToggle } from '../components'
+import { Button, SyncNowButton, ThemeToggle } from '../components'
 import { hiddenRoutes, routes } from '../routes'
 import './AppLayout.css'
 
@@ -37,7 +37,7 @@ export default function AppLayout() {
             <h1>{current.title}</h1>
             <p>{current.subtitle}</p>
           </div>
-          <Button variant="primary">{current.action}</Button>
+          {current.path === '/' ? <SyncNowButton /> : <Button variant="primary">{current.action}</Button>}
         </header>
         <main className="app__content">
           <Outlet />
