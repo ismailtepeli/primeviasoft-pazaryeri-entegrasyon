@@ -1,8 +1,10 @@
-import { Link, useSearchParams } from 'react-router-dom'
+import { useState } from 'react'
+import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import type { ChannelState, ChannelStatus } from '../api/types'
 import { useChannels } from '../api/useChannels'
 import { Button, StatusBadge, type BadgeVariant } from '../components'
 import { timeAgo } from '../lib/timeAgo'
+import ChannelForm from './ChannelForm'
 import './Stores.css'
 
 const badge: Record<ChannelState, { text: string; variant: BadgeVariant }> = {
@@ -41,13 +43,22 @@ export default function Stores() {
   const { channels, error } = useChannels()
   const [params] = useSearchParams()
   const selected = params.get('kanal')
+  const navigate = useNavigate()
+  const [notice, setNotice] = useState<string>()
 
   if (error) return <p role="alert" style={{ color: 'var(--danger)' }}>{error}</p>
   if (!channels) return <p style={{ color: 'var(--ink-muted)' }}>Yükleniyor…</p>
 
   return (
-    <div className="store-grid">
-      {channels.map((c) => <ChannelCard key={c.channel} channel={c} selected={c.channel === selected} />)}
-    </div>
+    <>
+      {selected && (
+        <ChannelForm key={selected} channel={selected} onCancel={() => navigate('/magazalar')}
+          onSubmit={() => setNotice('Bilgiler doğrulandı; kaydetme henüz etkin değil.')} />
+      )}
+      {notice && <p role="status" className="store-notice">{notice}</p>}
+      <div className="store-grid">
+        {channels.map((c) => <ChannelCard key={c.channel} channel={c} selected={c.channel === selected} />)}
+      </div>
+    </>
   )
 }

@@ -1,0 +1,6 @@
+.channel-form { display: flex; flex-direction: column; gap: var(--space-4); max-width: 520px; margin-bottom: var(--space-6); }
+.channel-form h2 { margin: 0; font: 700 21px var(--font-display); letter-spacing: -0.01em; }
+.channel-form__note { margin: 0; color: var(--ink-muted); }
+.channel-form__ua { display: flex; flex-direction: column; gap: var(--space-1); margin: 0; font-size: 14px; color: var(--ink-muted); }
+.channel-form__ua code { font-family: var(--font-mono, monospace); color: var(--ink); background: var(--surface-alt); border: 1px solid var(--line); border-radius: var(--radius-sm); padding: var(--space-2) var(--space-3); }
+.channel-form__actions { display: flex; justify-content: flex-end; gap: var(--space-3); }
