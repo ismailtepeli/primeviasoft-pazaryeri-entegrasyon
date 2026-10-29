@@ -3,6 +3,7 @@
 services:
   rabbitmq:
     image: rabbitmq:4-management
+    user: rabbitmq # Docker Desktop (Windows) üzerinde root ile .erlang.cookie izin hatası veriyor
     ports:
       - "5672:5672"
       - "15672:15672"
