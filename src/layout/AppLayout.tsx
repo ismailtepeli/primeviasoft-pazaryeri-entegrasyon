@@ -1,8 +1,15 @@
 import { Navigate, NavLink, Outlet, useLocation } from 'react-router-dom'
 import { useAuth } from '../auth/AuthContext'
-import { Button, SyncNowButton, ThemeToggle } from '../components'
+import { AddChannelButton, Button, SyncNowButton, ThemeToggle } from '../components'
 import { hiddenRoutes, routes } from '../routes'
 import './AppLayout.css'
+
+/** Ekrana özgü başlık aksiyonu; tanımsızsa şimdilik yalnızca etiket gösteren buton. */
+function headerAction(path: string, label: string) {
+  if (path === '/') return <SyncNowButton />
+  if (path === '/magazalar') return <AddChannelButton />
+  return <Button variant="primary">{label}</Button>
+}
 
 export default function AppLayout() {
   const { pathname } = useLocation()
@@ -37,7 +44,7 @@ export default function AppLayout() {
             <h1>{current.title}</h1>
             <p>{current.subtitle}</p>
           </div>
-          {current.path === '/' ? <SyncNowButton /> : <Button variant="primary">{current.action}</Button>}
+          {headerAction(current.path, current.action)}
         </header>
         <main className="app__content">
           <Outlet />

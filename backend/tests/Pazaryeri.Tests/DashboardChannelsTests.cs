@@ -45,7 +45,7 @@ public class DashboardChannelsTests : IAsyncLifetime
 
         var result = await new DashboardController(db).Channels(default);
 
-        Assert.Equal(["Trendyol", "Hepsiburada", "Amazon"], result.Select(c => c.Channel));
+        Assert.Equal(["Trendyol", "Hepsiburada", "N11", "Amazon"], result.Select(c => c.Channel));
         Assert.All(result, c =>
         {
             Assert.Equal("NotConnected", c.Status);

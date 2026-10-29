@@ -18,5 +18,5 @@ public class ChannelConnection : TenantEntity
 
 public static class SupportedChannels
 {
-    public static readonly IReadOnlyList<string> All = ["Trendyol", "Hepsiburada", "Amazon"];
+    public static readonly IReadOnlyList<string> All = ["Trendyol", "Hepsiburada", "N11", "Amazon"];
 }

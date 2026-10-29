@@ -13,7 +13,7 @@ export const hiddenRoutes: RouteDef[] = [
 
 export const routes: RouteDef[] = [
   { path: '/', label: 'Genel bakış', title: 'Genel bakış', subtitle: 'Mağaza, stok ve sipariş durumunuza tek bakışta ulaşın.', action: 'Şimdi senkronla' },
-  { path: '/magazalar', label: 'Mağazalar', title: 'Mağazalar', subtitle: 'Pazaryeri bağlantılarınızı yönetin.', action: 'Mağaza ekle' },
+  { path: '/magazalar', label: 'Mağazalar', title: 'Mağazalar', subtitle: 'Pazaryeri bağlantılarınızı yönetin.', action: '+ Kanal ekle' },
   { path: '/urunler', label: 'Ürünler', title: 'Ürünler', subtitle: 'Kataloğunuzu ve kanal durumlarını izleyin.', action: 'Ürün ekle' },
   { path: '/esleme', label: 'Eşleme', title: 'Eşleme', subtitle: 'Kategori, özellik ve değerleri kanallarla eşleyin.', action: 'Eşlemeyi kaydet' },
   { path: '/stok-fiyat', label: 'Stok ve fiyat', title: 'Stok ve fiyat', subtitle: 'Kanal bazlı stok dağıtımı ve fiyat kurallarını belirleyin.', action: 'Kuralı kaydet' },

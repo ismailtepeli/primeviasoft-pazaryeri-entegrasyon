@@ -32,6 +32,13 @@
 .sync-now__result--success { color: var(--success); }
 .sync-now__result--error { color: var(--danger); }
 
+/* + Kanal ekle */
+.add-channel { position: relative; }
+.add-channel__menu { position: absolute; right: 0; top: calc(100% + var(--space-2)); z-index: 10; min-width: 200px; margin: 0; padding: var(--space-2); list-style: none; background: var(--surface-raised); border: 1px solid var(--line); border-radius: var(--radius-md); }
+.add-channel__menu button { width: 100%; text-align: left; background: none; border: 0; padding: var(--space-2) var(--space-3); border-radius: var(--radius-sm); font: 500 15px var(--font-sans); color: var(--ink); cursor: pointer; }
+.add-channel__menu button:hover, .add-channel__menu button:focus-visible { background: var(--surface-alt); }
+.add-channel__empty { padding: var(--space-2) var(--space-3); color: var(--ink-muted); font-size: 14px; }
+
 /* Status badge */
 .badge { display: inline-flex; align-items: center; gap: 6px; font: 500 13.5px/1.4 var(--font-sans); padding: 4px 12px; border-radius: var(--radius-pill); }
 .badge::before { content: ''; width: 8px; height: 8px; border-radius: 50%; background: currentColor; }
