@@ -7,7 +7,7 @@ using Pazaryeri.Infrastructure.Persistence;
 
 namespace Pazaryeri.Infrastructure.Products;
 
-public class ProductSendService(AppDbContext db, IJobQueue queue) : IProductSendService
+public class ProductSendService(AppDbContext db, IJobQueue queue, ProductChannelPreparer preparer) : IProductSendService
 {
     /// <summary>Şimdilik ürün gönderimi yalnızca bu kanallarda uygulandı.</summary>
     public static readonly string[] SupportedChannels = ["Trendyol"];
@@ -27,16 +27,28 @@ public class ProductSendService(AppDbContext db, IJobQueue queue) : IProductSend
         if (status is null) throw new CatalogException($"{channel} bağlı değil; önce Mağazalar ekranından bağlayın.");
         if (status != ConnectionStatus.Connected) throw new CatalogException($"{channel} bağlantısı doğrulanmadı; Mağazalar ekranından bağlantıyı test edin.");
 
-        var existing = await db.Products.Where(p => ids.Contains(p.Id)).OrderBy(p => p.Name).Select(p => p.Id).ToListAsync(ct);
-        if (existing.Count == 0) throw new CatalogException("Seçilen ürünler bulunamadı.", 404);
+        var prepared = await preparer.PrepareAsync(channel, ids, ct);
+        if (prepared.Count == 0) throw new CatalogException("Seçilen ürünler bulunamadı.", 404);
 
+        // Eksik verisi olanlar (eşlenmemiş kategori, zorunlu özellik, açıklama, görsel…) kuyruğa alınmaz;
+        // nedenleriyle "Eksik" durumuna yazılır ve Ürünler ekranında görünür.
+        var blocked = prepared.Where(p => p.Item is null).ToList();
+        foreach (var (product, _, reasons) in blocked)
+        {
+            var listing = preparer.ListingOf(product, channel);
+            listing.Status = ListingStatus.Missing;
+            listing.ErrorMessage = string.Join((char)10, reasons);
+        }
+        if (blocked.Count > 0) await db.SaveChangesAsync(ct);
+
+        var ready = prepared.Where(p => p.Item is not null).OrderBy(p => p.Product.Name).Select(p => p.Product.Id).ToList();
         var jobs = 0;
-        foreach (var chunk in existing.Chunk(IProductSendService.MaxItemsPerRequest))
+        foreach (var chunk in ready.Chunk(IProductSendService.MaxItemsPerRequest))
         {
             var payload = JsonSerializer.Serialize(new ProductSendPayload([.. chunk]));
             await queue.EnqueueAsync(SyncJobType.ProductSend, channel, ct: ct, payload: payload);
             jobs++;
         }
-        return new ProductSendResult(jobs, existing.Count, ids.Count - existing.Count);
+        return new ProductSendResult(jobs, ready.Count, ids.Count - prepared.Count, blocked.Count);
     }
 }

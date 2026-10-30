@@ -6,7 +6,8 @@ public record ProductSendPayload(List<Guid> ProductIds);
 /// <param name="Jobs">Kuyruğa alınan iş sayısı (her iş en fazla <see cref="IProductSendService.MaxItemsPerRequest"/> ürün taşır).</param>
 /// <param name="Products">Gönderime alınan ürün sayısı.</param>
 /// <param name="Unknown">Bulunamadığı için atlanan ürün sayısı.</param>
-public record ProductSendResult(int Jobs, int Products, int Unknown);
+/// <param name="Blocked">Eksik veri (kategori eşlemesi, zorunlu özellik…) nedeniyle kuyruğa alınmayan ürün sayısı; "Eksik" olarak işaretlenir.</param>
+public record ProductSendResult(int Jobs, int Products, int Unknown, int Blocked = 0);
 
 public interface IProductSendService
 {

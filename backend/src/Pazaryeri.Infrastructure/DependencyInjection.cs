@@ -41,6 +41,7 @@ public static class DependencyInjection
         services.AddScoped<IAuthService, AuthService>();
         services.AddScoped<IProductImportService, ProductImportService>();
         services.AddScoped<IProductImageService, ProductImageService>();
+        services.AddScoped<ProductChannelPreparer>();
         services.AddScoped<IProductSendService, ProductSendService>();
         services.AddScoped<IChannelCatalogService, ChannelCatalogService>();
         services.AddScoped<ISyncJobHandler, CatalogSyncHandler>();

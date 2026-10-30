@@ -1,6 +1,4 @@
 using System.Text.Json;
-using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Configuration;
 using Pazaryeri.Application.Credentials;
 using Pazaryeri.Application.Jobs;
 using Pazaryeri.Application.Marketplace;
@@ -19,7 +17,7 @@ public class ProductSendHandler(
     AppDbContext db,
     IChannelCredentialService credentials,
     IMarketplaceClientFactory clients,
-    IConfiguration config,
+    ProductChannelPreparer preparer,
     TimeProvider time) : ISyncJobHandler
 {
     public SyncJobType Type => SyncJobType.ProductSend;
@@ -32,60 +30,18 @@ public class ProductSendHandler(
         var creds = await credentials.GetForClientAsync(job.Channel, ct)
             ?? throw new InvalidOperationException($"{job.Channel} için kayıtlı API bilgisi yok.");
 
-        var products = await db.Products.Include(p => p.Images).Include(p => p.Listings)
-            .Where(p => payload.ProductIds.Contains(p.Id)).ToListAsync(ct);
-        var data = (await db.ProductChannelData.Where(d => d.Channel == job.Channel && payload.ProductIds.Contains(d.ProductId)).ToListAsync(ct))
-            .ToDictionary(d => d.ProductId);
-        var publicBaseUrl = config["Storage:PublicBaseUrl"];
-
-        // Kategori eşlemesi (kendi kategori → kanal kategorisi) ve marka adı eşleşmesi, ürüne özel veride yoksa kullanılır.
-        var categoryIds = products.Where(p => p.CategoryId != null).Select(p => p.CategoryId!.Value).Distinct().ToList();
-        var mapped = await db.CategoryMappings.Where(m => m.Channel == job.Channel && categoryIds.Contains(m.CategoryId))
-            .ToDictionaryAsync(m => m.CategoryId, m => m.ExternalCategoryId, ct);
-        var brandNames = products.Where(p => !string.IsNullOrWhiteSpace(p.Brand)).Select(p => p.Brand!.Trim()).Distinct().ToList();
-        var brands = (await db.ChannelBrands.Where(b => b.Channel == job.Channel && b.IsActive && brandNames.Contains(b.Name)).ToListAsync(ct))
-            .GroupBy(b => b.Name, StringComparer.CurrentCultureIgnoreCase).ToDictionary(g => g.Key, g => g.First().ExternalId, StringComparer.CurrentCultureIgnoreCase);
-
-        // Özellik eşlemeleri: ürünün kategorisinin eşlendiği kanal kategorisinin özellikleri + kayıtlı eşlemeler.
-        var categoryMappings = await db.AttributeMappings.Include(m => m.Values)
-            .Where(m => m.Channel == job.Channel && categoryIds.Contains(m.CategoryId)).ToListAsync(ct);
-        var channelAttributes = (await db.ChannelAttributes.Where(a => a.Channel == job.Channel && a.IsActive && mapped.Values.Contains(a.CategoryExternalId)).ToListAsync(ct))
-            .GroupBy(a => a.CategoryExternalId).ToDictionary(g => g.Key, g => g.ToList());
+        var prepared = await preparer.PrepareAsync(job.Channel, payload.ProductIds, ct);
 
         var items = new List<ProductItem>();
         var sent = new List<Product>();
         var missing = 0;
-        foreach (var product in products)
+        foreach (var (product, item, reasons) in prepared)
         {
-            var own = data.GetValueOrDefault(product.Id);
-            string? attributesJson = own?.AttributesJson;
-            if (attributesJson is null && product.CategoryId is { } pc && mapped.TryGetValue(pc, out var ext) && channelAttributes.TryGetValue(ext, out var attrs))
-            {
-                var (built, _) = ProductAttributeBuilder.Build(product, attrs, categoryMappings.Where(m => m.CategoryId == pc).ToList());
-                if (built.Count > 0)
-                    attributesJson = JsonSerializer.Serialize(built.Select(a => new { attributeId = a.AttributeId, valueId = a.ValueId, customValue = a.CustomValue }),
-                        new JsonSerializerOptions(JsonSerializerDefaults.Web));
-            }
-            var effective = new ProductChannelData
-            {
-                ProductId = product.Id, Channel = job.Channel,
-                BrandId = own?.BrandId ?? (product.Brand is { } b && brands.TryGetValue(b.Trim(), out var brandId) ? brandId : null),
-                CategoryId = own?.CategoryId ?? (product.CategoryId is { } c && mapped.TryGetValue(c, out var externalId) ? externalId : null),
-                CargoCompanyId = own?.CargoCompanyId, DimensionalWeight = own?.DimensionalWeight, AttributesJson = attributesJson,
-            };
-            var (item, reasons) = TrendyolProductMapper.Map(product, effective, publicBaseUrl);
-            var listing = product.Listings.FirstOrDefault(l => l.Channel == job.Channel);
-            if (listing is null)
-            {
-                listing = new ProductListing { ProductId = product.Id, Channel = job.Channel };
-                db.ProductListings.Add(listing);
-                product.Listings.Add(listing);
-            }
-
+            var listing = preparer.ListingOf(product, job.Channel);
             if (item is null)
             {
                 listing.Status = ListingStatus.Missing;
-                listing.ErrorMessage = string.Join('\n', reasons);
+                listing.ErrorMessage = string.Join((char)10, reasons);
                 missing++;
             }
             else

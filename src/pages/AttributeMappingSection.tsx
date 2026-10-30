@@ -13,6 +13,7 @@ export default function AttributeMappingSection({ channel }: { channel: string }
   const [data, setData] = useState<AttributeMappingList>()
   const [editing, setEditing] = useState<AttributeRow>()
   const [error, setError] = useState<string>()
+  const [saved, setSaved] = useState(false)
 
   useEffect(() => {
     api<CategoryMappingList>(`/mappings/categories?channel=${encodeURIComponent(channel)}`)
@@ -30,8 +31,9 @@ export default function AttributeMappingSection({ channel }: { channel: string }
       .then((d) => { setData(d); setError(undefined) })
       .catch((e: Error) => setError(e.message))
   }, [channel, categoryId])
-  useEffect(() => { setEditing(undefined); load() }, [load])
+  useEffect(() => { setEditing(undefined); setSaved(false); load() }, [load])
 
+  const missingRequired = data?.rows.filter((r) => r.required && r.status !== 'Mapped') ?? []
   const mappedCategories = categories?.rows.filter((r) => r.mapped?.isActive) ?? []
 
   const columns: Column<AttributeRow>[] = [
@@ -68,15 +70,16 @@ export default function AttributeMappingSection({ channel }: { channel: string }
           Bu kanal kategorisinin özellikleri henüz çekilmedi. Yukarıdaki "Kataloğu şimdi senkronla" ile çekin; birkaç dakika sürebilir.
         </p>
       )}
-      {data && data.requiredTotal > data.requiredMapped && (
+      {saved && data && missingRequired.length === 0 && <p className="channel-form__ok" role="status">Eşleme kaydedildi; tüm zorunlu özellikler eşli.</p>}
+      {data && missingRequired.length > 0 && (
         <p className="channel-form__error" role="alert">
-          {data.requiredTotal - data.requiredMapped} zorunlu özellik eksik; bu kategorideki ürünler eksik özellik nedeniyle gönderilemeyebilir.
+          {saved && 'Eşleme kaydedildi, ancak '}Eksik zorunlu özellik: {missingRequired.map((r) => r.name).join(', ')}. Bu kategorideki ürünler eksik özellik nedeniyle {channel}'a gönderilmez; Ürünler ekranında "Eksik" görünür.
         </p>
       )}
 
       {editing && data?.channelCategory && (
         <AttributeEditor key={editing.attributeId} channel={channel} categoryId={categoryId} categoryExternalId={data.channelCategory.externalId}
-          row={editing} sources={data.sources} onClose={() => setEditing(undefined)} onSaved={() => { setEditing(undefined); load() }} />
+          row={editing} sources={data.sources} onClose={() => setEditing(undefined)} onSaved={() => { setEditing(undefined); setSaved(true); load() }} />
       )}
 
       {data && data.rows.length > 0 && <DataTable columns={columns} rows={data.rows} rowKey={(r) => String(r.attributeId)} pageSize={15} />}

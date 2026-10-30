@@ -49,6 +49,8 @@ export interface ProductSendResult {
   jobs: number
   products: number
   unknown: number
+  /** Eksik veri nedeniyle kuyruğa alınmayan ürün sayısı. */
+  blocked: number
 }
 
 export interface ProductImportError {

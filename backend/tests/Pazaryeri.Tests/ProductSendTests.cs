@@ -116,9 +116,10 @@ public class ProductSendTests : IAsyncLifetime
     private static string Payload(params Guid[] ids) => JsonSerializer.Serialize(new ProductSendPayload([.. ids]));
 
     private static ProductSendHandler Handler(AppDbContext db, FakeClient client, FakeTime? time = null, string? baseUrl = null, bool creds = true) =>
-        new(db, new FakeCreds { HasCreds = creds }, new FakeFactory(client),
-            new ConfigurationBuilder().AddInMemoryCollection(baseUrl is null ? [] : new Dictionary<string, string?> { ["Storage:PublicBaseUrl"] = baseUrl }).Build(),
-            time ?? new FakeTime());
+        new(db, new FakeCreds { HasCreds = creds }, new FakeFactory(client), Preparer(db, baseUrl), time ?? new FakeTime());
+
+    private static ProductChannelPreparer Preparer(AppDbContext db, string? baseUrl = null) =>
+        new(db, new ConfigurationBuilder().AddInMemoryCollection(baseUrl is null ? [] : new Dictionary<string, string?> { ["Storage:PublicBaseUrl"] = baseUrl }).Build());
 
     // --- eşleyici ---
 
@@ -160,16 +161,19 @@ public class ProductSendTests : IAsyncLifetime
         var tenant = await NewTenantAsync("Gonder A");
         await using (var seed = NewDb(tenant))
         {
-            seed.Products.AddRange(Enumerable.Range(0, 1001).Select(i => new Product { Name = "P" + i, Barcode = "S" + i, Price = 1 }));
+            var ready = Enumerable.Range(0, 1001).Select(i => new Product { Name = "P" + i, Barcode = "S" + i, Price = 1, Description = "d" }).ToList();
+            foreach (var p in ready) p.Images.Add(new ProductImage { Kind = ImageKind.Url, ExternalUrl = "https://cdn.example.com/s.jpg" });
+            seed.Products.AddRange(ready);
+            seed.ProductChannelData.AddRange(ready.Select(p => new ProductChannelData { ProductId = p.Id, Channel = "Trendyol", BrandId = 1, CategoryId = 2 }));
             await seed.SaveChangesAsync();
         }
         await using var db = NewDb(tenant);
         var queue = new FakeQueue(db);
         var ids = await db.Products.Select(p => p.Id).ToListAsync();
 
-        var result = await new ProductSendService(db, queue).EnqueueAsync("Trendyol", [.. ids, Guid.NewGuid()]);
+        var result = await new ProductSendService(db, queue, Preparer(db)).EnqueueAsync("Trendyol", [.. ids, Guid.NewGuid()]);
 
-        Assert.Equal((2, 1001, 1), (result.Jobs, result.Products, result.Unknown));
+        Assert.Equal((2, 1001, 1, 0), (result.Jobs, result.Products, result.Unknown, result.Blocked));
         Assert.Equal([1000, 1], queue.Jobs.Select(j => JsonSerializer.Deserialize<ProductSendPayload>(j.Payload!)!.ProductIds.Count));
         Assert.All(queue.Jobs, j => Assert.Equal(SyncJobType.ProductSend, j.Type));
     }
@@ -183,16 +187,16 @@ public class ProductSendTests : IAsyncLifetime
         var product2 = await NewProductAsync(unverified, "G2");
 
         await using var db1 = NewDb(notConnected);
-        var e1 = await Assert.ThrowsAsync<CatalogException>(() => new ProductSendService(db1, new FakeQueue(db1)).EnqueueAsync("Trendyol", [product.Id]));
+        var e1 = await Assert.ThrowsAsync<CatalogException>(() => new ProductSendService(db1, new FakeQueue(db1), Preparer(db1)).EnqueueAsync("Trendyol", [product.Id]));
         Assert.Contains("bağlı değil", e1.Message);
 
         await using var db2 = NewDb(unverified);
-        var e2 = await Assert.ThrowsAsync<CatalogException>(() => new ProductSendService(db2, new FakeQueue(db2)).EnqueueAsync("Trendyol", [product2.Id]));
+        var e2 = await Assert.ThrowsAsync<CatalogException>(() => new ProductSendService(db2, new FakeQueue(db2), Preparer(db2)).EnqueueAsync("Trendyol", [product2.Id]));
         Assert.Contains("doğrulanmadı", e2.Message);
 
-        var e3 = await Assert.ThrowsAsync<CatalogException>(() => new ProductSendService(db2, new FakeQueue(db2)).EnqueueAsync("N11", [product2.Id]));
+        var e3 = await Assert.ThrowsAsync<CatalogException>(() => new ProductSendService(db2, new FakeQueue(db2), Preparer(db2)).EnqueueAsync("N11", [product2.Id]));
         Assert.Contains("henüz desteklenmiyor", e3.Message);
-        await Assert.ThrowsAsync<CatalogException>(() => new ProductSendService(db2, new FakeQueue(db2)).EnqueueAsync("Trendyol", []));
+        await Assert.ThrowsAsync<CatalogException>(() => new ProductSendService(db2, new FakeQueue(db2), Preparer(db2)).EnqueueAsync("Trendyol", []));
     }
 
     // --- işleyici ---

@@ -4,7 +4,7 @@ import { api } from '../api/client'
 import type { ProductSendResult } from '../api/types'
 import { useChannels } from '../api/useChannels'
 import { Button, Select } from '../components'
-import { describeSend, sendableChannels } from './sendHelpers'
+import { describeSend, sendWasBlocked, sendableChannels } from './sendHelpers'
 import './ChannelForm.css'
 
 /** Seçili ürünleri bağlı bir kanala göndermek için kuyruğa alır; sonuç ürünlerin kanal durumuna sonradan yansır. */
@@ -22,7 +22,7 @@ export default function SendToChannel({ productIds, onClose, onSent }: { product
     setMessage(undefined)
     try {
       const result = await api<ProductSendResult>('/products/send', { method: 'POST', body: JSON.stringify({ channel: selected, productIds }) })
-      setMessage({ ok: true, text: describeSend(selected, result) })
+      setMessage({ ok: !sendWasBlocked(result), text: describeSend(selected, result) })
       onSent()
     } catch (e) {
       setMessage({ ok: false, text: e instanceof Error ? e.message : 'Gönderim başlatılamadı.' })
@@ -52,7 +52,7 @@ export default function SendToChannel({ productIds, onClose, onSent }: { product
       {message && <p className={message.ok ? 'channel-form__ok' : 'channel-form__error'} role={message.ok ? 'status' : 'alert'}>{message.text}</p>}
       <div className="channel-form__actions">
         <Button onClick={onClose}>Kapat</Button>
-        <Button onClick={send} disabled={busy || !selected || message?.ok}>{busy ? 'Gönderiliyor…' : 'Gönder'}</Button>
+        <Button onClick={send} disabled={busy || !selected || (message?.ok ?? false)}>{busy ? 'Gönderiliyor…' : 'Gönder'}</Button>
       </div>
     </section>
   )
