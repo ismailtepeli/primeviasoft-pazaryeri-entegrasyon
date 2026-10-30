@@ -18,6 +18,9 @@ public class AppDbContext(DbContextOptions<AppDbContext> options, ITenantProvide
     public DbSet<ProductListing> ProductListings => Set<ProductListing>();
     public DbSet<ProductImage> ProductImages => Set<ProductImage>();
     public DbSet<Category> Categories => Set<Category>();
+    public DbSet<ChannelStockPriceState> ChannelStockPriceStates => Set<ChannelStockPriceState>();
+    public DbSet<StockPriceBatch> StockPriceBatches => Set<StockPriceBatch>();
+    public DbSet<SentBodyHash> SentBodyHashes => Set<SentBodyHash>();
     public DbSet<StockRule> StockRules => Set<StockRule>();
     public DbSet<StockSettings> StockSettings => Set<StockSettings>();
     public DbSet<PricingRule> PricingRules => Set<PricingRule>();
@@ -160,6 +163,32 @@ public class AppDbContext(DbContextOptions<AppDbContext> options, ITenantProvide
             b.HasIndex(m => new { m.CategoryId, m.Channel }).IsUnique(); // kategori başına kanal başına tek eşleme
             b.HasOne<Category>().WithMany().HasForeignKey(m => m.CategoryId).OnDelete(DeleteBehavior.Cascade);
             b.HasOne<Tenant>().WithMany().HasForeignKey(m => m.TenantId).OnDelete(DeleteBehavior.Restrict);
+        });
+
+        builder.Entity<ChannelStockPriceState>(b =>
+        {
+            b.Property(s => s.Channel).HasMaxLength(40).IsRequired();
+            b.Property(s => s.Price).HasPrecision(18, 2);
+            b.HasIndex(s => new { s.ProductId, s.Channel }).IsUnique();
+            b.HasOne<Product>().WithMany().HasForeignKey(s => s.ProductId).OnDelete(DeleteBehavior.Cascade);
+            b.HasOne<Tenant>().WithMany().HasForeignKey(s => s.TenantId).OnDelete(DeleteBehavior.Restrict);
+        });
+
+        builder.Entity<StockPriceBatch>(b =>
+        {
+            b.Property(x => x.Channel).HasMaxLength(40).IsRequired();
+            b.Property(x => x.BatchId).HasMaxLength(100).IsRequired();
+            b.Property(x => x.ErrorSummary).HasMaxLength(2000);
+            b.HasIndex(x => new { x.Pending, x.SentAt });
+            b.HasOne<Tenant>().WithMany().HasForeignKey(x => x.TenantId).OnDelete(DeleteBehavior.Restrict);
+        });
+
+        builder.Entity<SentBodyHash>(b =>
+        {
+            b.Property(h => h.Channel).HasMaxLength(40).IsRequired();
+            b.Property(h => h.Hash).HasMaxLength(64).IsRequired();
+            b.HasIndex(h => new { h.Channel, h.Hash });
+            b.HasOne<Tenant>().WithMany().HasForeignKey(h => h.TenantId).OnDelete(DeleteBehavior.Restrict);
         });
 
         builder.Entity<StockRule>(b =>

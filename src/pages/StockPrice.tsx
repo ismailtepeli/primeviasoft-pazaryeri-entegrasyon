@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { Tabs } from '../components'
 import PricingSection from './PricingSection'
 import StockSection from './StockSection'
+import SyncStatusCard from './SyncStatusCard'
 import './StockPrice.css'
 
 const CHANNEL_TABS = [
@@ -16,6 +17,7 @@ export default function StockPrice() {
   return (
     <div className="stock-price">
       <Tabs items={CHANNEL_TABS} value={channel} onChange={setChannel} />
+      <SyncStatusCard key={`sync-${channel}`} channel={channel} />
       <StockSection key={`stock-${channel}`} channel={channel} />
       <PricingSection key={channel} channel={channel} />
     </div>

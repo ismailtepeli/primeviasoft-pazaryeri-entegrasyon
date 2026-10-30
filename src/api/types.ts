@@ -301,3 +301,18 @@ export interface StockPage {
   items: StockRow[]
   total: number
 }
+
+export interface StockSyncStatus {
+  channel: string
+  supported: boolean
+  /** Kanala henüz gönderilmemiş stok/fiyat değişikliği olan barkod sayısı. */
+  pendingChanges: number
+  /** Dakikalık fiyat sınırı dolduğu için sonraya bırakılan barkod sayısı. */
+  deferred: number
+  pendingBatches: number
+  lastSentAt: string | null
+  lastSentItems: number
+  lastFailed: number
+  lastError: string | null
+  syncInFlight: boolean
+}

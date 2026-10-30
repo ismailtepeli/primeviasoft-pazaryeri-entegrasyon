@@ -10,6 +10,7 @@ using Pazaryeri.Application.Jobs;
 using Pazaryeri.Application.Marketplace;
 using Pazaryeri.Application.Products;
 using Pazaryeri.Infrastructure.Products;
+using Pazaryeri.Infrastructure.Stock;
 using Pazaryeri.Application.Products;
 using Pazaryeri.Infrastructure.Products;
 using Pazaryeri.Infrastructure.Amazon;
@@ -42,6 +43,8 @@ public static class DependencyInjection
         services.AddScoped<IProductImportService, ProductImportService>();
         services.AddScoped<IProductImageService, ProductImageService>();
         services.AddScoped<ProductChannelPreparer>();
+        services.AddScoped<StockPriceDeltaPlanner>();
+        services.AddScoped<ISyncJobHandler, StockPriceSyncHandler>();
         services.AddScoped<IProductSendService, ProductSendService>();
         services.AddScoped<IChannelCatalogService, ChannelCatalogService>();
         services.AddScoped<ISyncJobHandler, CatalogSyncHandler>();
@@ -74,6 +77,13 @@ public static class DependencyInjection
             q.ScheduleJob<CatalogWeeklySync>(t => t
                 .WithIdentity("catalog-weekly-sync")
                 .WithCronSchedule("0 0 3 ? * SUN", c => c.InTimeZone(TimeZoneInfo.Utc)));
+            // Değişen stok-fiyatı kanala gönderir (5 dk) ve gönderilen toplu işlemlerin sonucunu okur (1 dk).
+            q.ScheduleJob<StockPriceSyncScheduler>(t => t
+                .WithIdentity("stock-price-sync-scheduler")
+                .WithSimpleSchedule(s => s.WithInterval(TimeSpan.FromMinutes(5)).RepeatForever()));
+            q.ScheduleJob<StockPriceBatchPoller>(t => t
+                .WithIdentity("stock-price-batch-poller")
+                .WithSimpleSchedule(s => s.WithInterval(TimeSpan.FromMinutes(1)).RepeatForever()));
             // Kanalın toplu ürün işlemi sonuçlarını sorgular (4 saat dolmadan).
             q.ScheduleJob<ProductBatchPoller>(t => t
                 .WithIdentity("product-batch-poller")

@@ -23,3 +23,6 @@
 .stock__safety input { width: 150px; padding: 8px 12px; }
 .stock__ok { color: var(--success); font-weight: 700; }
 .stock__bad { color: var(--danger); font-size: 13px; }
+.sync-status { display: flex; flex-direction: column; gap: var(--space-2); padding: var(--space-4) var(--space-5); border: 1px solid var(--line); border-radius: var(--radius-lg); background: var(--surface-raised); }
+.sync-status__head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--space-3); }
+.sync-status__head h3 { margin: 0; font: 700 17px var(--font-display); }
