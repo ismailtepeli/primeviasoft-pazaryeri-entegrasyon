@@ -22,7 +22,7 @@ public record StoreProductDetail(Guid Id, string Name, string Code, string? Main
     IReadOnlyList<StoreCrumb> Breadcrumb, IReadOnlyList<string> Images, StorePrice Price, StoreStock Stock, int MinOrderQuantity, int PackSize,
     IReadOnlyList<StoreVariant> Variants);
 
-public record StoreCategory(Guid Id, string Name, Guid? ParentId, int ProductCount);
+public record StoreCategory(Guid Id, string Name, Guid? ParentId, int ProductCount, string? ImageUrl, string SlugPath);
 
 public record StoreQuery(string? Search, Guid? CategoryId, string? Sort, int Page, int PageSize);
 
@@ -135,8 +135,9 @@ public class StoreCatalogService(AppDbContext db, StoreCatalog catalog, DealerPr
         var visible = await catalog.VisibleProductsAsync(await GroupOfAsync(dealerId, ct), ct);
         var direct = await visible.Where(p => p.CategoryId != null).GroupBy(p => p.CategoryId!.Value)
             .Select(g => new { Id = g.Key, N = g.Count() }).ToDictionaryAsync(x => x.Id, x => x.N, ct);
-        var all = await db.Categories.AsNoTracking().Select(c => new { c.Id, c.Name, c.ParentId }).ToListAsync(ct);
+        var all = await db.Categories.AsNoTracking().Select(c => new { c.Id, c.Name, c.ParentId, c.SortOrder, c.ImageUrl }).ToListAsync(ct);
         var byId = all.ToDictionary(c => c.Id);
+        var slugs = Pazaryeri.Application.Catalog.CategoryRules.SlugPaths(all.Select(c => (c.Id, c.Name, c.ParentId)).ToList());
 
         var totals = new Dictionary<Guid, int>();
         foreach (var (id, n) in direct)
@@ -146,8 +147,8 @@ public class StoreCatalogService(AppDbContext db, StoreCatalog catalog, DealerPr
                 totals[c] = totals.GetValueOrDefault(c) + n;
         }
 
-        return all.Where(c => totals.ContainsKey(c.Id)).OrderBy(c => c.Name, StringComparer.CurrentCultureIgnoreCase)
-            .Select(c => new StoreCategory(c.Id, c.Name, c.ParentId is { } p && totals.ContainsKey(p) ? p : null, totals[c.Id])).ToList();
+        return all.Where(c => totals.ContainsKey(c.Id)).OrderBy(c => c.SortOrder).ThenBy(c => c.Name, StringComparer.CurrentCultureIgnoreCase)
+            .Select(c => new StoreCategory(c.Id, c.Name, c.ParentId is { } p && totals.ContainsKey(p) ? p : null, totals[c.Id], c.ImageUrl, slugs[c.Id])).ToList();
     }
 
     private async Task<Dictionary<Guid, string>> CategoryPaths(CancellationToken ct)

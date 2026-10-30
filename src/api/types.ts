@@ -135,6 +135,14 @@ export interface Category {
   parentId: string | null
   path: string
   productCount: number
+  /** Alt kategorilerle toplam ürün sayısı. */
+  totalProductCount: number
+  sortOrder: number
+  isActive: boolean
+  imageUrl: string | null
+  /** Adres dostu yol: "giyim/tisort". */
+  slugPath: string
+  childCount: number
 }
 
 export interface ProductPage {

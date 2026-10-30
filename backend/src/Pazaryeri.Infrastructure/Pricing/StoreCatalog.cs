@@ -13,12 +13,12 @@ public class StoreCatalog(AppDbContext db)
 {
     public async Task<IQueryable<Product>> VisibleProductsAsync(Guid? groupId, CancellationToken ct)
     {
-        var cats = await db.Categories.AsNoTracking().Select(c => new { c.Id, c.ParentId, c.B2BHidden }).ToListAsync(ct);
+        var cats = await db.Categories.AsNoTracking().Select(c => new { c.Id, c.ParentId, Hidden = c.B2BHidden || !c.IsActive }).ToListAsync(ct);
         var rules = groupId is { } g
             ? await db.GroupVisibilityRules.AsNoTracking().Where(r => r.GroupId == g).Select(r => new { r.ProductId, r.CategoryId }).ToListAsync(ct)
             : [];
 
-        var seeds = cats.Where(c => c.B2BHidden).Select(c => c.Id).Concat(rules.Where(r => r.CategoryId != null).Select(r => r.CategoryId!.Value)).ToHashSet();
+        var seeds = cats.Where(c => c.Hidden).Select(c => c.Id).Concat(rules.Where(r => r.CategoryId != null).Select(r => r.CategoryId!.Value)).ToHashSet();
         var hiddenCategories = Descendants(cats.Select(c => (c.Id, c.ParentId)).ToList(), seeds);
         var blockedProducts = rules.Where(r => r.ProductId != null).Select(r => r.ProductId!.Value).ToList();
         var hidden = hiddenCategories.ToList();
