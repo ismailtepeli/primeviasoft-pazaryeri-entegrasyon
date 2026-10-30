@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { nextStep, orderStatusBadge, orderTabs, ordersQuery } from './orderView'
+import { initialTab, nextStep, orderStatusBadge, orderTabs, ordersQuery } from './orderView'
 
 describe('orderView', () => {
   it('beş sekmeyi sayaçlarıyla sıralar', () => {
@@ -14,6 +14,12 @@ describe('orderView', () => {
     expect(nextStep('Preparing')).toBe('Faturala ve etiket yazdır')
     expect(nextStep('Shipped')).toBe('Teslimat bekleniyor')
     expect((['Delivered', 'Cancelled', 'Returned'] as const).map(nextStep)).toEqual(['—', '—', '—'])
+  })
+
+  it('adresteki sekmeyi yalnızca geçerliyse kullanır', () => {
+    expect(initialTab('preparing')).toBe('preparing')
+    expect(initialTab('yok')).toBe('new')
+    expect(initialTab(null)).toBe('new')
   })
 
   it('sorgu dizesini sekme, sayfa ve kırpılmış aramayla kurar', () => {

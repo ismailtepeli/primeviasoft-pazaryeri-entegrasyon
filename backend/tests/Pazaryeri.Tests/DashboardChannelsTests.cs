@@ -43,7 +43,7 @@ public class DashboardChannelsTests : IAsyncLifetime
         var tenant = await NewTenantAsync("Bos Firma");
         await using var db = NewDb(tenant);
 
-        var result = await new DashboardController(db).Channels(default);
+        var result = await new DashboardController(db, TimeProvider.System).Channels(default);
 
         Assert.Equal(["Trendyol", "Hepsiburada", "N11", "Amazon"], result.Select(c => c.Channel));
         Assert.All(result, c =>
@@ -72,7 +72,7 @@ public class DashboardChannelsTests : IAsyncLifetime
         }
 
         await using var db = NewDb(tenant);
-        var result = await new DashboardController(db).Channels(default);
+        var result = await new DashboardController(db, TimeProvider.System).Channels(default);
 
         var trendyol = result.Single(c => c.Channel == "Trendyol");
         Assert.Equal("Connected", trendyol.Status);
@@ -96,7 +96,7 @@ public class DashboardChannelsTests : IAsyncLifetime
         }
 
         await using var db = NewDb(tenant);
-        var page = await new DashboardController(db).SyncErrors(0, 5, default);
+        var page = await new DashboardController(db, TimeProvider.System).SyncErrors(0, 5, default);
 
         Assert.Equal(2, page.Total); // başarılı iş hata sayılmaz
         Assert.Equal(["Hepsiburada", "Trendyol"], page.Items.Select(i => i.Channel));
@@ -120,14 +120,14 @@ public class DashboardChannelsTests : IAsyncLifetime
         }
 
         await using var dbA = NewDb(a);
-        var first = await new DashboardController(dbA).SyncErrors(0, 5, default);
-        var second = await new DashboardController(dbA).SyncErrors(5, 5, default);
+        var first = await new DashboardController(dbA, TimeProvider.System).SyncErrors(0, 5, default);
+        var second = await new DashboardController(dbA, TimeProvider.System).SyncErrors(5, 5, default);
         await using var dbB = NewDb(b);
 
         Assert.Equal(7, first.Total);
         Assert.Equal(5, first.Items.Count);
         Assert.Equal(2, second.Items.Count);
-        Assert.Equal(0, (await new DashboardController(dbB).SyncErrors(0, 5, default)).Total);
+        Assert.Equal(0, (await new DashboardController(dbB, TimeProvider.System).SyncErrors(0, 5, default)).Total);
     }
 
     [Fact]
@@ -142,7 +142,7 @@ public class DashboardChannelsTests : IAsyncLifetime
         }
 
         await using var db = NewDb(b);
-        var result = await new DashboardController(db).Channels(default);
+        var result = await new DashboardController(db, TimeProvider.System).Channels(default);
 
         Assert.Equal("NotConnected", result.Single(c => c.Channel == "Trendyol").Status);
     }

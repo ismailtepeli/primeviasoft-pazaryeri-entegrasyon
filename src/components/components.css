@@ -25,6 +25,11 @@
 .kpi__label { font-size: 14px; color: var(--ink-muted); }
 .kpi__value { font: 700 28px/1.2 var(--font-display); letter-spacing: -0.02em; color: var(--ink); }
 .kpi__hint { font-size: 13.5px; color: var(--ink-soft); }
+.kpi--link { text-decoration: none; color: inherit; }
+.kpi--link:hover { border-color: var(--accent); }
+.kpi--link:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.kpi--danger .kpi__value { color: var(--danger); }
+.kpi--danger { border-color: var(--danger); }
 
 /* Şimdi senkronla */
 .sync-now { display: flex; align-items: center; gap: var(--space-3); }

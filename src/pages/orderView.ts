@@ -5,6 +5,13 @@ export const ORDER_PAGE_SIZE = 20
 
 export type OrderTab = 'new' | 'preparing' | 'shipped' | 'delivered' | 'cancelled'
 
+const tabValues: OrderTab[] = ['new', 'preparing', 'shipped', 'delivered', 'cancelled']
+
+/** Adres çubuğundaki ?tab= değeri geçerliyse o sekme, değilse 'new' (KPI kartlarından filtreli geçiş). */
+export function initialTab(value: string | null): OrderTab {
+  return tabValues.find((t) => t === value) ?? 'new'
+}
+
 export const emptyCounts: OrderCounts = { new: 0, preparing: 0, shipped: 0, delivered: 0, cancelled: 0 }
 
 /** Sayaçlı sekmeler: Yeni, Hazırlanıyor, Kargoda, Teslim edildi, İptal / İade. */

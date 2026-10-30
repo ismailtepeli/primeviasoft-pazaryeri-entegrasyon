@@ -341,6 +341,13 @@ export interface StockMovementPage {
   total: number
 }
 
+export interface DashboardSummary {
+  todayOrders: number
+  awaitingShipment: number
+  syncErrors: number
+  activeProducts: number
+}
+
 export type OrderStatusKind = 'New' | 'Preparing' | 'Shipped' | 'Delivered' | 'Cancelled' | 'Returned'
 
 export interface OrderRow {

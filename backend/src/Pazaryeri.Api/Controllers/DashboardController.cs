@@ -14,11 +14,31 @@ public record SyncErrorDto(Guid Id, string Channel, string Type, string Message,
 
 public record SyncErrorPage(IReadOnlyList<SyncErrorDto> Items, int Total);
 
+/// <param name="TodayOrders">Bugün (Türkiye saatiyle) gelen siparişler.</param>
+/// <param name="AwaitingShipment">Hazırlanıyor durumunda, henüz kargoya verilmemiş siparişler.</param>
+/// <param name="SyncErrors">Hata durumundaki senkron işleri.</param>
+/// <param name="ActiveProducts">En az bir kanalda yayında olan ürünler.</param>
+public record DashboardSummary(int TodayOrders, int AwaitingShipment, int SyncErrors, int ActiveProducts);
+
 [ApiController]
 [Route("api/dashboard")]
-public class DashboardController(AppDbContext db) : ControllerBase
+public class DashboardController(AppDbContext db, TimeProvider time) : ControllerBase
 {
     public const string NotConnected = "NotConnected";
+    private static readonly TimeSpan TurkeyOffset = TimeSpan.FromHours(3);
+
+    /// <summary>Genel bakış KPI kartları: bugünkü sipariş, bekleyen kargo, senkron hatası, aktif ürün.</summary>
+    [HttpGet("summary")]
+    public async Task<DashboardSummary> Summary(CancellationToken ct)
+    {
+        var local = time.GetUtcNow().UtcDateTime + TurkeyOffset;
+        var startUtc = local.Date - TurkeyOffset; // yerel gün başlangıcı, UTC olarak
+        var today = await db.Orders.CountAsync(o => o.OrderDate >= startUtc, ct);
+        var awaiting = await db.Orders.CountAsync(o => o.Status == OrderStatus.Preparing, ct);
+        var errors = await db.SyncJobs.CountAsync(j => j.Status == SyncJobStatus.Failed, ct);
+        var active = await db.Products.CountAsync(p => p.Listings.Any(l => l.Status == ListingStatus.Live), ct);
+        return new DashboardSummary(today, awaiting, errors, active);
+    }
 
     /// <summary>Hata durumundaki senkron işleri, en yeni önce. <paramref name="take"/> kadar kayıt döner; toplam sayı da gelir.</summary>
     [HttpGet("sync-errors")]

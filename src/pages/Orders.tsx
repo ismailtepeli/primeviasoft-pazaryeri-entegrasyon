@@ -1,10 +1,11 @@
 import { useEffect, useMemo, useState } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import { api } from '../api/client'
 import type { OrderPage, OrderRow } from '../api/types'
 import { DataTable, StatusBadge, Tabs, type Column } from '../components'
 import { timeAgo } from '../lib/timeAgo'
 import OrderStepper from './OrderStepper'
-import { emptyCounts, nextStep, ORDER_PAGE_SIZE, orderStatusBadge, orderTabs, ordersQuery, type OrderTab } from './orderView'
+import { emptyCounts, initialTab, nextStep, ORDER_PAGE_SIZE, orderStatusBadge, orderTabs, ordersQuery, type OrderTab } from './orderView'
 import './Orders.css'
 
 const money = new Intl.NumberFormat('tr-TR', { style: 'currency', currency: 'TRY' })
@@ -38,7 +39,8 @@ function makeColumns(onSelect: (o: OrderRow) => void): Column<OrderRow>[] { retu
 
 /** Tüm kanallardaki siparişler: durum sekmeleri, arama ve sunucu taraflı sayfalama. */
 export default function Orders() {
-  const [tab, setTab] = useState<OrderTab>('new')
+  const [params] = useSearchParams()
+  const [tab, setTab] = useState<OrderTab>(initialTab(params.get('tab')))
   const [input, setInput] = useState('')
   const [search, setSearch] = useState('')
   const [page, setPage] = useState(1)
