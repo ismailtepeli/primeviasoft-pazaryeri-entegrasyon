@@ -18,6 +18,7 @@ public class AppDbContext(DbContextOptions<AppDbContext> options, ITenantProvide
     public DbSet<ProductListing> ProductListings => Set<ProductListing>();
     public DbSet<ProductImage> ProductImages => Set<ProductImage>();
     public DbSet<Category> Categories => Set<Category>();
+    public DbSet<ProductChannelData> ProductChannelData => Set<ProductChannelData>();
 
     // Filtre ifadesi bu özelliğe bağlanır; EF her sorguda geçerli context örneğinin değerini okur.
     // Oturum yoksa Guid.Empty olur ve hiçbir kayıt eşleşmez.
@@ -44,6 +45,7 @@ public class AppDbContext(DbContextOptions<AppDbContext> options, ITenantProvide
             b.Property(j => j.Error).HasMaxLength(2000);
             b.HasIndex(j => new { j.TenantId, j.Status });
             b.HasIndex(j => j.BatchId);
+            b.HasIndex(j => new { j.BatchPending, j.BatchSentAt });
             b.HasOne<Tenant>().WithMany().HasForeignKey(j => j.TenantId).OnDelete(DeleteBehavior.Restrict);
         });
 
@@ -102,6 +104,16 @@ public class AppDbContext(DbContextOptions<AppDbContext> options, ITenantProvide
             b.Property(i => i.ExternalUrl).HasMaxLength(2000);
             b.HasIndex(i => new { i.ProductId, i.Position });
             b.HasOne<Tenant>().WithMany().HasForeignKey(i => i.TenantId).OnDelete(DeleteBehavior.Restrict);
+        });
+
+        builder.Entity<ProductChannelData>(b =>
+        {
+            b.ToTable("ProductChannelData");
+            b.Property(d => d.Channel).HasMaxLength(40).IsRequired();
+            b.Property(d => d.DimensionalWeight).HasPrecision(18, 3);
+            b.HasIndex(d => new { d.ProductId, d.Channel }).IsUnique();
+            b.HasOne<Product>().WithMany().HasForeignKey(d => d.ProductId).OnDelete(DeleteBehavior.Cascade);
+            b.HasOne<Tenant>().WithMany().HasForeignKey(d => d.TenantId).OnDelete(DeleteBehavior.Restrict);
         });
 
         builder.Entity<Category>(b =>

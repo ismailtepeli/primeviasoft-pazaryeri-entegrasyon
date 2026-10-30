@@ -9,11 +9,11 @@ namespace Pazaryeri.Infrastructure.Messaging;
 
 public class JobQueue(AppDbContext db, RabbitMqConnection rabbit, ITenantProvider tenant) : IJobQueue
 {
-    public async Task<SyncJob> EnqueueAsync(SyncJobType type, string channel, string? batchId = null, CancellationToken ct = default)
+    public async Task<SyncJob> EnqueueAsync(SyncJobType type, string channel, string? batchId = null, CancellationToken ct = default, string? payload = null)
     {
         var tenantId = tenant.TenantId ?? throw new InvalidOperationException("Kiracı bilinmeden iş kuyruğa alınamaz.");
 
-        var job = new SyncJob { TenantId = tenantId, Type = type, Channel = channel, BatchId = batchId };
+        var job = new SyncJob { TenantId = tenantId, Type = type, Channel = channel, BatchId = batchId, Payload = payload };
         db.SyncJobs.Add(job);
         await db.SaveChangesAsync(ct);
 

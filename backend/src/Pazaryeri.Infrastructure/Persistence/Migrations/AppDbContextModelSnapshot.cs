@@ -246,6 +246,9 @@ namespace Pazaryeri.Infrastructure.Persistence.Migrations
                         .HasMaxLength(500)
                         .HasColumnType("nvarchar(500)");
 
+                    b.Property<int>("VatRate")
+                        .HasColumnType("int");
+
                     b.HasKey("Id");
 
                     b.HasIndex("CategoryId");
@@ -258,6 +261,52 @@ namespace Pazaryeri.Infrastructure.Persistence.Migrations
                     b.HasIndex("TenantId", "MainId");
 
                     b.ToTable("Products");
+                });
+
+            modelBuilder.Entity("Pazaryeri.Domain.ProductChannelData", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("AttributesJson")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<long?>("BrandId")
+                        .HasColumnType("bigint");
+
+                    b.Property<long?>("CargoCompanyId")
+                        .HasColumnType("bigint");
+
+                    b.Property<long?>("CategoryId")
+                        .HasColumnType("bigint");
+
+                    b.Property<string>("Channel")
+                        .IsRequired()
+                        .HasMaxLength(40)
+                        .HasColumnType("nvarchar(40)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<decimal?>("DimensionalWeight")
+                        .HasPrecision(18, 3)
+                        .HasColumnType("decimal(18,3)");
+
+                    b.Property<Guid>("ProductId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("TenantId");
+
+                    b.HasIndex("ProductId", "Channel")
+                        .IsUnique();
+
+                    b.ToTable("ProductChannelData", (string)null);
                 });
 
             modelBuilder.Entity("Pazaryeri.Domain.ProductImage", b =>
@@ -355,6 +404,12 @@ namespace Pazaryeri.Infrastructure.Persistence.Migrations
                         .HasMaxLength(100)
                         .HasColumnType("nvarchar(100)");
 
+                    b.Property<bool>("BatchPending")
+                        .HasColumnType("bit");
+
+                    b.Property<DateTime?>("BatchSentAt")
+                        .HasColumnType("datetime2");
+
                     b.Property<string>("Channel")
                         .IsRequired()
                         .HasMaxLength(40)
@@ -369,6 +424,9 @@ namespace Pazaryeri.Infrastructure.Persistence.Migrations
 
                     b.Property<DateTime?>("FinishedAt")
                         .HasColumnType("datetime2");
+
+                    b.Property<string>("Payload")
+                        .HasColumnType("nvarchar(max)");
 
                     b.Property<DateTime?>("StartedAt")
                         .HasColumnType("datetime2");
@@ -391,6 +449,8 @@ namespace Pazaryeri.Infrastructure.Persistence.Migrations
                     b.HasIndex("BatchId");
 
                     b.HasIndex("TenantId");
+
+                    b.HasIndex("BatchPending", "BatchSentAt");
 
                     b.HasIndex("TenantId", "Status");
 
@@ -507,6 +567,21 @@ namespace Pazaryeri.Infrastructure.Persistence.Migrations
                         .WithMany()
                         .HasForeignKey("CategoryId")
                         .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("Pazaryeri.Domain.Tenant", null)
+                        .WithMany()
+                        .HasForeignKey("TenantId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("Pazaryeri.Domain.ProductChannelData", b =>
+                {
+                    b.HasOne("Pazaryeri.Domain.Product", null)
+                        .WithMany()
+                        .HasForeignKey("ProductId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
 
                     b.HasOne("Pazaryeri.Domain.Tenant", null)
                         .WithMany()

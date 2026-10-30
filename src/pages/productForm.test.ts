@@ -7,7 +7,7 @@ describe('productForm', () => {
   it('geçerli formda hata yok ve girdi temizlenir', () => {
     expect(validateForm(valid)).toEqual({})
     expect(toInput(valid)).toEqual({
-      name: 'Çanta', barcode: 'B1', mainId: null, variant: null, brand: null, description: null, categoryId: null, stock: 5, price: 99.9,
+      name: 'Çanta', barcode: 'B1', mainId: null, variant: null, brand: null, description: null, categoryId: null, stock: 5, price: 99.9, vatRate: 20,
     })
   })
 

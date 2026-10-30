@@ -11,11 +11,14 @@ export interface ProductForm {
   categoryId: string
   stock: string
   price: string
+  vatRate: string
 }
 
 export const emptyForm: ProductForm = {
-  name: '', barcode: '', mainId: '', variant: '', brand: '', description: '', categoryId: '', stock: '0', price: '',
+  name: '', barcode: '', mainId: '', variant: '', brand: '', description: '', categoryId: '', stock: '0', price: '', vatRate: '20',
 }
+
+export const VAT_RATES = [0, 1, 10, 20]
 
 const orNull = (s: string) => (s.trim() === '' ? null : s.trim())
 
@@ -35,6 +38,7 @@ export function validateForm(f: ProductForm): Record<string, string> {
   if (f.stock.trim() === '' || !Number.isInteger(stock) || stock < 0) errors.stock = 'Stok sıfır ya da pozitif tam sayı olmalı.'
   const price = Number(f.price.replace(',', '.'))
   if (f.price.trim() === '' || !Number.isFinite(price) || price <= 0) errors.price = 'Fiyat sıfırdan büyük bir sayı olmalı.'
+  if (!VAT_RATES.includes(Number(f.vatRate))) errors.vatRate = 'KDV oranı 0, 1, 10 ya da 20 olmalı.'
   return errors
 }
 
@@ -49,5 +53,6 @@ export function toInput(f: ProductForm): ProductInput {
     categoryId: f.categoryId || null,
     stock: Number(f.stock),
     price: Number(f.price.replace(',', '.')),
+    vatRate: Number(f.vatRate),
   }
 }

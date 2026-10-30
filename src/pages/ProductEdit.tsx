@@ -4,7 +4,7 @@ import { api } from '../api/client'
 import type { Category, ProductDetail, ProductImage, ProductInput } from '../api/types'
 import { Button, Select, TextInput } from '../components'
 import ImageManager from './ImageManager'
-import { emptyForm, toInput, validateForm, type ProductForm } from './productForm'
+import { VAT_RATES, emptyForm, toInput, validateForm, type ProductForm } from './productForm'
 import './ChannelForm.css'
 import './ProductEdit.css'
 
@@ -35,7 +35,7 @@ export default function ProductEdit() {
       .then((p) => {
         setForm({
           name: p.name, barcode: p.barcode, mainId: p.mainId ?? '', variant: p.variant ?? '', brand: p.brand ?? '',
-          description: p.description ?? '', categoryId: p.categoryId ?? '', stock: String(p.stock), price: String(p.price),
+          description: p.description ?? '', categoryId: p.categoryId ?? '', stock: String(p.stock), price: String(p.price), vatRate: String(p.vatRate),
         })
         setImages(p.images)
       })
@@ -92,6 +92,9 @@ export default function ProductEdit() {
           </Select>
           <TextInput label="Stok" type="number" min={0} step={1} value={form.stock} onChange={set('stock')} error={errors.stock} />
           <TextInput label="Fiyat (₺)" type="number" min={0} step="0.01" value={form.price} onChange={set('price')} error={errors.price} />
+          <Select label="KDV oranı" value={form.vatRate} onChange={set('vatRate')} error={errors.vatRate}>
+            {VAT_RATES.map((v) => <option key={v} value={v}>%{v}</option>)}
+          </Select>
         </div>
 
         <div className="field">

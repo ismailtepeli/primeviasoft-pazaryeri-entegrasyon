@@ -19,7 +19,7 @@ public class SyncNowTests : IAsyncLifetime
 
     private sealed class DbQueue(AppDbContext db, Guid tenantId) : IJobQueue
     {
-        public async Task<SyncJob> EnqueueAsync(SyncJobType type, string channel, string? batchId = null, CancellationToken ct = default)
+        public async Task<SyncJob> EnqueueAsync(SyncJobType type, string channel, string? batchId = null, CancellationToken ct = default, string? payload = null)
         {
             var job = new SyncJob { TenantId = tenantId, Type = type, Channel = channel, BatchId = batchId };
             db.SyncJobs.Add(job);

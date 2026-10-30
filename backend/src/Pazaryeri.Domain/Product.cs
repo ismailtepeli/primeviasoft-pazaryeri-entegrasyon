@@ -28,6 +28,8 @@ public class Product : TenantEntity
     public string? Brand { get; set; }
     public string? Description { get; set; }
     public Guid? CategoryId { get; set; }
+    /// <summary>KDV oranı (%); kanallar gönderimde ister.</summary>
+    public int VatRate { get; set; } = 20;
     public int Stock { get; set; }
     public decimal Price { get; set; }
     /// <summary>Görseller; <see cref="ProductImage.Position"/> sırasına göre, ilki kapak.</summary>
@@ -67,4 +69,20 @@ public class ProductImage : TenantEntity
     public string? Extension { get; set; }
     /// <summary>Url ise görselin adresi; Upload ise boş.</summary>
     public string? ExternalUrl { get; set; }
+}
+
+/// <summary>
+/// Ürünün bir kanalda yayınlanması için gereken kanala özgü veriler (marka/kategori kimlikleri, özellikler).
+/// Eşleme ekranları (kategori, özellik, marka eşlemesi) bu kaydı doldurur; eksikse ürün o kanala gönderilemez.
+/// </summary>
+public class ProductChannelData : TenantEntity
+{
+    public Guid ProductId { get; set; }
+    public string Channel { get; set; } = string.Empty;
+    public long? BrandId { get; set; }
+    public long? CategoryId { get; set; }
+    public long? CargoCompanyId { get; set; }
+    public decimal? DimensionalWeight { get; set; }
+    /// <summary>[{"attributeId":1,"valueId":2,"customValue":null}] biçiminde kanal özellikleri.</summary>
+    public string? AttributesJson { get; set; }
 }

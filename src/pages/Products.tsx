@@ -6,6 +6,7 @@ import { Link } from 'react-router-dom'
 import { failureReasons, listingBadge } from './listingStatus'
 import CategoryManager from './CategoryManager'
 import ProductImport from './ProductImport'
+import SendToChannel from './SendToChannel'
 import { RECOMMENDED_IMAGES } from './imageOrder'
 import { PRODUCT_PAGE_SIZE, productsQuery, type ProductFilter } from './productFilters'
 import './Products.css'
@@ -74,6 +75,7 @@ export default function Products() {
   const [selected, setSelected] = useState<string[]>([])
   const [importing, setImporting] = useState(false)
   const [categoriesOpen, setCategoriesOpen] = useState(false)
+  const [sending, setSending] = useState(false)
   const [reloadKey, setReloadKey] = useState(0)
   const columns = useMemo(() => makeColumns(setDetail), [])
 
@@ -92,6 +94,14 @@ export default function Products() {
       .finally(() => { if (current) setLoading(false) })
     return () => { current = false } // eski isteğin cevabı yenisini ezmesin
   }, [search, filter, page, reloadKey])
+
+  // Kanal sonucu beklenen ürün varsa listeyi arada yenile; durum kendiliğinden güncellensin.
+  const hasPending = data.items.some((p) => p.channels.some((c) => c.status === 'Pending'))
+  useEffect(() => {
+    if (!hasPending) return
+    const t = setInterval(() => setReloadKey((k) => k + 1), 30000)
+    return () => clearInterval(t)
+  }, [hasPending])
 
   return (
     <div className="products">
@@ -121,9 +131,10 @@ export default function Products() {
       )}
       {error && <p role="alert" style={{ color: 'var(--danger)' }}>{error}</p>}
       <BulkBar count={selected.length} onClear={() => setSelected([])} actions={[
-        { label: 'Kanala gönder', disabledReason: 'Yakında' },
+        { label: 'Kanala gönder', onClick: () => setSending(true) },
         { label: 'Kural uygula', disabledReason: 'Yakında' },
       ]} />
+      {sending && selected.length > 0 && <SendToChannel productIds={selected} onClose={() => setSending(false)} onSent={() => setReloadKey((k) => k + 1)} />}
       <DataTable columns={columns} rows={data.items} rowKey={(p) => p.id} pageSize={PRODUCT_PAGE_SIZE}
         selectable selected={selected} onSelectionChange={setSelected}
         serverPaging={{ page: page - 1, total: data.total, onPageChange: (p) => setPage(p + 1) }}

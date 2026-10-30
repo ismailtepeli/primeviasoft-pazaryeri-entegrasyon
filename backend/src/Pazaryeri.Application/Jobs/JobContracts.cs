@@ -8,7 +8,7 @@ public record SyncJobMessage(Guid JobId, Guid TenantId);
 public interface IJobQueue
 {
     /// <summary>Oturumdaki kiracı için SyncJob kaydı açar ve kuyruğa atar.</summary>
-    Task<SyncJob> EnqueueAsync(SyncJobType type, string channel, string? batchId = null, CancellationToken ct = default);
+    Task<SyncJob> EnqueueAsync(SyncJobType type, string channel, string? batchId = null, CancellationToken ct = default, string? payload = null);
 }
 
 /// <summary>Bir iş türünü işleyen sınıf. Yeni senkron özellikleri bunu uygulayıp kaydolur.</summary>

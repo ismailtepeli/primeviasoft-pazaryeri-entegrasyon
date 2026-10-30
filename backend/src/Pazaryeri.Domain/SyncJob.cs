@@ -33,6 +33,11 @@ public class SyncJob : TenantEntity
     public int Attempts { get; set; }
     /// <summary>Hatadan etkilenen kayıt sayısı (örn. reddedilen ürün adedi); bilinmiyorsa 0.</summary>
     public int AffectedCount { get; set; }
+    /// <summary>İşin girdisi (örn. gönderilecek ürün kimlikleri) JSON olarak; yoksa null.</summary>
+    public string? Payload { get; set; }
+    /// <summary>Kanala toplu işlem gönderildi ve sonucu henüz alınmadı; sonuç takipçisi bu işleri izler.</summary>
+    public bool BatchPending { get; set; }
+    public DateTime? BatchSentAt { get; set; }
     public DateTime? StartedAt { get; set; }
     public DateTime? FinishedAt { get; set; }
 }

@@ -25,6 +25,12 @@ export interface SyncErrorPage {
 
 export type ListingState = 'Live' | 'Missing' | 'Pending' | 'Passive' | 'Error'
 
+export interface ProductSendResult {
+  jobs: number
+  products: number
+  unknown: number
+}
+
 export interface ProductImportError {
   row: number
   barcode: string
@@ -79,6 +85,7 @@ export interface ProductDetail {
   categoryPath: string | null
   stock: number
   price: number
+  vatRate: number
   images: ProductImage[]
   channels: ProductChannel[]
 }
@@ -93,6 +100,7 @@ export interface ProductInput {
   categoryId: string | null
   stock: number
   price: number
+  vatRate: number
 }
 
 export interface Category {

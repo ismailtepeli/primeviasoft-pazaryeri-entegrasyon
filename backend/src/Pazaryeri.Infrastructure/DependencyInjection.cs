@@ -39,6 +39,8 @@ public static class DependencyInjection
         services.AddScoped<IAuthService, AuthService>();
         services.AddScoped<IProductImportService, ProductImportService>();
         services.AddScoped<IProductImageService, ProductImageService>();
+        services.AddScoped<IProductSendService, ProductSendService>();
+        services.AddScoped<ISyncJobHandler, ProductSendHandler>();
         // Yüklenen görseller; üretimde Storage:ImagesPath kalıcı bir diske işaret etmeli.
         var imagesPath = config["Storage:ImagesPath"] is { Length: > 0 } configured
             ? configured
@@ -58,9 +60,16 @@ public static class DependencyInjection
             services.AddHostedService<SyncJobWorker>();
 
         // Zamanlanmış işler (Quartz). Yeni periyodik işler buraya eklenir.
-        services.AddQuartz(q => q.ScheduleJob<StaleJobSweeper>(t => t
-            .WithIdentity("stale-job-sweeper")
-            .WithSimpleSchedule(s => s.WithInterval(TimeSpan.FromMinutes(5)).RepeatForever())));
+        services.AddQuartz(q =>
+        {
+            q.ScheduleJob<StaleJobSweeper>(t => t
+                .WithIdentity("stale-job-sweeper")
+                .WithSimpleSchedule(s => s.WithInterval(TimeSpan.FromMinutes(5)).RepeatForever()));
+            // Kanalın toplu ürün işlemi sonuçlarını sorgular (4 saat dolmadan).
+            q.ScheduleJob<ProductBatchPoller>(t => t
+                .WithIdentity("product-batch-poller")
+                .WithSimpleSchedule(s => s.WithInterval(TimeSpan.FromMinutes(1)).RepeatForever()));
+        });
         services.AddQuartzHostedService(o => o.WaitForJobsToComplete = true);
 
         // Rate limiter: Redis:ConnectionString varsa Redis (örnekler arası paylaşım), yoksa süreç içi.
