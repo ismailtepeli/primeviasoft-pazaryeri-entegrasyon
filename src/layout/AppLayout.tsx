@@ -7,6 +7,7 @@ import './AppLayout.css'
 /** Ekrana özgü başlık aksiyonu; tanımsızsa şimdilik yalnızca etiket gösteren buton. */
 function headerAction(path: string, label: string) {
   if (path.startsWith('/urunler/')) return <Link to="/urunler" className="ps-btn ps-btn--secondary">← Ürünlere dön</Link>
+  if (path === '/esleme') return null // eşleme düzenleme eylemleri #22+ ile gelecek
   if (path === '/urunler') return <Link to="/urunler/yeni" className="ps-btn ps-btn--primary">Ürün ekle</Link>
   if (path === '/') return <SyncNowButton />
   if (path === '/magazalar') return <AddChannelButton />

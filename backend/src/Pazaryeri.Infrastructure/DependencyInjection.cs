@@ -3,6 +3,8 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Pazaryeri.Application.Amazon;
 using Pazaryeri.Application.Auth;
+using Pazaryeri.Application.Catalog;
+using Pazaryeri.Infrastructure.Catalog;
 using Pazaryeri.Application.Credentials;
 using Pazaryeri.Application.Jobs;
 using Pazaryeri.Application.Marketplace;
@@ -40,6 +42,8 @@ public static class DependencyInjection
         services.AddScoped<IProductImportService, ProductImportService>();
         services.AddScoped<IProductImageService, ProductImageService>();
         services.AddScoped<IProductSendService, ProductSendService>();
+        services.AddScoped<IChannelCatalogService, ChannelCatalogService>();
+        services.AddScoped<ISyncJobHandler, CatalogSyncHandler>();
         services.AddScoped<ISyncJobHandler, ProductSendHandler>();
         // Yüklenen görseller; üretimde Storage:ImagesPath kalıcı bir diske işaret etmeli.
         var imagesPath = config["Storage:ImagesPath"] is { Length: > 0 } configured
@@ -65,6 +69,10 @@ public static class DependencyInjection
             q.ScheduleJob<StaleJobSweeper>(t => t
                 .WithIdentity("stale-job-sweeper")
                 .WithSimpleSchedule(s => s.WithInterval(TimeSpan.FromMinutes(5)).RepeatForever()));
+            // Kanal kataloğu (kategori, marka, özellik) her pazar 03:00'te (UTC) yenilenir.
+            q.ScheduleJob<CatalogWeeklySync>(t => t
+                .WithIdentity("catalog-weekly-sync")
+                .WithCronSchedule("0 0 3 ? * SUN", c => c.InTimeZone(TimeZoneInfo.Utc)));
             // Kanalın toplu ürün işlemi sonuçlarını sorgular (4 saat dolmadan).
             q.ScheduleJob<ProductBatchPoller>(t => t
                 .WithIdentity("product-batch-poller")

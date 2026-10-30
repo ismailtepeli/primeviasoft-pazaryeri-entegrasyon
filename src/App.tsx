@@ -2,6 +2,7 @@ import { BrowserRouter, Route, Routes } from 'react-router-dom'
 import AppLayout from './layout/AppLayout'
 import DesignSystem from './pages/DesignSystem'
 import Login from './pages/Login'
+import Mapping from './pages/Mapping'
 import Overview from './pages/Overview'
 import PagePlaceholder from './pages/PagePlaceholder'
 import { AuthProvider } from './auth/AuthContext'
@@ -15,6 +16,7 @@ function pageFor(path: string, label: string) {
   if (path === '/') return <Overview />
   if (path === '/magazalar') return <Stores />
   if (path === '/urunler') return <Products />
+  if (path === '/esleme') return <Mapping />
   return <PagePlaceholder name={label} />
 }
 

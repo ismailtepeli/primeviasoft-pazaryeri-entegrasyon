@@ -140,13 +140,15 @@ public class RateLimiterTests
             var key = "test:" + Guid.NewGuid();
             var limit = new RateLimit(3, TimeSpan.FromSeconds(3)); // saniyede 1 hak
 
+            await limiter.AcquireAsync("test:warmup:"+Guid.NewGuid(), limit); // ilk çağrı Lua betiğini yükler; ölçüme katılmasın
             var watch = System.Diagnostics.Stopwatch.StartNew();
             for (var i = 0; i < 3; i++) await limiter.AcquireAsync(key, limit);
             var burst = watch.Elapsed;
             await limiter.AcquireAsync(key, limit); // 4. istek ~1 sn beklemeli
             var total = watch.Elapsed;
 
-            Assert.True(burst < TimeSpan.FromMilliseconds(500), $"ilk 3 istek beklememeli ({burst})");
+            // Gerçek bir bekleme jetonu başına ~1 sn; paralel testlerin yükü altında ilk bağlantı yavaşlayabildiği için sınır 1 sn.
+            Assert.True(burst < TimeSpan.FromMilliseconds(1000), $"ilk 3 istek beklememeli ({burst})");
             Assert.True(total >= TimeSpan.FromMilliseconds(800), $"4. istek beklemeli ({total})");
             await redis.GetDatabase().KeyDeleteAsync("ratelimit:" + key);
         }

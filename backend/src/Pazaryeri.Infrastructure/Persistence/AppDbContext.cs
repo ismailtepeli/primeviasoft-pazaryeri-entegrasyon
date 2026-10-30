@@ -18,6 +18,11 @@ public class AppDbContext(DbContextOptions<AppDbContext> options, ITenantProvide
     public DbSet<ProductListing> ProductListings => Set<ProductListing>();
     public DbSet<ProductImage> ProductImages => Set<ProductImage>();
     public DbSet<Category> Categories => Set<Category>();
+    public DbSet<ChannelCategory> ChannelCategories => Set<ChannelCategory>();
+    public DbSet<ChannelBrand> ChannelBrands => Set<ChannelBrand>();
+    public DbSet<ChannelAttribute> ChannelAttributes => Set<ChannelAttribute>();
+    public DbSet<ChannelAttributeValue> ChannelAttributeValues => Set<ChannelAttributeValue>();
+    public DbSet<CatalogSyncRun> CatalogSyncRuns => Set<CatalogSyncRun>();
     public DbSet<ProductChannelData> ProductChannelData => Set<ProductChannelData>();
 
     // Filtre ifadesi bu özelliğe bağlanır; EF her sorguda geçerli context örneğinin değerini okur.
@@ -104,6 +109,41 @@ public class AppDbContext(DbContextOptions<AppDbContext> options, ITenantProvide
             b.Property(i => i.ExternalUrl).HasMaxLength(2000);
             b.HasIndex(i => new { i.ProductId, i.Position });
             b.HasOne<Tenant>().WithMany().HasForeignKey(i => i.TenantId).OnDelete(DeleteBehavior.Restrict);
+        });
+
+        // Kanal kataloğu kiracıdan bağımsızdır (global filtre yok): tüm kiracılar aynı önbelleği paylaşır.
+        builder.Entity<ChannelCategory>(b =>
+        {
+            b.Property(c => c.Channel).HasMaxLength(40).IsRequired();
+            b.Property(c => c.Name).HasMaxLength(500).IsRequired();
+            b.HasIndex(c => new { c.Channel, c.ExternalId }).IsUnique();
+            b.HasIndex(c => new { c.Channel, c.ParentExternalId });
+        });
+        builder.Entity<ChannelBrand>(b =>
+        {
+            b.Property(x => x.Channel).HasMaxLength(40).IsRequired();
+            b.Property(x => x.Name).HasMaxLength(500).IsRequired();
+            b.HasIndex(x => new { x.Channel, x.ExternalId }).IsUnique();
+            b.HasIndex(x => new { x.Channel, x.Name });
+        });
+        builder.Entity<ChannelAttribute>(b =>
+        {
+            b.Property(x => x.Channel).HasMaxLength(40).IsRequired();
+            b.Property(x => x.Name).HasMaxLength(500).IsRequired();
+            b.HasIndex(x => new { x.Channel, x.CategoryExternalId, x.ExternalId }).IsUnique();
+        });
+        builder.Entity<ChannelAttributeValue>(b =>
+        {
+            b.Property(x => x.Channel).HasMaxLength(40).IsRequired();
+            b.Property(x => x.Name).HasMaxLength(500).IsRequired();
+            b.HasIndex(x => new { x.Channel, x.CategoryExternalId, x.AttributeExternalId, x.ExternalId }).IsUnique();
+        });
+        builder.Entity<CatalogSyncRun>(b =>
+        {
+            b.Property(r => r.Channel).HasMaxLength(40).IsRequired();
+            b.Property(r => r.Kind).HasConversion<string>().HasMaxLength(20);
+            b.Property(r => r.Error).HasMaxLength(2000);
+            b.HasIndex(r => new { r.Channel, r.Kind, r.FinishedAt });
         });
 
         builder.Entity<ProductChannelData>(b =>

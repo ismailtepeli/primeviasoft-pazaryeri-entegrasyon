@@ -25,6 +25,26 @@ export interface SyncErrorPage {
 
 export type ListingState = 'Live' | 'Missing' | 'Pending' | 'Passive' | 'Error'
 
+export interface CatalogRun {
+  kind: 'Categories' | 'Brands' | 'Attributes'
+  finishedAt: string | null
+  added: number
+  changed: number
+  removed: number
+  error: string | null
+}
+
+export interface CatalogStatus {
+  channel: string
+  supported: boolean
+  categories: number
+  leafCategories: number
+  brands: number
+  attributeCategories: number
+  syncInFlight: boolean
+  lastRuns: CatalogRun[]
+}
+
 export interface ProductSendResult {
   jobs: number
   products: number

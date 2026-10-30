@@ -1,0 +1,10 @@
+.mapping { display: flex; flex-direction: column; gap: var(--space-5); max-width: 860px; }
+.mapping-card { display: flex; flex-direction: column; gap: var(--space-4); }
+.mapping-card__head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--space-3); }
+.mapping-card__head h2 { margin: 0; font: 700 21px var(--font-display); letter-spacing: -0.01em; }
+.mapping-card__stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: var(--space-4); margin: 0; }
+.mapping-card__stats dt { color: var(--ink-muted); font-size: 13.5px; }
+.mapping-card__stats dd { margin: 0; font: 700 24px var(--font-display); }
+.mapping-card__runs { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: var(--space-2); }
+.mapping-card__runs li { display: grid; grid-template-columns: 140px 1fr auto; gap: var(--space-3); font-size: 14.5px; padding: var(--space-2) 0; border-top: 1px solid var(--line); }
+.mapping-card__when { color: var(--ink-muted); }

@@ -2,6 +2,7 @@ using System.Globalization;
 using System.Net.Http.Headers;
 using System.Text;
 using System.Text.Json;
+using Pazaryeri.Application.Catalog;
 using Pazaryeri.Application.Marketplace;
 using Pazaryeri.Infrastructure.Marketplace.Http;
 
@@ -11,7 +12,7 @@ namespace Pazaryeri.Infrastructure.Marketplace.Trendyol;
 /// Trendyol entegrasyon API adapter'ı. Kimlik: Basic (apiKey:apiSecret);
 /// User-Agent: "{sellerId} - {Firma}". Uç nokta yolları Trendyol dokümanına göredir.
 /// </summary>
-public class TrendyolClient(HttpClient http, MarketplaceCredentials credentials) : IMarketplaceClient
+public class TrendyolClient(HttpClient http, MarketplaceCredentials credentials) : IMarketplaceClient, IChannelCatalogClient
 {
     public const string ChannelName = "Trendyol";
     public const string ProductionBaseUrl = "https://apigw.trendyol.com";
@@ -153,6 +154,80 @@ public class TrendyolClient(HttpClient http, MarketplaceCredentials credentials)
             throw new MarketplaceApiException(ChannelName, (int)response.StatusCode, text);
         return JsonDocument.Parse(string.IsNullOrWhiteSpace(text) ? "{}" : text);
     }
+
+    // --- katalog (kategori, marka, özellik) ---
+
+    public const int BrandPageSize = 1000;
+    /// <summary>Sonsuz döngüye karşı üst sınır; 1.000'lik sayfalarla 500.000 marka.</summary>
+    public const int MaxBrandPages = 500;
+
+    public async Task<IReadOnlyList<CatalogCategory>> GetCategoriesAsync(CancellationToken ct = default)
+    {
+        using var doc = await SendAsync(HttpMethod.Get, "/integration/product/product-categories", null, TrendyolServiceGroup.ProductRead, ct);
+        var result = new List<CatalogCategory>();
+        if (doc.RootElement.TryGetProperty("categories", out var roots)) Flatten(roots, null, result);
+        return result;
+    }
+
+    private static void Flatten(JsonElement nodes, long? parent, List<CatalogCategory> into)
+    {
+        foreach (var n in nodes.EnumerateArray())
+        {
+            if (!n.TryGetProperty("id", out var idEl) || idEl.ValueKind != JsonValueKind.Number) continue;
+            var id = idEl.GetInt64();
+            var parentId = n.TryGetProperty("parentId", out var p) && p.ValueKind == JsonValueKind.Number ? p.GetInt64() : parent;
+            into.Add(new CatalogCategory(id, parentId, Str(n, "name")));
+            if (n.TryGetProperty("subCategories", out var subs) && subs.ValueKind == JsonValueKind.Array) Flatten(subs, id, into);
+        }
+    }
+
+    public async IAsyncEnumerable<IReadOnlyList<CatalogBrand>> GetBrandPagesAsync([System.Runtime.CompilerServices.EnumeratorCancellation] CancellationToken ct = default)
+    {
+        for (var page = 0; page < MaxBrandPages; page++)
+        {
+            using var doc = await SendAsync(HttpMethod.Get, $"/integration/product/brands?page={page}&size={BrandPageSize}", null, TrendyolServiceGroup.ProductRead, ct);
+            var brands = new List<CatalogBrand>();
+            if (doc.RootElement.TryGetProperty("brands", out var arr) && arr.ValueKind == JsonValueKind.Array)
+                foreach (var b in arr.EnumerateArray())
+                    if (b.TryGetProperty("id", out var id) && id.ValueKind == JsonValueKind.Number) brands.Add(new CatalogBrand(id.GetInt64(), Str(b, "name")));
+            if (brands.Count == 0) yield break;
+            yield return brands;
+            if (brands.Count < BrandPageSize) yield break;
+        }
+    }
+
+    public async Task<IReadOnlyList<CatalogAttribute>> GetCategoryAttributesAsync(long categoryId, CancellationToken ct = default)
+    {
+        using var doc = await SendAsync(HttpMethod.Get, $"/integration/product/categories/{categoryId}/attributes", null, TrendyolServiceGroup.ProductRead, ct);
+        var result = new List<CatalogAttribute>();
+        if (!doc.RootElement.TryGetProperty("categoryAttributes", out var arr) || arr.ValueKind != JsonValueKind.Array) return result;
+        foreach (var a in arr.EnumerateArray())
+        {
+            if (!a.TryGetProperty("attribute", out var attr) || !attr.TryGetProperty("id", out var idEl) || idEl.ValueKind != JsonValueKind.Number) continue;
+            var values = a.TryGetProperty("attributeValues", out var vs) && vs.ValueKind == JsonValueKind.Array ? ReadValues(vs) : [];
+            result.Add(new CatalogAttribute(idEl.GetInt64(), Str(attr, "name"), Bool(a, "required"), Bool(a, "allowCustom"), Bool(a, "varianter"), Bool(a, "slicer"), values));
+        }
+        return result;
+    }
+
+    public async Task<IReadOnlyList<CatalogValue>> GetAttributeValuesAsync(long categoryId, long attributeId, CancellationToken ct = default)
+    {
+        using var doc = await SendAsync(HttpMethod.Get, $"/integration/product/categories/{categoryId}/attributes/{attributeId}/values", null, TrendyolServiceGroup.ProductRead, ct);
+        var root = doc.RootElement;
+        // Yanıt şekli sürümler arasında değişebildiği için dizi, "attributeValues" ya da "values" olarak okunur.
+        if (root.ValueKind == JsonValueKind.Array) return ReadValues(root);
+        foreach (var name in new[] { "attributeValues", "values", "content" })
+            if (root.TryGetProperty(name, out var arr) && arr.ValueKind == JsonValueKind.Array) return ReadValues(arr);
+        return [];
+    }
+
+    private static List<CatalogValue> ReadValues(JsonElement arr) =>
+        arr.EnumerateArray()
+            .Where(v => v.TryGetProperty("id", out var id) && id.ValueKind == JsonValueKind.Number)
+            .Select(v => new CatalogValue(v.GetProperty("id").GetInt64(), Str(v, "name")))
+            .ToList();
+
+    private static bool Bool(JsonElement e, string name) => e.TryGetProperty(name, out var v) && v.ValueKind == JsonValueKind.True;
 
     private static BatchResult ReadBatch(JsonDocument doc) =>
         new(doc.RootElement.TryGetProperty("batchRequestId", out var id) ? id.GetString() ?? "" : "");
