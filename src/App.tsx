@@ -3,6 +3,7 @@ import AppLayout from './layout/AppLayout'
 import DesignSystem from './pages/DesignSystem'
 import Login from './pages/Login'
 import Mapping from './pages/Mapping'
+import Orders from './pages/Orders'
 import Overview from './pages/Overview'
 import PagePlaceholder from './pages/PagePlaceholder'
 import { AuthProvider } from './auth/AuthContext'
@@ -19,6 +20,7 @@ function pageFor(path: string, label: string) {
   if (path === '/urunler') return <Products />
   if (path === '/esleme') return <Mapping />
   if (path === '/stok-fiyat') return <StockPrice />
+  if (path === '/siparisler') return <Orders />
   return <PagePlaceholder name={label} />
 }
 

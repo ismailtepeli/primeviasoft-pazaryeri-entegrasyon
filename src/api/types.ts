@@ -340,3 +340,34 @@ export interface StockMovementPage {
   items: StockMovement[]
   total: number
 }
+
+export type OrderStatusKind = 'New' | 'Preparing' | 'Shipped' | 'Delivered' | 'Cancelled' | 'Returned'
+
+export interface OrderRow {
+  id: string
+  channel: string
+  orderNumber: string
+  orderDate: string
+  customerName: string
+  totalPrice: number
+  status: OrderStatusKind
+  /** Kanalın bildirdiği ham durum. */
+  channelStatus: string
+  itemCount: number
+  /** Süresi içinde işlem görmedi (yeni: 24 sa, hazırlanıyor: 48 sa). */
+  isLate: boolean
+}
+
+export interface OrderCounts {
+  new: number
+  preparing: number
+  shipped: number
+  delivered: number
+  cancelled: number
+}
+
+export interface OrderPage {
+  items: OrderRow[]
+  total: number
+  counts: OrderCounts
+}
