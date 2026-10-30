@@ -49,6 +49,7 @@ public static class DependencyInjection
         services.AddScoped<IDealerAuthService, DealerAuthService>();
         services.AddScoped<Pricing.DealerPriceService>();
         services.AddScoped<Pricing.StoreCatalog>();
+        services.AddScoped<Pricing.StoreCatalogService>();
         services.AddScoped<Pricing.PriceListImportService>();
         services.AddScoped<IProductImportService, ProductImportService>();
         services.AddScoped<IProductImageService, ProductImageService>();

@@ -46,3 +46,50 @@ a { color: var(--accent); }
   .store-content { padding: var(--space-4); }
   .store-account { margin-left: 0; width: 100%; }
 }
+
+.store-catalog { display: flex; flex-direction: column; gap: var(--space-4); }
+.store-catalog__head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--space-3); }
+.store-catalog h1 { margin: 0; font-family: var(--font-display); font-weight: 700; font-size: 26px; letter-spacing: -0.02em; }
+.store-crumbs { font-size: 14px; color: var(--ink-muted); }
+.store-toolbar { display: flex; flex-wrap: wrap; align-items: end; gap: var(--space-3); }
+.store-toolbar__item { display: flex; flex-direction: column; gap: 4px; font-size: 13.5px; color: var(--ink-muted); }
+.store-view { display: flex; gap: var(--space-2); }
+.store-view .ps-btn[aria-pressed="true"] { background: var(--navy-700); color: var(--on-inverse); }
+.store-chips { display: flex; flex-wrap: wrap; gap: var(--space-2); }
+.store-tablewrap { overflow-x: auto; background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius-lg, 22px); }
+.store-table { width: 100%; border-collapse: collapse; min-width: 640px; }
+.store-table th { text-align: left; padding: var(--space-3) var(--space-4); font-size: 13.5px; color: var(--ink-muted); border-bottom: 1px solid var(--line); }
+.store-table td { padding: var(--space-3) var(--space-4); border-bottom: 1px solid var(--line); vertical-align: middle; font-size: 15px; }
+.store-table tr:last-child td { border-bottom: 0; }
+.store-cell { display: flex; align-items: center; gap: var(--space-3); }
+.store-thumb { width: 56px; height: 56px; object-fit: cover; border-radius: 12px; background: var(--surface-alt); flex-shrink: 0; display: inline-grid; place-items: center; color: var(--ink-muted); }
+.store-stock { font-size: 13.5px; font-weight: 600; padding: 2px 10px; border-radius: 999px; background: var(--success-bg, var(--surface-alt)); color: var(--success); white-space: nowrap; }
+.store-stock--low { background: var(--warning-bg, var(--surface-alt)); color: var(--ink); }
+.store-stock--out { background: var(--danger-bg, var(--surface-alt)); color: var(--danger); }
+.store-qty { display: flex; flex-direction: column; gap: 4px; align-items: flex-start; }
+.store-qty__row { display: flex; gap: var(--space-2); align-items: center; }
+.store-qty__input { width: 84px; }
+.store-qty__input[aria-invalid="true"] { border-color: var(--danger); }
+.store-qty__fix { background: none; border: 0; padding: 0; color: var(--danger); font: 500 13px var(--font-sans); text-align: left; cursor: pointer; text-decoration: underline; }
+.store-cards { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: var(--space-4); }
+.store-card { display: flex; flex-direction: column; gap: var(--space-2); padding: var(--space-4); }
+.store-card__media { display: block; }
+.store-card .store-thumb { width: 100%; height: 160px; }
+.store-pager { display: flex; align-items: center; justify-content: center; gap: var(--space-4); }
+.store-detail { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: var(--space-6); }
+.store-gallery { display: flex; flex-direction: column; gap: var(--space-3); }
+.store-gallery__main { width: 100%; aspect-ratio: 1; object-fit: contain; background: var(--surface); border: 1px solid var(--line); border-radius: 22px; display: grid; place-items: center; color: var(--ink-muted); }
+.store-gallery__thumbs { display: flex; flex-wrap: wrap; gap: var(--space-2); }
+.store-gallery__thumb { width: 64px; height: 64px; padding: 0; border: 2px solid var(--line); border-radius: 12px; background: var(--surface); cursor: pointer; overflow: hidden; }
+.store-gallery__thumb[aria-pressed="true"] { border-color: var(--accent); }
+.store-gallery__thumb img { width: 100%; height: 100%; object-fit: cover; }
+.store-detail__info { display: flex; flex-direction: column; gap: var(--space-3); align-items: flex-start; }
+.store-detail__info h1 { margin: 0; font-family: var(--font-display); font-weight: 700; font-size: 28px; letter-spacing: -0.02em; }
+.store-price { margin: 0; font: 700 28px var(--font-display); }
+.store-h2 { margin: 0 0 var(--space-2); font-size: 16px; }
+.store-variants { margin: 0; padding-left: var(--space-5); }
+.store-desc { margin: 0; white-space: pre-wrap; }
+
+@media (max-width: 720px) {
+  .store-detail { grid-template-columns: 1fr; }
+}

@@ -1,6 +1,7 @@
 import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom'
+import { ProductDetailPage, ProductsPage } from './catalogPages'
 import Layout from './Layout'
-import { ApplyPage, HomePage, LoginPage, RequireLogin, SoonPage, StatusPage } from './pages'
+import { ApplyPage, LoginPage, RequireLogin, SoonPage, StatusPage } from './pages'
 import { StoreProvider } from './StoreContext'
 import { resolveTenant } from './tenant'
 
@@ -22,7 +23,8 @@ export default function App() {
       }}>
         <Routes>
           <Route element={<Layout />}>
-            <Route index element={<RequireLogin><HomePage /></RequireLogin>} />
+            <Route index element={<RequireLogin><ProductsPage /></RequireLogin>} />
+            <Route path="urun/:id" element={<RequireLogin><ProductDetailPage /></RequireLogin>} />
             <Route path="giris" element={<LoginPage />} />
             <Route path="basvuru" element={<ApplyPage />} />
             <Route path="sepet" element={<RequireLogin><SoonPage title="Sepet" /></RequireLogin>} />

@@ -1,5 +1,7 @@
 import { useEffect, useState, type FormEvent } from 'react'
-import { Link, NavLink, Outlet, useNavigate } from 'react-router-dom'
+import { Link, NavLink, Outlet, useNavigate, useSearchParams } from 'react-router-dom'
+import { storeApi } from './api'
+import { childrenOf, type StoreCategory } from './catalog'
 import { useStore } from './StoreContext'
 
 type Theme = 'light' | 'dark'
@@ -26,6 +28,14 @@ export default function Layout() {
   const { info, user, token, logout } = useStore()
   const navigate = useNavigate()
   const [q, setQ] = useState('')
+  const [categories, setCategories] = useState<StoreCategory[]>([])
+  const [params] = useSearchParams()
+  const activeCategory = params.get('category')
+
+  useEffect(() => {
+    if (!token) { setCategories([]); return }
+    storeApi<StoreCategory[]>('/catalog/categories', {}, token).then(setCategories).catch(() => setCategories([]))
+  }, [token])
 
   function search(e: FormEvent) {
     e.preventDefault()
@@ -68,10 +78,13 @@ export default function Layout() {
       </header>
       {token && (
         <nav className="store-categories" aria-label="Kategoriler">
-          <NavLink to="/" end className="store-categories__link">Tüm ürünler</NavLink>
+          <NavLink to="/" end className={({ isActive }) => `store-categories__link${isActive && !activeCategory ? ' active' : ''}`}>Tüm ürünler</NavLink>
+          {childrenOf(categories, null).map((c) => (
+            <NavLink key={c.id} to={`/?category=${c.id}`} className={`store-categories__link${activeCategory === c.id ? ' active' : ''}`}>{c.name}</NavLink>
+          ))}
         </nav>
       )}
-      <main className="store-content"><Outlet /></main>
+      <main className="store-content"><Outlet context={{ categories }} /></main>
       <footer className="store-footer">
         <span>© {new Date().getFullYear()} {info.name}</span>
         <ThemeToggle />
