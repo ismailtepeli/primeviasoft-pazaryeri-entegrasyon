@@ -35,6 +35,8 @@ public class Product : TenantEntity
     /// <summary>Ürüne özel güvenlik stoğu; boşsa kanalın varsayılanı kullanılır.</summary>
     public int? SafetyStock { get; set; }
     public decimal Price { get; set; }
+    /// <summary>Eşzamanlı güncellemeleri (aynı anda gelen siparişler) saptamak için satır sürümü.</summary>
+    public byte[] RowVersion { get; set; } = [];
     /// <summary>Birim maliyet (TL); kanal fiyat kuralları satış fiyatını bundan hesaplar. Bilinmiyorsa null.</summary>
     public decimal? Cost { get; set; }
     /// <summary>Görseller; <see cref="ProductImage.Position"/> sırasına göre, ilki kapak.</summary>

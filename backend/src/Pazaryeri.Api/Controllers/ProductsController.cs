@@ -134,7 +134,18 @@ public class ProductsController(AppDbContext db) : ControllerBase
         product.CategoryId = input.CategoryId;
         product.VatRate = input.VatRate;
         product.Cost = input.Cost is { } c2 ? decimal.Round(c2, 2) : null;
+        var previousStock = product.Stock;
         product.Stock = input.Stock;
+        if (previousStock != product.Stock)
+        {
+            // Elle stok değişikliği de stok defterine yazılır.
+            db.StockMovements.Add(new StockMovement
+            {
+                ProductId = product.Id, Channel = StockMovementChannels.Manual, Type = StockMovementType.Adjustment,
+                Quantity = product.Stock - previousStock, Requested = Math.Abs(product.Stock - previousStock), StockAfter = product.Stock,
+                Reference = Guid.NewGuid().ToString("N"),
+            });
+        }
         product.Price = decimal.Round(input.Price, 2);
         return null;
     }

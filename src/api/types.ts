@@ -316,3 +316,27 @@ export interface StockSyncStatus {
   lastError: string | null
   syncInFlight: boolean
 }
+
+export type StockMovementKind = 'Sale' | 'Restore' | 'Adjustment'
+
+export interface StockMovement {
+  id: string
+  at: string
+  productId: string
+  name: string
+  barcode: string
+  /** Hareketin geldiği kanal; elle düzeltmede "Manuel". */
+  channel: string
+  type: StockMovementKind
+  /** Stoğa yansıyan işaretli adet (satışta negatif). */
+  quantity: number
+  /** Stok yetmediği için düşülemeyen adet. */
+  oversold: number
+  stockAfter: number
+  reference: string
+}
+
+export interface StockMovementPage {
+  items: StockMovement[]
+  total: number
+}

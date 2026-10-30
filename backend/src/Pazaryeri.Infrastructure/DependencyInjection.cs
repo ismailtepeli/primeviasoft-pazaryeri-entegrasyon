@@ -9,6 +9,7 @@ using Pazaryeri.Application.Credentials;
 using Pazaryeri.Application.Jobs;
 using Pazaryeri.Application.Marketplace;
 using Pazaryeri.Application.Products;
+using Pazaryeri.Application.Stock;
 using Pazaryeri.Infrastructure.Products;
 using Pazaryeri.Infrastructure.Stock;
 using Pazaryeri.Application.Products;
@@ -44,6 +45,7 @@ public static class DependencyInjection
         services.AddScoped<IProductImageService, ProductImageService>();
         services.AddScoped<ProductChannelPreparer>();
         services.AddScoped<StockPriceDeltaPlanner>();
+        services.AddScoped<IStockPoolService, StockPoolService>();
         services.AddScoped<ISyncJobHandler, StockPriceSyncHandler>();
         services.AddScoped<IProductSendService, ProductSendService>();
         services.AddScoped<IChannelCatalogService, ChannelCatalogService>();

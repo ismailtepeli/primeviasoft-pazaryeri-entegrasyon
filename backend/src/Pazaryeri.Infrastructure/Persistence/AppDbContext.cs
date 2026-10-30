@@ -18,6 +18,7 @@ public class AppDbContext(DbContextOptions<AppDbContext> options, ITenantProvide
     public DbSet<ProductListing> ProductListings => Set<ProductListing>();
     public DbSet<ProductImage> ProductImages => Set<ProductImage>();
     public DbSet<Category> Categories => Set<Category>();
+    public DbSet<StockMovement> StockMovements => Set<StockMovement>();
     public DbSet<ChannelStockPriceState> ChannelStockPriceStates => Set<ChannelStockPriceState>();
     public DbSet<StockPriceBatch> StockPriceBatches => Set<StockPriceBatch>();
     public DbSet<SentBodyHash> SentBodyHashes => Set<SentBodyHash>();
@@ -108,6 +109,7 @@ public class AppDbContext(DbContextOptions<AppDbContext> options, ITenantProvide
             b.HasIndex(p => new { p.TenantId, p.MainId });
             b.Property(p => p.Price).HasPrecision(18, 2);
             b.Property(p => p.Cost).HasPrecision(18, 2);
+            b.Property(p => p.RowVersion).IsRowVersion();
             b.HasIndex(p => new { p.TenantId, p.Barcode }).IsUnique(); // barkod kiracı içinde tekil
             b.HasOne<Tenant>().WithMany().HasForeignKey(p => p.TenantId).OnDelete(DeleteBehavior.Restrict);
             b.HasMany(p => p.Listings).WithOne().HasForeignKey(l => l.ProductId).OnDelete(DeleteBehavior.Cascade);
@@ -162,6 +164,19 @@ public class AppDbContext(DbContextOptions<AppDbContext> options, ITenantProvide
             b.Property(m => m.Channel).HasMaxLength(40).IsRequired();
             b.HasIndex(m => new { m.CategoryId, m.Channel }).IsUnique(); // kategori başına kanal başına tek eşleme
             b.HasOne<Category>().WithMany().HasForeignKey(m => m.CategoryId).OnDelete(DeleteBehavior.Cascade);
+            b.HasOne<Tenant>().WithMany().HasForeignKey(m => m.TenantId).OnDelete(DeleteBehavior.Restrict);
+        });
+
+        builder.Entity<StockMovement>(b =>
+        {
+            b.Property(m => m.Channel).HasMaxLength(40).IsRequired();
+            b.Property(m => m.Type).HasConversion<string>().HasMaxLength(20);
+            b.Property(m => m.Reference).HasMaxLength(200).IsRequired();
+            b.Property(m => m.SaleReference).HasMaxLength(200);
+            // Aynı olay yeniden işlense de stok bir kez değişsin: (kanal, tür, referans, ürün) tekil.
+            b.HasIndex(m => new { m.TenantId, m.Channel, m.Type, m.Reference, m.ProductId }).IsUnique();
+            b.HasIndex(m => new { m.TenantId, m.CreatedAt });
+            b.HasOne<Product>().WithMany().HasForeignKey(m => m.ProductId).OnDelete(DeleteBehavior.Cascade);
             b.HasOne<Tenant>().WithMany().HasForeignKey(m => m.TenantId).OnDelete(DeleteBehavior.Restrict);
         });
 

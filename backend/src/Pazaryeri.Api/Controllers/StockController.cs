@@ -22,6 +22,13 @@ public record StockPage(string Channel, IReadOnlyList<StockRowDto> Items, int To
 
 public record SafetyInput(int? SafetyStock);
 
+/// <param name="Type">"Sale", "Restore" veya "Adjustment".</param>
+/// <param name="Quantity">Stoğa yansıyan işaretli adet (satışta negatif).</param>
+/// <param name="Oversold">Stok yetmediği için düşülemeyen adet.</param>
+public record StockMovementDto(Guid Id, DateTime At, Guid ProductId, string Name, string Barcode, string Channel, string Type, int Quantity, int Oversold, int StockAfter, string Reference);
+
+public record StockMovementPage(IReadOnlyList<StockMovementDto> Items, int Total);
+
 [ApiController]
 [Route("api/stock")]
 public class StockController(AppDbContext db, TimeProvider time) : ControllerBase
@@ -102,6 +109,25 @@ public class StockController(AppDbContext db, TimeProvider time) : ControllerBas
             return new StockRowDto(p.Id, p.Name, p.Barcode, p.Stock, p.SafetyStock, safety, StockCalculator.ChannelQuantity(p.Stock, safety, percent));
         }).ToList();
         return new StockPage(channel, items, total);
+    }
+
+    /// <summary>Stok defteri: satışlar, iptal/iade geri eklemeleri ve elle düzeltmeler (en yeni önce).</summary>
+    [HttpGet("movements")]
+    public async Task<StockMovementPage> Movements([FromQuery] string? q, [FromQuery] int page = 1, [FromQuery] int pageSize = 20, CancellationToken ct = default)
+    {
+        pageSize = Math.Clamp(pageSize, 1, MaxPageSize);
+        page = Math.Max(page, 1);
+        var query = db.StockMovements.AsNoTracking().Join(db.Products, m => m.ProductId, p => p.Id, (m, p) => new { m, p.Name, p.Barcode });
+        if (!string.IsNullOrWhiteSpace(q))
+        {
+            var term = q.Trim();
+            query = query.Where(x => x.Name.Contains(term) || x.Barcode.Contains(term) || x.m.Reference.Contains(term));
+        }
+        var total = await query.CountAsync(ct);
+        var rows = await query.OrderByDescending(x => x.m.CreatedAt).ThenByDescending(x => x.m.Id).Skip((page - 1) * pageSize).Take(pageSize).ToListAsync(ct);
+        var items = rows.Select(x => new StockMovementDto(x.m.Id, x.m.CreatedAt, x.m.ProductId, x.Name, x.Barcode, x.m.Channel, x.m.Type.ToString(), x.m.Quantity,
+            x.m.Type == StockMovementType.Sale ? x.m.Requested + x.m.Quantity : 0, x.m.StockAfter, x.m.Reference)).ToList();
+        return new StockMovementPage(items, total);
     }
 
     /// <summary>Ürüne özel güvenlik stoğunu ayarlar; null göndermek kanalın varsayılanına döndürür.</summary>

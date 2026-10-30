@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { Tabs } from '../components'
 import PricingSection from './PricingSection'
+import StockMovementsSection from './StockMovementsSection'
 import StockSection from './StockSection'
 import SyncStatusCard from './SyncStatusCard'
 import './StockPrice.css'
@@ -20,6 +21,7 @@ export default function StockPrice() {
       <SyncStatusCard key={`sync-${channel}`} channel={channel} />
       <StockSection key={`stock-${channel}`} channel={channel} />
       <PricingSection key={channel} channel={channel} />
+      <StockMovementsSection />
     </div>
   )
 }
