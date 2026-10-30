@@ -51,7 +51,7 @@ public class AesGcmCredentialProtectorTests
 
         var p = NewProtector();
         var good = p.Protect("x", "c");
-        var tampered = good[..^2] + (good[^2] == 'A' ? "B=" : "A=");
+        var tampered = good[..20] + (good[20] == 'A' ? 'B' : 'A') + good[21..]; // veri ortasında bir karakter; sondaki doldurma bitleri değil
         Assert.ThrowsAny<CryptographicException>(() => p.Unprotect(tampered, "c"));
     }
 

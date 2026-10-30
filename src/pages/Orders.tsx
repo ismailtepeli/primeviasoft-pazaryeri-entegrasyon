@@ -1,19 +1,20 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { api } from '../api/client'
 import type { OrderPage, OrderRow } from '../api/types'
 import { DataTable, StatusBadge, Tabs, type Column } from '../components'
 import { timeAgo } from '../lib/timeAgo'
+import OrderStepper from './OrderStepper'
 import { emptyCounts, nextStep, ORDER_PAGE_SIZE, orderStatusBadge, orderTabs, ordersQuery, type OrderTab } from './orderView'
 import './Orders.css'
 
 const money = new Intl.NumberFormat('tr-TR', { style: 'currency', currency: 'TRY' })
 
-const columns: Column<OrderRow>[] = [
+function makeColumns(onSelect: (o: OrderRow) => void): Column<OrderRow>[] { return [
   {
     key: 'order', header: 'Sipariş',
     render: (o) => (
       <div className="order-cell">
-        <strong>{o.orderNumber}</strong>
+        <button type="button" className="order-cell__link" aria-label={`${o.orderNumber} sipariş akışını aç`} onClick={() => onSelect(o)}>{o.orderNumber}</button>
         <span className="order-cell__meta" title={new Date(o.orderDate).toLocaleString('tr-TR')}>{o.channel} · {timeAgo(o.orderDate)}</span>
       </div>
     ),
@@ -33,7 +34,7 @@ const columns: Column<OrderRow>[] = [
     },
   },
   { key: 'next', header: 'Sıradaki adım', render: (o) => nextStep(o.status) },
-]
+] }
 
 /** Tüm kanallardaki siparişler: durum sekmeleri, arama ve sunucu taraflı sayfalama. */
 export default function Orders() {
@@ -44,6 +45,9 @@ export default function Orders() {
   const [data, setData] = useState<OrderPage>({ items: [], total: 0, counts: emptyCounts })
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string>()
+  const [selected, setSelected] = useState<string>()
+  const columns = useMemo(() => makeColumns((o) => setSelected(o.id)), [])
+  const selectedOrder = data.items.find((o) => o.id === selected)
 
   useEffect(() => {
     const t = setTimeout(() => { setSearch(input); setPage(1) }, 300)
@@ -62,9 +66,10 @@ export default function Orders() {
 
   return (
     <div className="orders">
-      <Tabs items={orderTabs(data.counts)} value={tab} onChange={(v) => { setTab(v as OrderTab); setPage(1) }} />
+      <Tabs items={orderTabs(data.counts)} value={tab} onChange={(v) => { setTab(v as OrderTab); setPage(1); setSelected(undefined) }} />
       <input className="ps-input orders__search" type="search" placeholder="Sipariş no veya müşteri ara" aria-label="Sipariş no veya müşteri ara"
         value={input} onChange={(e) => setInput(e.target.value)} />
+      {selectedOrder && <OrderStepper order={selectedOrder} onClose={() => setSelected(undefined)} />}
       {error && <p role="alert" style={{ color: 'var(--danger)' }}>{error}</p>}
       <DataTable columns={columns} rows={data.items} rowKey={(o) => o.id} pageSize={ORDER_PAGE_SIZE}
         serverPaging={{ page: page - 1, total: data.total, onPageChange: (p) => setPage(p + 1) }}
