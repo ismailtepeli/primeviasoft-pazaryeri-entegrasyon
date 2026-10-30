@@ -46,18 +46,32 @@ public class ProductSendHandler(
         var brands = (await db.ChannelBrands.Where(b => b.Channel == job.Channel && b.IsActive && brandNames.Contains(b.Name)).ToListAsync(ct))
             .GroupBy(b => b.Name, StringComparer.CurrentCultureIgnoreCase).ToDictionary(g => g.Key, g => g.First().ExternalId, StringComparer.CurrentCultureIgnoreCase);
 
+        // Özellik eşlemeleri: ürünün kategorisinin eşlendiği kanal kategorisinin özellikleri + kayıtlı eşlemeler.
+        var categoryMappings = await db.AttributeMappings.Include(m => m.Values)
+            .Where(m => m.Channel == job.Channel && categoryIds.Contains(m.CategoryId)).ToListAsync(ct);
+        var channelAttributes = (await db.ChannelAttributes.Where(a => a.Channel == job.Channel && a.IsActive && mapped.Values.Contains(a.CategoryExternalId)).ToListAsync(ct))
+            .GroupBy(a => a.CategoryExternalId).ToDictionary(g => g.Key, g => g.ToList());
+
         var items = new List<ProductItem>();
         var sent = new List<Product>();
         var missing = 0;
         foreach (var product in products)
         {
             var own = data.GetValueOrDefault(product.Id);
+            string? attributesJson = own?.AttributesJson;
+            if (attributesJson is null && product.CategoryId is { } pc && mapped.TryGetValue(pc, out var ext) && channelAttributes.TryGetValue(ext, out var attrs))
+            {
+                var (built, _) = ProductAttributeBuilder.Build(product, attrs, categoryMappings.Where(m => m.CategoryId == pc).ToList());
+                if (built.Count > 0)
+                    attributesJson = JsonSerializer.Serialize(built.Select(a => new { attributeId = a.AttributeId, valueId = a.ValueId, customValue = a.CustomValue }),
+                        new JsonSerializerOptions(JsonSerializerDefaults.Web));
+            }
             var effective = new ProductChannelData
             {
                 ProductId = product.Id, Channel = job.Channel,
                 BrandId = own?.BrandId ?? (product.Brand is { } b && brands.TryGetValue(b.Trim(), out var brandId) ? brandId : null),
                 CategoryId = own?.CategoryId ?? (product.CategoryId is { } c && mapped.TryGetValue(c, out var externalId) ? externalId : null),
-                CargoCompanyId = own?.CargoCompanyId, DimensionalWeight = own?.DimensionalWeight, AttributesJson = own?.AttributesJson,
+                CargoCompanyId = own?.CargoCompanyId, DimensionalWeight = own?.DimensionalWeight, AttributesJson = attributesJson,
             };
             var (item, reasons) = TrendyolProductMapper.Map(product, effective, publicBaseUrl);
             var listing = product.Listings.FirstOrDefault(l => l.Channel == job.Channel);

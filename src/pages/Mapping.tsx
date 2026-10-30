@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom'
 import { api } from '../api/client'
 import type { CatalogStatus } from '../api/types'
 import { Button, StatusBadge, Tabs } from '../components'
+import AttributeMappingSection from './AttributeMappingSection'
 import CategoryMappingSection from './CategoryMappingSection'
 import { timeAgo } from '../lib/timeAgo'
 import { kindLabel, runSummary } from './catalogRuns'
@@ -94,6 +95,7 @@ export default function Mapping() {
         </section>
       ))}
       {catalogs.some((c) => c.channel === channel) && <CategoryMappingSection channel={channel} />}
+      {catalogs.some((c) => c.channel === channel) && <AttributeMappingSection channel={channel} />}
     </div>
   )
 }

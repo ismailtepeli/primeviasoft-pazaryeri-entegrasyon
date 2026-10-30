@@ -79,6 +79,87 @@ namespace Pazaryeri.Infrastructure.Persistence.Migrations
                     b.ToTable("ApiCallLogs");
                 });
 
+            modelBuilder.Entity("Pazaryeri.Domain.AttributeMapping", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("CategoryId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("Channel")
+                        .IsRequired()
+                        .HasMaxLength(40)
+                        .HasColumnType("nvarchar(40)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<long>("ExternalAttributeId")
+                        .HasColumnType("bigint");
+
+                    b.Property<string>("FixedCustomValue")
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<long?>("FixedValueId")
+                        .HasColumnType("bigint");
+
+                    b.Property<string>("SourceAttribute")
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("TenantId");
+
+                    b.HasIndex("CategoryId", "Channel", "ExternalAttributeId")
+                        .IsUnique();
+
+                    b.ToTable("AttributeMappings");
+                });
+
+            modelBuilder.Entity("Pazaryeri.Domain.AttributeValueMapping", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("AttributeMappingId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("CustomValue")
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<long?>("ExternalValueId")
+                        .HasColumnType("bigint");
+
+                    b.Property<string>("SourceValue")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("TenantId");
+
+                    b.HasIndex("AttributeMappingId", "SourceValue")
+                        .IsUnique();
+
+                    b.ToTable("AttributeValueMappings");
+                });
+
             modelBuilder.Entity("Pazaryeri.Domain.CatalogSyncRun", b =>
                 {
                     b.Property<Guid>("Id")
@@ -806,6 +887,36 @@ namespace Pazaryeri.Infrastructure.Persistence.Migrations
                         .IsRequired();
                 });
 
+            modelBuilder.Entity("Pazaryeri.Domain.AttributeMapping", b =>
+                {
+                    b.HasOne("Pazaryeri.Domain.Category", null)
+                        .WithMany()
+                        .HasForeignKey("CategoryId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("Pazaryeri.Domain.Tenant", null)
+                        .WithMany()
+                        .HasForeignKey("TenantId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("Pazaryeri.Domain.AttributeValueMapping", b =>
+                {
+                    b.HasOne("Pazaryeri.Domain.AttributeMapping", null)
+                        .WithMany("Values")
+                        .HasForeignKey("AttributeMappingId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("Pazaryeri.Domain.Tenant", null)
+                        .WithMany()
+                        .HasForeignKey("TenantId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+                });
+
             modelBuilder.Entity("Pazaryeri.Domain.Category", b =>
                 {
                     b.HasOne("Pazaryeri.Domain.Category", null)
@@ -928,6 +1039,11 @@ namespace Pazaryeri.Infrastructure.Persistence.Migrations
                         .HasForeignKey("TenantId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
+                });
+
+            modelBuilder.Entity("Pazaryeri.Domain.AttributeMapping", b =>
+                {
+                    b.Navigation("Values");
                 });
 
             modelBuilder.Entity("Pazaryeri.Domain.Product", b =>

@@ -33,6 +33,8 @@ public class CatalogSyncHandler(
 
         var inUse = await db.ProductChannelData.Where(d => d.Channel == job.Channel && d.CategoryId != null)
             .Select(d => d.CategoryId!.Value).Distinct().ToListAsync(ct);
+        // Kategori eşlemesiyle seçilen kanal kategorilerinin özellikleri de özellik eşlemesi için gereklidir.
+        inUse = inUse.Union(await db.CategoryMappings.Where(m => m.Channel == job.Channel).Select(m => m.ExternalCategoryId).Distinct().ToListAsync(ct)).ToList();
         var cached = await db.ChannelAttributes.Where(a => a.Channel == job.Channel && inUse.Contains(a.CategoryExternalId))
             .Select(a => a.CategoryExternalId).Distinct().ToListAsync(ct);
         var categories = inUse.Except(cached).Concat(await catalog.StaleAttributeCategoriesAsync(job.Channel, ct)).Distinct().ToList();

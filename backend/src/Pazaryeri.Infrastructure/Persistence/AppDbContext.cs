@@ -18,6 +18,8 @@ public class AppDbContext(DbContextOptions<AppDbContext> options, ITenantProvide
     public DbSet<ProductListing> ProductListings => Set<ProductListing>();
     public DbSet<ProductImage> ProductImages => Set<ProductImage>();
     public DbSet<Category> Categories => Set<Category>();
+    public DbSet<AttributeMapping> AttributeMappings => Set<AttributeMapping>();
+    public DbSet<AttributeValueMapping> AttributeValueMappings => Set<AttributeValueMapping>();
     public DbSet<CategoryMapping> CategoryMappings => Set<CategoryMapping>();
     public DbSet<ChannelCategory> ChannelCategories => Set<ChannelCategory>();
     public DbSet<ChannelBrand> ChannelBrands => Set<ChannelBrand>();
@@ -153,6 +155,25 @@ public class AppDbContext(DbContextOptions<AppDbContext> options, ITenantProvide
             b.HasIndex(m => new { m.CategoryId, m.Channel }).IsUnique(); // kategori başına kanal başına tek eşleme
             b.HasOne<Category>().WithMany().HasForeignKey(m => m.CategoryId).OnDelete(DeleteBehavior.Cascade);
             b.HasOne<Tenant>().WithMany().HasForeignKey(m => m.TenantId).OnDelete(DeleteBehavior.Restrict);
+        });
+
+        builder.Entity<AttributeMapping>(b =>
+        {
+            b.Property(m => m.Channel).HasMaxLength(40).IsRequired();
+            b.Property(m => m.SourceAttribute).HasMaxLength(100);
+            b.Property(m => m.FixedCustomValue).HasMaxLength(200);
+            b.HasIndex(m => new { m.CategoryId, m.Channel, m.ExternalAttributeId }).IsUnique();
+            b.HasOne<Category>().WithMany().HasForeignKey(m => m.CategoryId).OnDelete(DeleteBehavior.Cascade);
+            b.HasMany(m => m.Values).WithOne().HasForeignKey(v => v.AttributeMappingId).OnDelete(DeleteBehavior.Cascade);
+            b.HasOne<Tenant>().WithMany().HasForeignKey(m => m.TenantId).OnDelete(DeleteBehavior.Restrict);
+        });
+
+        builder.Entity<AttributeValueMapping>(b =>
+        {
+            b.Property(v => v.SourceValue).HasMaxLength(200).IsRequired();
+            b.Property(v => v.CustomValue).HasMaxLength(200);
+            b.HasIndex(v => new { v.AttributeMappingId, v.SourceValue }).IsUnique();
+            b.HasOne<Tenant>().WithMany().HasForeignKey(v => v.TenantId).OnDelete(DeleteBehavior.Restrict);
         });
 
         builder.Entity<ProductChannelData>(b =>

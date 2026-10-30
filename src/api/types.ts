@@ -205,3 +205,50 @@ export interface CategoryMappingList {
   mappedCount: number
   rows: CategoryMappingRow[]
 }
+
+export interface ChannelValue {
+  id: number
+  name: string
+}
+
+export interface ValueMapping {
+  sourceValue: string
+  externalValueId: number | null
+  externalValueName: string | null
+  customValue: string | null
+}
+
+export interface AttributeMappingDetail {
+  sourceAttribute: string | null
+  fixedValueId: number | null
+  fixedValueName: string | null
+  fixedCustomValue: string | null
+  values: ValueMapping[]
+}
+
+export type AttributeStatus = 'Mapped' | 'Missing' | 'Optional'
+
+export interface AttributeRow {
+  attributeId: number
+  name: string
+  required: boolean
+  allowCustom: boolean
+  varianter: boolean
+  valueCount: number
+  status: AttributeStatus
+  mapping: AttributeMappingDetail | null
+}
+
+export interface SourceAttribute {
+  name: string
+  values: string[]
+}
+
+export interface AttributeMappingList {
+  channelCategory: ChannelCategory | null
+  needsSync: boolean
+  requiredTotal: number
+  requiredMapped: number
+  rows: AttributeRow[]
+  sources: SourceAttribute[]
+}

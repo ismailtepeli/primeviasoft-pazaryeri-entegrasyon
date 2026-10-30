@@ -294,6 +294,48 @@ public class ProductSendTests : IAsyncLifetime
         Assert.DoesNotContain("marka", listing.ErrorMessage);
     }
 
+    [Fact]
+    public async Task Isleyici_ozellik_eslemelerinden_kanal_ozelliklerini_uretir()
+    {
+        var tenant = await NewTenantAsync("Isleyici4");
+        await using (var seed = NewDb(null))
+        {
+            seed.ChannelAttributes.AddRange(
+                new ChannelAttribute { Channel = "Trendyol", CategoryExternalId = 411, ExternalId = 47, Name = "Renk", Required = true },
+                new ChannelAttribute { Channel = "Trendyol", CategoryExternalId = 411, ExternalId = 5, Name = "Beden", Required = true });
+            await seed.SaveChangesAsync();
+        }
+        Product product;
+        await using (var seed = NewDb(tenant))
+        {
+            var cat = new Category { Name = "Tişört" };
+            seed.Categories.Add(cat);
+            await seed.SaveChangesAsync();
+            seed.CategoryMappings.Add(new CategoryMapping { Channel = "Trendyol", CategoryId = cat.Id, ExternalCategoryId = 411 });
+            seed.AttributeMappings.Add(new AttributeMapping
+            {
+                Channel = "Trendyol", CategoryId = cat.Id, ExternalAttributeId = 47, SourceAttribute = "Renk",
+                Values = [new AttributeValueMapping { SourceValue = "Mavi", ExternalValueId = 2 }],
+            });
+            seed.AttributeMappings.Add(new AttributeMapping { Channel = "Trendyol", CategoryId = cat.Id, ExternalAttributeId = 5, FixedValueId = 70 });
+            product = new Product { Name = "P", Barcode = "ATTR1", Description = "d", Price = 5, Brand = "x", CategoryId = cat.Id, Variant = "Renk: mavi" };
+            product.Images.Add(new ProductImage { Kind = ImageKind.Url, ExternalUrl = "https://cdn.example.com/a.jpg" });
+            seed.Products.Add(product);
+            seed.ProductChannelData.Add(new ProductChannelData { ProductId = product.Id, Channel = "Trendyol", BrandId = 9 });
+            await seed.SaveChangesAsync();
+        }
+        var client = new FakeClient();
+        await using var db = NewDb(tenant);
+        var job = new SyncJob { Type = SyncJobType.ProductSend, Channel = "Trendyol", Payload = Payload(product.Id) };
+        db.SyncJobs.Add(job);
+        await db.SaveChangesAsync();
+
+        await Handler(db, client).HandleAsync(job, default);
+
+        var item = Assert.Single(Assert.Single(client.Sent));
+        Assert.Equal([(47L, (long?)2), (5L, 70)], item.Attributes.Select(a => (a.AttributeId, a.ValueId)).OrderByDescending(x => x.Item1));
+    }
+
     // --- sonuç uygulayıcı ---
 
     private static (SyncJob Job, Dictionary<Guid, string> Barcodes, List<ProductListing> Listings) Scenario(DateTime sentAt, params string[] barcodes)
