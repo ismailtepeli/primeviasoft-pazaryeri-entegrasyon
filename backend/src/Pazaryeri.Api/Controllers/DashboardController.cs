@@ -20,7 +20,7 @@ public record SyncErrorPage(IReadOnlyList<SyncErrorDto> Items, int Total);
 /// <param name="AwaitingShipment">Hazırlanıyor durumunda, henüz kargoya verilmemiş siparişler.</param>
 /// <param name="SyncErrors">Hata durumundaki senkron işleri.</param>
 /// <param name="ActiveProducts">En az bir kanalda yayında olan ürünler.</param>
-public record DashboardSummary(int TodayOrders, int AwaitingShipment, int SyncErrors, int ActiveProducts);
+public record DashboardSummary(int TodayOrders, int AwaitingShipment, int SyncErrors, int ActiveProducts, int B2BPendingApproval = 0);
 
 [ApiController]
 [Route("api/dashboard")]
@@ -40,7 +40,8 @@ public class DashboardController(AppDbContext db, TimeProvider time) : Controlle
         var awaiting = await db.Orders.CountAsync(o => o.Status == OrderStatus.Preparing, ct);
         var errors = await db.SyncJobs.CountAsync(j => j.Status == SyncJobStatus.Failed, ct);
         var active = await db.Products.CountAsync(p => p.Listings.Any(l => l.Status == ListingStatus.Live), ct);
-        return new DashboardSummary(today, awaiting, errors, active);
+        var b2bPending = await db.Orders.CountAsync(o => o.Channel == "B2B" && o.Status == OrderStatus.New, ct);
+        return new DashboardSummary(today, awaiting, errors, active, b2bPending);
     }
 
     /// <summary>Hata durumundaki senkron işleri, en yeni önce. <paramref name="take"/> kadar kayıt döner; toplam sayı da gelir.</summary>

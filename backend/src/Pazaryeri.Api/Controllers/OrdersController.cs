@@ -29,7 +29,7 @@ public class OrdersController(AppDbContext db, TimeProvider time) : ControllerBa
     /// <summary>Birleşik sipariş listesi: sekme (durum), arama (sipariş no / müşteri) ve sunucu taraflı sayfalama; en yeni önce.</summary>
     [HttpGet]
     public async Task<ActionResult<OrderListPage>> List([FromQuery] string? tab, [FromQuery] string? q,
-        [FromQuery] int page = 1, [FromQuery] int pageSize = 20, CancellationToken ct = default)
+        [FromQuery] int page = 1, [FromQuery] int pageSize = 20, [FromQuery] string? channel = null, CancellationToken ct = default)
     {
         pageSize = Math.Clamp(pageSize, 1, MaxPageSize);
         page = Math.Max(page, 1);
@@ -37,6 +37,7 @@ public class OrdersController(AppDbContext db, TimeProvider time) : ControllerBa
         if (tab is not null && statuses is null) return BadRequest(new { error = "Bilinmeyen sekme." });
 
         var all = db.Orders.AsNoTracking();
+        if (!string.IsNullOrWhiteSpace(channel)) all = all.Where(o => o.Channel == channel);
         var byStatus = await all.GroupBy(o => o.Status).Select(g => new { g.Key, Count = g.Count() }).ToDictionaryAsync(g => g.Key, g => g.Count, ct);
         int Count(params OrderStatus[] s) => s.Sum(x => byStatus.GetValueOrDefault(x));
         var counts = new OrderCounts(Count(OrderStatus.New), Count(OrderStatus.Preparing), Count(OrderStatus.Shipped), Count(OrderStatus.Delivered), Count(OrderStatus.Cancelled, OrderStatus.Returned));

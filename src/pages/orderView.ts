@@ -44,8 +44,9 @@ export function nextStep(status: OrderStatusKind): string {
   }
 }
 
-export function ordersQuery(tab: OrderTab, search: string, page: number): string {
+export function ordersQuery(tab: OrderTab, search: string, page: number, channel = ''): string {
   const qs = new URLSearchParams({ tab, page: String(page), pageSize: String(ORDER_PAGE_SIZE) })
   if (search.trim()) qs.set('q', search.trim())
+  if (channel) qs.set('channel', channel)
   return qs.toString()
 }

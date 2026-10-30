@@ -1,0 +1,16 @@
+.b2b-order { display: flex; flex-direction: column; gap: var(--space-4); }
+.b2b-order__head { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-3); }
+.b2b-order__head h2 { margin: 0; font-size: 18px; margin-right: auto; }
+.b2b-order__meta { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: var(--space-3) var(--space-5); margin: 0; }
+.b2b-order__meta dt { font-size: 13px; color: var(--ink-muted); }
+.b2b-order__meta dd { margin: 2px 0 0; }
+.b2b-order__lines { width: 100%; border-collapse: collapse; }
+.b2b-order__lines th { text-align: left; font-size: 13px; color: var(--ink-muted); padding: var(--space-2) var(--space-3); border-bottom: 1px solid var(--line); }
+.b2b-order__lines td { padding: var(--space-2) var(--space-3); border-bottom: 1px solid var(--line); vertical-align: top; }
+.b2b-order__muted { color: var(--ink-muted); font-size: 13px; }
+.b2b-order__totals { margin: 0; text-align: right; }
+.b2b-order__form { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: var(--space-3); }
+.b2b-order__actions { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2); }
+.b2b-order__actions .ps-btn { display: inline-flex; align-items: center; gap: 6px; }
+.b2b-order__ok { margin: 0; color: var(--success); }
+.b2b-order__error { margin: 0; color: var(--danger); }

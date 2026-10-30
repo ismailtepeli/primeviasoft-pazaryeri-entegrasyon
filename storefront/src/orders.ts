@@ -35,12 +35,17 @@ export interface OrderDetail {
   note: string | null
   canCancel: boolean
   lines: OrderLine[]
+  shipmentCarrier: string | null
+  trackingNumber: string | null
+  shippedAt: string | null
+  /** Ret/iptal gerekçesi. */
+  statusNote: string | null
 }
 
 export const emptyCart: Cart = { lines: [], totalNet: 0, totalGross: 0, currency: 'TRY', hasIssues: false, itemCount: 0 }
 
 const statusText: Record<string, string> = {
-  New: 'Sipariş alındı', Preparing: 'Hazırlanıyor', Shipped: 'Sevk edildi', Delivered: 'Teslim edildi', Cancelled: 'İptal edildi', Returned: 'İade edildi',
+  New: 'Onay bekliyor', Preparing: 'Onaylandı · hazırlanıyor', Shipped: 'Sevk edildi', Delivered: 'Teslim edildi', Cancelled: 'İptal edildi', Returned: 'İade edildi',
 }
 
 export const orderStatusText = (status: string): string => statusText[status] ?? status

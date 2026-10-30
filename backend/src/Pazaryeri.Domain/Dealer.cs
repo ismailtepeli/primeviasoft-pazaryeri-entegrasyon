@@ -40,8 +40,19 @@ public class Dealer : TenantEntity
     public string? Notes { get; set; }
     public DealerStatus Status { get; set; } = DealerStatus.Pending;
     public Guid? GroupId { get; set; }
+    /// <summary>Ödeme vadesi (gün); cari hesapta vadesi geçmiş tutarı bulmak için.</summary>
+    public int PaymentTermDays { get; set; }
     public DateTime? ApprovedAt { get; set; }
     public List<DealerUser> Users { get; set; } = [];
+}
+
+/// <summary>Bayinin ödeme kaydı (cari hesaptan düşer). Online ödeme sonraya; şimdilik yönetici elle girer.</summary>
+public class DealerPayment : TenantEntity
+{
+    public Guid DealerId { get; set; }
+    public decimal Amount { get; set; }
+    public DateTime PaidAt { get; set; }
+    public string? Note { get; set; }
 }
 
 /// <summary>Bayinin siteye giriş yapan kullanıcısı. E-posta kiracı içinde tekildir; yönetici kullanıcılarından (User) ayrıdır.</summary>

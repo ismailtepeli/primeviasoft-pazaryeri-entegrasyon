@@ -19,7 +19,8 @@ describe('orders', () => {
   })
 
   it('bilinmeyen durum olduğu gibi yazılır', () => {
-    expect(orderStatusText('New')).toBe('Sipariş alındı')
+    expect(orderStatusText('New')).toBe('Onay bekliyor')
+    expect(orderStatusText('Preparing')).toContain('Onaylandı')
     expect(orderStatusText('Xyz')).toBe('Xyz')
   })
 

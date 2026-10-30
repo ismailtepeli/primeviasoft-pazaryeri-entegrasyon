@@ -51,6 +51,8 @@ public static class DependencyInjection
         services.AddScoped<Pricing.StoreCatalog>();
         services.AddScoped<Pricing.StoreCatalogService>();
         services.AddScoped<Orders.B2BOrderService>();
+        services.AddScoped<Orders.B2BAdminOrderService>();
+        services.AddScoped<Orders.DealerAccountService>();
         services.AddScoped<Pricing.PriceListImportService>();
         services.AddScoped<IProductImportService, ProductImportService>();
         services.AddScoped<IProductImageService, ProductImageService>();

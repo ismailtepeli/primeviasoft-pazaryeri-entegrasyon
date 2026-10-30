@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { Truck } from 'lucide-react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { StoreApiError, storeApi } from './api'
 import { formatMoney } from './catalog'
@@ -234,6 +235,8 @@ export function OrderDetailPage() {
         <div className="store-summary__row"><span>Ara toplam (KDV hariç)</span><strong>{formatMoney(order.totalNet, order.currency)}</strong></div>
         <div className="store-summary__row store-summary__row--total"><span>Genel toplam (KDV dahil)</span><strong>{formatMoney(order.totalGross, order.currency)}</strong></div>
       </div>
+      {order.shipmentCarrier && <p className="store-note"><Truck size={16} aria-hidden /> <strong>Sevk:</strong> {order.shipmentCarrier} · takip no <strong>{order.trackingNumber}</strong>{order.shippedAt ? ` · ${formatDate(order.shippedAt)}` : ''}</p>}
+      {order.statusNote && <p role="status" className="store-warn"><strong>{order.status === 'Cancelled' ? 'İptal/ret gerekçesi:' : 'Not:'}</strong> {order.statusNote}</p>}
       {order.shippingAddress && <p className="store-note"><strong>Teslimat adresi:</strong> {order.shippingAddress}</p>}
       {order.note && <p className="store-note"><strong>Not:</strong> {order.note}</p>}
       <div className="store-actions">

@@ -28,6 +28,7 @@ export function kpiCards(s: DashboardSummary | undefined, enabled: Set<string> |
       tone: s && s.syncErrors > 0 ? 'danger' : undefined,
     },
     { label: 'Aktif ürün', value: v(s?.activeProducts), hint: 'En az bir kanalda yayında', to: '/urunler', anyOf: ['marketplace'] },
+    { label: 'B2B onay bekleyen', value: v(s?.b2bPendingApproval), hint: 'Bayi siparişleri', to: '/siparisler?tab=new&channel=B2B', anyOf: ['b2b-store'], tone: s && s.b2bPendingApproval > 0 ? 'danger' : undefined },
   ]
   return cards.filter((c) => anyModuleEnabled(c.anyOf, enabled))
 }

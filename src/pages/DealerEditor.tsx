@@ -2,6 +2,9 @@ import { useEffect, useState, type ChangeEvent } from 'react'
 import { api } from '../api/client'
 import type { DealerDetail, DealerGroup, DealerUser } from '../api/types'
 import { Button, Select, StatusBadge, TextInput } from '../components'
+import { useModules } from '../modules/ModulesContext'
+import { isModuleEnabled } from '../modules/moduleState'
+import DealerAccount from './DealerAccount'
 import { dealerStatusBadge, emptyDealerForm, formFromDealer, toDealerInput, validateDealerForm, validateUserForm, type DealerForm } from './dealerView'
 import './Dealers.css'
 
@@ -75,6 +78,8 @@ export default function DealerEditor({ dealerId, groups, onClose, onChanged }: P
   }
 
   const badge = dealer ? dealerStatusBadge[dealer.status] : undefined
+  const { enabled } = useModules()
+  const accountOn = isModuleEnabled('b2b-store', enabled)
   return (
     <section className="ps-card dealer-editor" aria-label={dealerId ? 'Bayiyi düzenle' : 'Yeni bayi'}>
       <header className="dealer-editor__head">
@@ -123,6 +128,7 @@ export default function DealerEditor({ dealerId, groups, onClose, onChanged }: P
           <div className="dealer-editor__actions"><Button onClick={addUser}>Kullanıcı ekle</Button></div>
         </div>
       )}
+      {dealer && accountOn && <DealerAccount dealerId={dealer.id} />}
     </section>
   )
 }

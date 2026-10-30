@@ -1,5 +1,6 @@
 .orders { display: flex; flex-direction: column; gap: var(--space-4); }
 .orders__search { width: min(360px, 100%); }
+.orders__toolbar { display: flex; flex-wrap: wrap; align-items: end; gap: var(--space-3); }
 .order-cell { display: flex; flex-direction: column; gap: 2px; }
 .order-cell__meta { color: var(--ink-muted); font-size: 13px; }
 .order-status { display: inline-flex; flex-wrap: wrap; align-items: center; gap: var(--space-2); }

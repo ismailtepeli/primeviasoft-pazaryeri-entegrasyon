@@ -27,6 +27,7 @@ public class AppDbContext(DbContextOptions<AppDbContext> options, ITenantProvide
     public DbSet<DealerUser> DealerUsers => Set<DealerUser>();
     public DbSet<B2BSettings> B2BSettings => Set<B2BSettings>();
     public DbSet<GroupVisibilityRule> GroupVisibilityRules => Set<GroupVisibilityRule>();
+    public DbSet<DealerPayment> DealerPayments => Set<DealerPayment>();
     public DbSet<Cart> Carts => Set<Cart>();
     public DbSet<CartItem> CartItems => Set<CartItem>();
     public DbSet<PriceList> PriceLists => Set<PriceList>();
@@ -249,6 +250,15 @@ public class AppDbContext(DbContextOptions<AppDbContext> options, ITenantProvide
             b.HasOne<Tenant>().WithMany().HasForeignKey(r => r.TenantId).OnDelete(DeleteBehavior.Restrict);
         });
 
+        builder.Entity<DealerPayment>(b =>
+        {
+            b.Property(p => p.Amount).HasPrecision(18, 2);
+            b.Property(p => p.Note).HasMaxLength(300);
+            b.HasIndex(p => new { p.TenantId, p.DealerId, p.PaidAt });
+            b.HasOne<Dealer>().WithMany().HasForeignKey(p => p.DealerId).OnDelete(DeleteBehavior.Cascade);
+            b.HasOne<Tenant>().WithMany().HasForeignKey(p => p.TenantId).OnDelete(DeleteBehavior.Restrict);
+        });
+
         builder.Entity<Cart>(b =>
         {
             b.Property(c => c.RowVersion).IsRowVersion();
@@ -306,6 +316,9 @@ public class AppDbContext(DbContextOptions<AppDbContext> options, ITenantProvide
             b.Property(o => o.ShippingAddress).HasMaxLength(1000);
             b.Property(o => o.Note).HasMaxLength(1000);
             b.Property(o => o.Currency).HasMaxLength(3);
+            b.Property(o => o.ShipmentCarrier).HasMaxLength(100);
+            b.Property(o => o.TrackingNumber).HasMaxLength(100);
+            b.Property(o => o.StatusNote).HasMaxLength(500);
             b.HasIndex(o => new { o.TenantId, o.DealerId, o.OrderDate });
             b.HasIndex(o => new { o.TenantId, o.Channel, o.OrderNumber }).IsUnique();
             b.HasIndex(o => new { o.TenantId, o.Status, o.OrderDate });

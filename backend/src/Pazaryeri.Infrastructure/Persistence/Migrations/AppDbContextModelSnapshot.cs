@@ -793,6 +793,9 @@ namespace Pazaryeri.Infrastructure.Persistence.Migrations
                         .HasMaxLength(2000)
                         .HasColumnType("nvarchar(2000)");
 
+                    b.Property<int>("PaymentTermDays")
+                        .HasColumnType("int");
+
                     b.Property<string>("Phone")
                         .HasMaxLength(40)
                         .HasColumnType("nvarchar(40)");
@@ -857,6 +860,43 @@ namespace Pazaryeri.Infrastructure.Persistence.Migrations
                         .IsUnique();
 
                     b.ToTable("DealerGroups");
+                });
+
+            modelBuilder.Entity("Pazaryeri.Domain.DealerPayment", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<decimal>("Amount")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<Guid>("DealerId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("Note")
+                        .HasMaxLength(300)
+                        .HasColumnType("nvarchar(300)");
+
+                    b.Property<DateTime>("PaidAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("DealerId");
+
+                    b.HasIndex("TenantId");
+
+                    b.HasIndex("TenantId", "DealerId", "PaidAt");
+
+                    b.ToTable("DealerPayments");
                 });
 
             modelBuilder.Entity("Pazaryeri.Domain.DealerUser", b =>
@@ -956,6 +996,9 @@ namespace Pazaryeri.Infrastructure.Persistence.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uniqueidentifier");
 
+                    b.Property<DateTime?>("ApprovedAt")
+                        .HasColumnType("datetime2");
+
                     b.Property<string>("Channel")
                         .IsRequired()
                         .HasMaxLength(40)
@@ -991,6 +1034,13 @@ namespace Pazaryeri.Infrastructure.Persistence.Migrations
                         .HasMaxLength(100)
                         .HasColumnType("nvarchar(100)");
 
+                    b.Property<string>("ShipmentCarrier")
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<DateTime?>("ShippedAt")
+                        .HasColumnType("datetime2");
+
                     b.Property<string>("ShippingAddress")
                         .HasMaxLength(1000)
                         .HasColumnType("nvarchar(1000)");
@@ -999,6 +1049,10 @@ namespace Pazaryeri.Infrastructure.Persistence.Migrations
                         .IsRequired()
                         .HasMaxLength(20)
                         .HasColumnType("nvarchar(20)");
+
+                    b.Property<string>("StatusNote")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
 
                     b.Property<Guid>("TenantId")
                         .HasColumnType("uniqueidentifier");
@@ -1010,6 +1064,10 @@ namespace Pazaryeri.Infrastructure.Persistence.Migrations
                     b.Property<decimal>("TotalPrice")
                         .HasPrecision(18, 2)
                         .HasColumnType("decimal(18,2)");
+
+                    b.Property<string>("TrackingNumber")
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
 
                     b.HasKey("Id");
 
@@ -2084,6 +2142,21 @@ namespace Pazaryeri.Infrastructure.Persistence.Migrations
 
             modelBuilder.Entity("Pazaryeri.Domain.DealerGroup", b =>
                 {
+                    b.HasOne("Pazaryeri.Domain.Tenant", null)
+                        .WithMany()
+                        .HasForeignKey("TenantId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("Pazaryeri.Domain.DealerPayment", b =>
+                {
+                    b.HasOne("Pazaryeri.Domain.Dealer", null)
+                        .WithMany()
+                        .HasForeignKey("DealerId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
                     b.HasOne("Pazaryeri.Domain.Tenant", null)
                         .WithMany()
                         .HasForeignKey("TenantId")

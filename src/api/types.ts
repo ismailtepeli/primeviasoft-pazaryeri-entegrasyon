@@ -522,10 +522,44 @@ export interface B2BRestriction {
 }
 
 export interface DashboardSummary {
+  /** B2B bayi siparişlerinden onay bekleyen sayısı. */
+  b2bPendingApproval: number
   todayOrders: number
   awaitingShipment: number
   syncErrors: number
   activeProducts: number
+}
+
+export type B2BAction = 'Approve' | 'Reject' | 'Ship' | 'Deliver' | 'Cancel'
+
+export interface B2BOrderStatusBadge { text: string; variant: 'success' | 'warning' | 'error' | 'info' | 'inactive' }
+
+export interface B2BAdminOrder {
+  id: string
+  orderNumber: string
+  orderDate: string
+  status: string
+  totalNet: number
+  totalGross: number
+  currency: string
+  shippingAddress: string | null
+  note: string | null
+  dealer: { id: string | null; name: string; taxNumber: string | null; contactName: string | null; email: string | null; phone: string | null }
+  lines: { productId: string | null; name: string; code: string; quantity: number; unitPrice: number; priceIncludesVat: boolean; vatRate: number }[]
+  shipmentCarrier: string | null
+  trackingNumber: string | null
+  shippedAt: string | null
+  approvedAt: string | null
+  statusNote: string | null
+  actions: B2BAction[]
+}
+
+export interface DealerAccountView {
+  dealerId: string
+  dealerName: string
+  paymentTermDays: number
+  summary: { totalOrders: number; totalPayments: number; balance: number; overdue: number; oldestUnpaidDate: string | null }
+  payments: { id: string; amount: number; paidAt: string; note: string | null }[]
 }
 
 export type OrderStatusKind = 'New' | 'Preparing' | 'Shipped' | 'Delivered' | 'Cancelled' | 'Returned'

@@ -35,7 +35,8 @@ public record B2BOrderPage(IReadOnlyList<B2BOrderRow> Items, int Total);
 public record B2BOrderLine(Guid? ProductId, string Name, string Code, int Quantity, decimal UnitPrice, bool PriceIncludesVat, int VatRate);
 
 public record B2BOrderDetail(Guid Id, string OrderNumber, DateTime OrderDate, string Status, decimal TotalNet, decimal TotalGross, string Currency,
-    string? ShippingAddress, string? Note, bool CanCancel, IReadOnlyList<B2BOrderLine> Lines);
+    string? ShippingAddress, string? Note, bool CanCancel, IReadOnlyList<B2BOrderLine> Lines, string? ShipmentCarrier = null, string? TrackingNumber = null,
+    DateTime? ShippedAt = null, string? StatusNote = null);
 
 public record ReorderResult(int Added, IReadOnlyList<string> Skipped);
 
@@ -377,7 +378,8 @@ public class B2BOrderService(AppDbContext db, StoreCatalog catalog, DealerPriceS
     private static B2BOrderDetail ToDetail(Order o) => new(o.Id, o.OrderNumber, o.OrderDate, o.Status.ToString(), o.TotalNet ?? o.TotalPrice, o.TotalPrice, o.Currency ?? "TRY",
         o.ShippingAddress, o.Note, o.Status == OrderStatus.New,
         o.Packages.SelectMany(p => p.Lines).OrderBy(l => int.TryParse(l.LineId, out var n) ? n : 0)
-            .Select(l => new B2BOrderLine(l.ProductId, l.Name, l.Barcode, l.Quantity, l.Price, l.PriceIncludesVat, l.VatRate)).ToList());
+            .Select(l => new B2BOrderLine(l.ProductId, l.Name, l.Barcode, l.Quantity, l.Price, l.PriceIncludesVat, l.VatRate)).ToList(),
+        o.ShipmentCarrier, o.TrackingNumber, o.ShippedAt, o.StatusNote);
 
     private DateTime Now() => time.GetUtcNow().UtcDateTime;
 
