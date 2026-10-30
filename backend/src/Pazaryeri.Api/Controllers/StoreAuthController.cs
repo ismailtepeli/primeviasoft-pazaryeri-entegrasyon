@@ -2,6 +2,7 @@ using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 using Pazaryeri.Api.Modules;
 using Pazaryeri.Application.Dealers;
 using Pazaryeri.Application.Modules;
@@ -15,7 +16,21 @@ namespace Pazaryeri.Api.Controllers;
 [RequiresModule(ModuleIds.Dealers)]
 public class StoreAuthController(IDealerAuthService auth) : ControllerBase
 {
+    /// <summary>Bayi sitesi açılırken: firma adı ve sitenin hizmet verip vermediği. Kısa süre önbelleğe alınabilir.</summary>
     [AllowAnonymous]
+    [CoreModule]
+    [EnableRateLimiting(StoreRateLimiting.InfoPolicy)]
+    [HttpGet("info")]
+    public async Task<IActionResult> Info([FromQuery] string? slug, CancellationToken ct)
+    {
+        var info = await auth.InfoAsync(slug, ct);
+        if (info is null) return NotFound(new { error = "Bayi sitesi bulunamadı." });
+        Response.Headers.CacheControl = "public, max-age=30";
+        return Ok(info);
+    }
+
+    [AllowAnonymous]
+    [EnableRateLimiting(StoreRateLimiting.AuthPolicy)]
     [HttpPost("apply")]
     public async Task<IActionResult> Apply(DealerApplication application, CancellationToken ct)
     {
@@ -30,6 +45,7 @@ public class StoreAuthController(IDealerAuthService auth) : ControllerBase
     }
 
     [AllowAnonymous]
+    [EnableRateLimiting(StoreRateLimiting.AuthPolicy)]
     [HttpPost("login")]
     public async Task<IActionResult> Login(DealerLogin login, CancellationToken ct)
     {

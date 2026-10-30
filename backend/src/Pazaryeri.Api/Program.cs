@@ -35,10 +35,11 @@ builder.Services
         };
     });
 builder.Services.AddAuthorization(AuthSetup.Configure);
+builder.Services.AddRateLimiter(StoreRateLimiting.Configure);
 
 // Geliştirmede Vite sunucusundan gelen isteklere izin ver.
 builder.Services.AddCors(o => o.AddDefaultPolicy(p =>
-    p.WithOrigins("http://localhost:5173").AllowAnyHeader().AllowAnyMethod()));
+    p.WithOrigins("http://localhost:5173", "http://localhost:5174").AllowAnyHeader().AllowAnyMethod()));
 
 var app = builder.Build();
 
@@ -50,6 +51,7 @@ if (app.Environment.IsDevelopment())
 }
 
 app.UseCors();
+app.UseRateLimiter();
 app.UseAuthentication();
 app.UseAuthorization();
 app.MapControllers();

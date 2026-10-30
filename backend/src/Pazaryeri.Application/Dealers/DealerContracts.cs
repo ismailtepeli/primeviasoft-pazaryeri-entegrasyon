@@ -12,6 +12,9 @@ public record DealerInfo(Guid UserId, Guid DealerId, Guid TenantId, string Email
 
 public record DealerLoginResponse(string AccessToken, DateTime ExpiresAt, DealerInfo User);
 
+/// <summary>Bayi sitesinin herkese açık bilgisi. Available: Bayi yönetimi ve B2B bayi sitesi modülleri açık.</summary>
+public record StoreInfo(string Name, bool Available);
+
 public enum DealerAuthResult { Ok, InvalidInput, UnknownTenant, Duplicate, InvalidCredentials, Pending, Passive }
 
 public record DealerAuthOutcome<T>(DealerAuthResult Result, T? Value = default, string? Error = null);
@@ -22,6 +25,9 @@ public interface IDealerAuthService
     Task<DealerAuthOutcome<Guid>> ApplyAsync(DealerApplication application, CancellationToken ct);
 
     Task<DealerAuthOutcome<DealerLoginResponse>> LoginAsync(DealerLogin login, CancellationToken ct);
+
+    /// <summary>Slug'a ait site bilgisi; slug bilinmiyorsa ya da kiracı pasifse null.</summary>
+    Task<StoreInfo?> InfoAsync(string? slug, CancellationToken ct);
 }
 
 /// <summary>Alanlarla ilgili ortak doğrulamalar (yönetici ve bayi sitesi aynı kuralları kullanır).</summary>

@@ -73,6 +73,16 @@ public class DealerAuthService(AppDbContext db, ITokenService tokens, IModuleSer
             new DealerInfo(user.Id, dealer.Id, tenantId.Value, user.Email, user.FullName, dealer.Name, user.Role.ToString())));
     }
 
+    public async Task<StoreInfo?> InfoAsync(string? slug, CancellationToken ct)
+    {
+        if (string.IsNullOrWhiteSpace(slug)) return null;
+        var key = slug.Trim().ToLowerInvariant();
+        var tenant = await db.Tenants.AsNoTracking().FirstOrDefaultAsync(t => t.Slug == key && t.IsActive, ct);
+        if (tenant is null) return null;
+        var available = await modules.IsEnabledAsync(ModuleIds.Dealers, tenant.Id, ct) && await modules.IsEnabledAsync(ModuleIds.B2BStore, tenant.Id, ct);
+        return new StoreInfo(tenant.Name, available);
+    }
+
     private async Task<Guid?> ResolveTenantAsync(string? slug, CancellationToken ct)
     {
         if (string.IsNullOrWhiteSpace(slug)) return null;
