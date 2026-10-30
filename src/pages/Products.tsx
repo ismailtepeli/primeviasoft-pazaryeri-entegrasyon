@@ -23,7 +23,7 @@ const money = new Intl.NumberFormat('tr-TR', { style: 'currency', currency: 'TRY
 
 type Detail = { product: Product; listing: ProductChannel }
 
-function makeColumns(onDetail: (d: Detail) => void, withChannels: boolean): Column<Product>[] { return [
+function makeColumns(onDetail: (d: Detail) => void, withChannels: boolean, withB2B: boolean): Column<Product>[] { return [
   {
     key: 'product', header: 'Ürün',
     render: (p) => (
@@ -48,6 +48,10 @@ function makeColumns(onDetail: (d: Detail) => void, withChannels: boolean): Colu
   },
   { key: 'stock', header: 'Stok', render: (p) => p.stock },
   { key: 'price', header: 'Fiyat', render: (p) => money.format(p.price) },
+  ...(!withB2B ? [] : [{
+    key: 'b2b', header: 'B2B sitesi',
+    render: (p: Product) => <StatusBadge variant={p.visibleOnB2B ? 'success' : 'inactive'}>{p.visibleOnB2B ? 'Görünür' : 'Gizli'}</StatusBadge>,
+  }]),
   ...(!withChannels ? [] : [{
     key: 'channels', header: 'Kanallar',
     render: (p: Product) => p.channels.length === 0
@@ -81,7 +85,15 @@ export default function Products() {
   const [reloadKey, setReloadKey] = useState(0)
   const { enabled } = useModules()
   const marketplaceOn = isModuleEnabled('marketplace', enabled)
-  const columns = useMemo(() => makeColumns(setDetail, marketplaceOn), [marketplaceOn])
+  const b2bOn = isModuleEnabled('b2b-store', enabled)
+  const columns = useMemo(() => makeColumns(setDetail, marketplaceOn, b2bOn), [marketplaceOn, b2bOn])
+
+  async function setB2BVisible(visible: boolean) {
+    try {
+      await api('/b2b/products/visibility', { method: 'PUT', body: JSON.stringify({ productIds: selected, visible }) })
+      setSelected([]); setError(undefined); setReloadKey((k) => k + 1)
+    } catch (e) { setError((e as Error).message) }
+  }
 
   // Yazarken her tuşta istek atmamak için aramayı kısa bir gecikmeyle uygula.
   useEffect(() => {
@@ -134,10 +146,16 @@ export default function Products() {
         </section>
       )}
       {error && <p role="alert" style={{ color: 'var(--danger)' }}>{error}</p>}
-      <BulkBar count={selected.length} onClear={() => setSelected([])} actions={marketplaceOn ? [
-        { label: 'Kanala gönder', onClick: () => setSending(true) },
-        { label: 'Kural uygula', disabledReason: 'Yakında' },
-      ] : []} />
+      <BulkBar count={selected.length} onClear={() => setSelected([])} actions={[
+        ...(marketplaceOn ? [
+          { label: 'Kanala gönder', onClick: () => setSending(true) },
+          { label: 'Kural uygula', disabledReason: 'Yakında' },
+        ] : []),
+        ...(b2bOn ? [
+          { label: 'B2B sitesinde göster', onClick: () => setB2BVisible(true) },
+          { label: 'B2B sitesinden kaldır', onClick: () => setB2BVisible(false) },
+        ] : []),
+      ]} />
       {sending && selected.length > 0 && <SendToChannel productIds={selected} onClose={() => setSending(false)} onSent={() => setReloadKey((k) => k + 1)} />}
       <DataTable columns={columns} rows={data.items} rowKey={(p) => p.id} pageSize={PRODUCT_PAGE_SIZE}
         selectable selected={selected} onSelectionChange={setSelected}

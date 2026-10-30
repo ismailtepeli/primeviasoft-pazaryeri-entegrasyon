@@ -25,6 +25,8 @@ public class AppDbContext(DbContextOptions<AppDbContext> options, ITenantProvide
     public DbSet<Dealer> Dealers => Set<Dealer>();
     public DbSet<DealerGroup> DealerGroups => Set<DealerGroup>();
     public DbSet<DealerUser> DealerUsers => Set<DealerUser>();
+    public DbSet<B2BSettings> B2BSettings => Set<B2BSettings>();
+    public DbSet<GroupVisibilityRule> GroupVisibilityRules => Set<GroupVisibilityRule>();
     public DbSet<PriceList> PriceLists => Set<PriceList>();
     public DbSet<PriceListItem> PriceListItems => Set<PriceListItem>();
     public DbSet<Order> Orders => Set<Order>();
@@ -227,6 +229,22 @@ public class AppDbContext(DbContextOptions<AppDbContext> options, ITenantProvide
             b.Property(u => u.Role).HasConversion<string>().HasMaxLength(20);
             b.HasIndex(u => new { u.TenantId, u.Email }).IsUnique();
             b.HasOne<Tenant>().WithMany().HasForeignKey(u => u.TenantId).OnDelete(DeleteBehavior.Restrict);
+        });
+
+        builder.Entity<B2BSettings>(b =>
+        {
+            b.Property(s => s.StockDisplay).HasConversion<string>().HasMaxLength(20);
+            b.HasIndex(s => s.TenantId).IsUnique();
+            b.HasOne<Tenant>().WithMany().HasForeignKey(s => s.TenantId).OnDelete(DeleteBehavior.Restrict);
+        });
+
+        builder.Entity<GroupVisibilityRule>(b =>
+        {
+            b.HasIndex(r => new { r.TenantId, r.GroupId, r.ProductId, r.CategoryId }).IsUnique();
+            b.HasOne<DealerGroup>().WithMany().HasForeignKey(r => r.GroupId).OnDelete(DeleteBehavior.Cascade);
+            b.HasOne<Product>().WithMany().HasForeignKey(r => r.ProductId).OnDelete(DeleteBehavior.Cascade);
+            b.HasOne<Category>().WithMany().HasForeignKey(r => r.CategoryId).OnDelete(DeleteBehavior.Cascade);
+            b.HasOne<Tenant>().WithMany().HasForeignKey(r => r.TenantId).OnDelete(DeleteBehavior.Restrict);
         });
 
         builder.Entity<PriceList>(b =>

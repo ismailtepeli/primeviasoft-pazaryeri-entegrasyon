@@ -14,7 +14,7 @@ public record ProductChannelDto(string Channel, string Status, string? ErrorMess
 
 /// <param name="CoverUrl">Kapak görselinin adresi; görseli yoksa null.</param>
 public record ProductDto(Guid Id, string Name, string Barcode, string? MainId, string? Variant, string? Brand, string? CategoryPath,
-    int Stock, decimal Price, int ImageCount, string? CoverUrl, IReadOnlyList<ProductChannelDto> Channels);
+    int Stock, decimal Price, int ImageCount, string? CoverUrl, IReadOnlyList<ProductChannelDto> Channels, bool VisibleOnB2B = false);
 
 public record ProductPage(IReadOnlyList<ProductDto> Items, int Total);
 
@@ -63,7 +63,7 @@ public class ProductsController(AppDbContext db) : ControllerBase
             .Skip((page - 1) * pageSize).Take(pageSize)
             .Select(p => new
             {
-                p.Id, p.Name, p.Barcode, p.MainId, p.Variant, p.Brand, p.CategoryId, p.Stock, p.Price,
+                p.Id, p.Name, p.Barcode, p.MainId, p.Variant, p.Brand, p.CategoryId, p.Stock, p.Price, p.B2BVisible,
                 Images = p.Images.OrderBy(i => i.Position).Select(i => new { i.Id, i.Kind, i.ExternalUrl, i.Position }).ToList(),
                 Listings = p.Listings.Select(l => new { l.Channel, l.Status, l.ErrorMessage }).ToList(),
             })
@@ -73,7 +73,7 @@ public class ProductsController(AppDbContext db) : ControllerBase
         var items = rows.Select(r => new ProductDto(r.Id, r.Name, r.Barcode, r.MainId, r.Variant, r.Brand,
             r.CategoryId is { } c ? paths.GetValueOrDefault(c) : null, r.Stock, r.Price, r.Images.Count,
             r.Images.Count == 0 ? null : CoverUrl(r.Images[0].Id, r.Images[0].Kind, r.Images[0].ExternalUrl),
-            r.Listings.OrderBy(l => l.Channel).Select(l => new ProductChannelDto(l.Channel, l.Status.ToString(), l.ErrorMessage)).ToList())).ToList();
+            r.Listings.OrderBy(l => l.Channel).Select(l => new ProductChannelDto(l.Channel, l.Status.ToString(), l.ErrorMessage)).ToList(), r.B2BVisible)).ToList();
         return new ProductPage(items, total);
     }
 

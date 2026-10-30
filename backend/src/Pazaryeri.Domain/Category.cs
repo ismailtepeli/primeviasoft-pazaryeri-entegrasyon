@@ -7,6 +7,8 @@ public class Category : TenantEntity
 {
     public string Name { get; set; } = string.Empty;
     public Guid? ParentId { get; set; }
+    /// <summary>B2B bayi sitesinde bu kategori (ve alt kategorileri) gizli mi.</summary>
+    public bool B2BHidden { get; set; }
 }
 
 /// <summary>

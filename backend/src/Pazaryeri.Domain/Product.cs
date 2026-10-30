@@ -35,6 +35,8 @@ public class Product : TenantEntity
     /// <summary>Ürüne özel güvenlik stoğu; boşsa kanalın varsayılanı kullanılır.</summary>
     public int? SafetyStock { get; set; }
     public decimal Price { get; set; }
+    /// <summary>B2B bayi sitesinde görünür mü (varsayılan kapalı; bilerek açılır).</summary>
+    public bool B2BVisible { get; set; }
     /// <summary>B2B: bayinin tek siparişte alabileceği en az adet.</summary>
     public int MinOrderQuantity { get; set; } = 1;
     /// <summary>B2B: koli/çoklu adet; sipariş adedi bunun katı olmalı.</summary>

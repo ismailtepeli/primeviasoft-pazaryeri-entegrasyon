@@ -87,6 +87,8 @@ export interface Product {
   /** Kapak görselinin adresi; görseli yoksa null. */
   coverUrl: string | null
   channels: ProductChannel[]
+  /** B2B bayi sitesinde görünür mü. */
+  visibleOnB2B: boolean
 }
 
 export interface ProductImage {
@@ -485,6 +487,30 @@ export interface PricePreviewRow {
   source: 'General' | 'GroupList' | 'DealerList'
   minOrderQuantity: number
   packSize: number
+}
+
+export type StockDisplayKind = 'Exact' | 'Level' | 'Hidden'
+
+export interface B2BSettings {
+  stockDisplay: StockDisplayKind
+  lowStockThreshold: number
+}
+
+export interface B2BCategory {
+  id: string
+  path: string
+  hidden: boolean
+  productCount: number
+}
+
+export interface B2BRestriction {
+  id: string
+  groupId: string
+  groupName: string
+  productId: string | null
+  productName: string | null
+  categoryId: string | null
+  categoryPath: string | null
 }
 
 export interface DashboardSummary {
