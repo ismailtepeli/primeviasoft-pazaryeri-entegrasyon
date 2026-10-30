@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import type { ModuleStatus } from '../api/types'
 import { routes, routeFor } from '../routes'
-import { enabledSet, isRouteEnabled, toggleBlockReason, visibleRoutes } from './moduleState'
+import { anyModuleEnabled, enabledSet, isModuleEnabled, isRouteEnabled, toggleBlockReason, visibleRoutes } from './moduleState'
 
 const m = (id: string, enabled: boolean, dependsOn: string[] = [], core = false): ModuleStatus =>
   ({ id, name: id.toUpperCase(), description: '', core, enabled, dependsOn })
@@ -23,6 +23,13 @@ describe('moduleState', () => {
   it('çekirdek rotalar (modülsüz) her zaman görünür, Ayarlar dahil', () => {
     expect(isRouteEnabled({ module: undefined }, new Set())).toBe(true)
     expect(visibleRoutes(routes, new Set()).map((r) => r.path)).toContain('/ayarlar')
+  })
+
+  it('modül açıklığı: yüklenmediyse açık sayılır, kümede yoksa kapalı', () => {
+    expect(isModuleEnabled('orders', null)).toBe(true)
+    expect(isModuleEnabled('orders', new Set(['core']))).toBe(false)
+    expect(anyModuleEnabled(['marketplace', 'orders'], new Set(['orders']))).toBe(true)
+    expect(anyModuleEnabled(['marketplace', 'orders'], new Set(['core']))).toBe(false)
   })
 
   it('rota adresinden modül bulunur', () => {

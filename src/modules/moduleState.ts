@@ -11,6 +11,16 @@ export function isRouteEnabled(route: Pick<RouteDef, 'module'>, enabled: Set<str
   return !route.module || enabled === null || enabled.has(route.module)
 }
 
+/** Modül açık mı; liste yüklenmediyse açık sayılır (arayüz zıplamasın). */
+export function isModuleEnabled(id: string, enabled: Set<string> | null): boolean {
+  return enabled === null || enabled.has(id)
+}
+
+/** Verilen modüllerden en az biri açık mı. */
+export function anyModuleEnabled(ids: string[], enabled: Set<string> | null): boolean {
+  return ids.some((id) => isModuleEnabled(id, enabled))
+}
+
 /** Menüde gösterilecek rotalar: yalnızca açık modüllerinkiler. */
 export function visibleRoutes(routes: RouteDef[], enabled: Set<string> | null): RouteDef[] {
   return routes.filter((r) => isRouteEnabled(r, enabled))

@@ -1,3 +1,5 @@
+using Pazaryeri.Api.Modules;
+using Pazaryeri.Application.Modules;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Options;
@@ -8,6 +10,7 @@ namespace Pazaryeri.Api.Controllers;
 public record AmazonAuthorizeUrl(string Url);
 
 [ApiController]
+[RequiresModule(ModuleIds.Marketplace)]
 public class AmazonOAuthController(IAmazonOAuthService oauth, IOptions<AmazonLwaOptions> options) : ControllerBase
 {
     /// <summary>Yetki durumu, ayarların tanımlılığı ve client secret yenileme hatırlatıcısı.</summary>

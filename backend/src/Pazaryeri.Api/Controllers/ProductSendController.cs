@@ -1,3 +1,5 @@
+using Pazaryeri.Api.Modules;
+using Pazaryeri.Application.Modules;
 using Microsoft.AspNetCore.Mvc;
 using Pazaryeri.Application.Products;
 
@@ -7,6 +9,7 @@ public record SendProductsInput(string? Channel, List<Guid>? ProductIds);
 
 [ApiController]
 [Route("api/products")]
+[RequiresModule(ModuleIds.Marketplace)]
 public class ProductSendController(IProductSendService send) : ControllerBase
 {
     /// <summary>Seçili ürünleri kanala göndermek üzere kuyruğa alır; sonuç ürünlerin kanal durumuna sonradan yansır.</summary>

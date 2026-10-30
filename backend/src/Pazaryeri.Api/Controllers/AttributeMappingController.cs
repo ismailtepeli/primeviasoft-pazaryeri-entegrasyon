@@ -1,3 +1,5 @@
+using Pazaryeri.Api.Modules;
+using Pazaryeri.Application.Modules;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Pazaryeri.Domain;
@@ -52,6 +54,7 @@ public static class AttributeMappingStatus
 
 [ApiController]
 [Route("api")]
+[RequiresModule(ModuleIds.Marketplace)]
 public class AttributeMappingController(AppDbContext db) : ControllerBase
 {
     public const int ValueLimit = 100;

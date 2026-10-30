@@ -1,3 +1,5 @@
+using Pazaryeri.Api.Modules;
+using Pazaryeri.Application.Modules;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Pazaryeri.Application.Stock;
@@ -38,10 +40,12 @@ public class StockController(AppDbContext db, TimeProvider time) : ControllerBas
 
     // --- ayarlar ---
 
+    [CoreModule]
     [HttpGet("settings")]
     public async Task<StockSettingsDto> GetSettings(CancellationToken ct) =>
         new((await db.StockSettings.AsNoTracking().FirstOrDefaultAsync(ct))?.DeductAcrossChannels ?? true);
 
+    [CoreModule]
     [HttpPut("settings")]
     public async Task<StockSettingsDto> SaveSettings(StockSettingsDto input, CancellationToken ct)
     {
@@ -54,6 +58,7 @@ public class StockController(AppDbContext db, TimeProvider time) : ControllerBas
 
     // --- kanal kuralları ---
 
+    [RequiresModule(ModuleIds.StockPrice)]
     [HttpGet("rules")]
     public async Task<List<StockRuleDto>> Rules(CancellationToken ct)
     {
@@ -61,6 +66,7 @@ public class StockController(AppDbContext db, TimeProvider time) : ControllerBas
         return Channels.Select(c => saved.TryGetValue(c, out var r) ? new StockRuleDto(c, r.SafetyStock, r.AllocationPercent, true) : new StockRuleDto(c, 0, 100, false)).ToList();
     }
 
+    [RequiresModule(ModuleIds.StockPrice)]
     [HttpPut("rules/{channel}")]
     public async Task<ActionResult<StockRuleDto>> SaveRule(string channel, StockRuleInput input, CancellationToken ct)
     {
@@ -80,6 +86,7 @@ public class StockController(AppDbContext db, TimeProvider time) : ControllerBas
     // --- ürün bazında dağıtım ---
 
     /// <summary>Ürünlerin fiziksel stoğu, güvenlik stoğu ve seçili kanala açılan miktarı (sunucu taraflı sayfalama).</summary>
+    [RequiresModule(ModuleIds.StockPrice)]
     [HttpGet("products")]
     public async Task<ActionResult<StockPage>> Products([FromQuery] string? channel, [FromQuery] string? q,
         [FromQuery] int page = 1, [FromQuery] int pageSize = 20, CancellationToken ct = default)
@@ -112,6 +119,7 @@ public class StockController(AppDbContext db, TimeProvider time) : ControllerBas
     }
 
     /// <summary>Stok defteri: satışlar, iptal/iade geri eklemeleri ve elle düzeltmeler (en yeni önce).</summary>
+    [CoreModule]
     [HttpGet("movements")]
     public async Task<StockMovementPage> Movements([FromQuery] string? q, [FromQuery] int page = 1, [FromQuery] int pageSize = 20, CancellationToken ct = default)
     {
@@ -131,6 +139,7 @@ public class StockController(AppDbContext db, TimeProvider time) : ControllerBas
     }
 
     /// <summary>Ürüne özel güvenlik stoğunu ayarlar; null göndermek kanalın varsayılanına döndürür.</summary>
+    [RequiresModule(ModuleIds.StockPrice)]
     [HttpPut("products/{id:guid}/safety")]
     public async Task<IActionResult> SetSafety(Guid id, SafetyInput input, CancellationToken ct)
     {

@@ -1,3 +1,5 @@
+using Pazaryeri.Api.Modules;
+using Pazaryeri.Application.Modules;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Pazaryeri.Domain;
@@ -16,6 +18,7 @@ public record StockSyncStatusDto(string Channel, bool Supported, int PendingChan
 
 [ApiController]
 [Route("api/stock/sync")]
+[RequiresModule(ModuleIds.StockPrice)]
 public class StockSyncController(AppDbContext db, StockPriceDeltaPlanner planner) : ControllerBase
 {
     private static readonly SyncJobStatus[] InFlight = [SyncJobStatus.Pending, SyncJobStatus.Running, SyncJobStatus.Retrying];

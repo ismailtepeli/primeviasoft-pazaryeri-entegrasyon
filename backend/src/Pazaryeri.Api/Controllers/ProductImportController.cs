@@ -1,3 +1,5 @@
+using Pazaryeri.Api.Modules;
+using Pazaryeri.Application.Modules;
 using Microsoft.AspNetCore.Mvc;
 using Pazaryeri.Application.Products;
 
@@ -5,6 +7,7 @@ namespace Pazaryeri.Api.Controllers;
 
 [ApiController]
 [Route("api/products")]
+[CoreModule]
 public class ProductImportController(IProductImportService import) : ControllerBase
 {
     public const long MaxFileBytes = 5 * 1024 * 1024;

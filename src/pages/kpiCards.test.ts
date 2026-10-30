@@ -16,6 +16,13 @@ describe('kpiCards', () => {
     expect(kpiCards(undefined).map((c) => c.to)).toEqual(['/siparisler?tab=new', '/siparisler?tab=preparing', '/senkron-hatalari', '/urunler'])
   })
 
+  it('kapalı modülün kartlarını göstermez', () => {
+    const labels = (on: string[]) => kpiCards(undefined, new Set(on)).map((c) => c.label)
+    expect(labels(['core', 'marketplace'])).toEqual(['Senkron hatası', 'Aktif ürün'])
+    expect(labels(['core', 'orders'])).toEqual(['Bugünkü sipariş', 'Bekleyen kargo', 'Senkron hatası'])
+    expect(labels(['core'])).toEqual([])
+  })
+
   it('özet gelmediyse değer yerine çizgi gösterir', () => {
     expect(kpiCards(undefined).map((c) => c.value)).toEqual(['—', '—', '—', '—'])
   })

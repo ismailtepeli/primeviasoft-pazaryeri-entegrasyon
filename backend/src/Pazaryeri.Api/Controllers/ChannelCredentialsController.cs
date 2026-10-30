@@ -1,3 +1,5 @@
+using Pazaryeri.Api.Modules;
+using Pazaryeri.Application.Modules;
 using Microsoft.AspNetCore.Mvc;
 using Pazaryeri.Application.Credentials;
 using Pazaryeri.Application.Marketplace;
@@ -11,6 +13,7 @@ public record SaveCredentialsRequest(string Environment, Dictionary<string, stri
 
 [ApiController]
 [Route("api/channels/{channel}/credentials")]
+[RequiresModule(ModuleIds.Marketplace)]
 public class ChannelCredentialsController(IChannelCredentialService credentials, IChannelConnectionTester tester) : ControllerBase
 {
     /// <summary>Maskeli görünüm: gizli alanlar yalnızca "••••1234" biçiminde döner.</summary>

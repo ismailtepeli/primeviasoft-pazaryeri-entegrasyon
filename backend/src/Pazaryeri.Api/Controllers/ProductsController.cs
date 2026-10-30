@@ -1,3 +1,5 @@
+using Pazaryeri.Api.Modules;
+using Pazaryeri.Application.Modules;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Pazaryeri.Application.Products;
@@ -24,6 +26,7 @@ public record ProductInput(string? Name, string? Barcode, string? MainId, string
 
 [ApiController]
 [Route("api/products")]
+[CoreModule]
 public class ProductsController(AppDbContext db) : ControllerBase
 {
     public const int MaxPageSize = 100;

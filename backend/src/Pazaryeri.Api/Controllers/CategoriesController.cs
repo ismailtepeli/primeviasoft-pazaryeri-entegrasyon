@@ -1,3 +1,5 @@
+using Pazaryeri.Api.Modules;
+using Pazaryeri.Application.Modules;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Pazaryeri.Domain;
@@ -36,6 +38,7 @@ public static class CategoryPaths
 
 [ApiController]
 [Route("api/categories")]
+[CoreModule]
 public class CategoriesController(AppDbContext db) : ControllerBase
 {
     public const int MaxDepth = 5;

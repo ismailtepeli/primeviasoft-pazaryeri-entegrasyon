@@ -1,3 +1,5 @@
+using Pazaryeri.Api.Modules;
+using Pazaryeri.Application.Modules;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Pazaryeri.Application.Jobs;
@@ -19,6 +21,7 @@ public record CatalogSyncStarted(bool Enqueued);
 
 [ApiController]
 [Route("api/catalog")]
+[RequiresModule(ModuleIds.Marketplace)]
 public class CatalogController(AppDbContext db, IJobQueue queue) : ControllerBase
 {
     private static readonly SyncJobStatus[] InFlight = [SyncJobStatus.Pending, SyncJobStatus.Running, SyncJobStatus.Retrying];

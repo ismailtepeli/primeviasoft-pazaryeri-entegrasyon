@@ -1,3 +1,5 @@
+using Pazaryeri.Api.Modules;
+using Pazaryeri.Application.Modules;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Pazaryeri.Domain;
@@ -10,6 +12,7 @@ public record SyncJobDto(Guid Id, string Type, string Channel, string Status, st
 
 [ApiController]
 [Route("api/sync-jobs")]
+[CoreModule]
 public class SyncJobsController(AppDbContext db) : ControllerBase
 {
     /// <summary>Oturumdaki kiracının son senkron işleri (kiracı filtresi otomatik uygulanır).</summary>

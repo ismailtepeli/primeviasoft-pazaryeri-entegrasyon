@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useState } from 'react'
 import { api } from '../api/client'
 import type { Product, ProductChannel, ProductPage } from '../api/types'
+import { useModules } from '../modules/ModulesContext'
+import { isModuleEnabled } from '../modules/moduleState'
 import { BulkBar, Button, DataTable, FilterChips, StatusBadge, type Column } from '../components'
 import { Link } from 'react-router-dom'
 import { failureReasons, listingBadge } from './listingStatus'
@@ -21,7 +23,7 @@ const money = new Intl.NumberFormat('tr-TR', { style: 'currency', currency: 'TRY
 
 type Detail = { product: Product; listing: ProductChannel }
 
-function makeColumns(onDetail: (d: Detail) => void): Column<Product>[] { return [
+function makeColumns(onDetail: (d: Detail) => void, withChannels: boolean): Column<Product>[] { return [
   {
     key: 'product', header: 'Ürün',
     render: (p) => (
@@ -46,9 +48,9 @@ function makeColumns(onDetail: (d: Detail) => void): Column<Product>[] { return 
   },
   { key: 'stock', header: 'Stok', render: (p) => p.stock },
   { key: 'price', header: 'Fiyat', render: (p) => money.format(p.price) },
-  {
+  ...(!withChannels ? [] : [{
     key: 'channels', header: 'Kanallar',
-    render: (p) => p.channels.length === 0
+    render: (p: Product) => p.channels.length === 0
       ? '—'
       : (
         <div className="product-channels">
@@ -60,7 +62,7 @@ function makeColumns(onDetail: (d: Detail) => void): Column<Product>[] { return 
           ))}
         </div>
       ),
-  },
+  }]),
 ] }
 
 export default function Products() {
@@ -77,7 +79,9 @@ export default function Products() {
   const [categoriesOpen, setCategoriesOpen] = useState(false)
   const [sending, setSending] = useState(false)
   const [reloadKey, setReloadKey] = useState(0)
-  const columns = useMemo(() => makeColumns(setDetail), [])
+  const { enabled } = useModules()
+  const marketplaceOn = isModuleEnabled('marketplace', enabled)
+  const columns = useMemo(() => makeColumns(setDetail, marketplaceOn), [marketplaceOn])
 
   // Yazarken her tuşta istek atmamak için aramayı kısa bir gecikmeyle uygula.
   useEffect(() => {
@@ -110,7 +114,7 @@ export default function Products() {
           aria-label="Ürün adı veya barkod ara" value={input} onChange={(e) => setInput(e.target.value)} />
         <Button onClick={() => setImporting((v) => !v)}>Excel ile yükle</Button>
         <Button onClick={() => setCategoriesOpen((v) => !v)}>Kategoriler</Button>
-        <FilterChips items={chips} value={filter} onChange={(v) => { setFilter(v as ProductFilter); setPage(1); setSelected([]) }} />
+        {marketplaceOn && <FilterChips items={chips} value={filter} onChange={(v) => { setFilter(v as ProductFilter); setPage(1); setSelected([]) }} />}
       </div>
       {categoriesOpen && <CategoryManager onClose={() => setCategoriesOpen(false)} />}
       {importing && <ProductImport onClose={() => setImporting(false)} onImported={() => { setPage(1); setReloadKey((k) => k + 1) }} />}
@@ -130,10 +134,10 @@ export default function Products() {
         </section>
       )}
       {error && <p role="alert" style={{ color: 'var(--danger)' }}>{error}</p>}
-      <BulkBar count={selected.length} onClear={() => setSelected([])} actions={[
+      <BulkBar count={selected.length} onClear={() => setSelected([])} actions={marketplaceOn ? [
         { label: 'Kanala gönder', onClick: () => setSending(true) },
         { label: 'Kural uygula', disabledReason: 'Yakında' },
-      ]} />
+      ] : []} />
       {sending && selected.length > 0 && <SendToChannel productIds={selected} onClose={() => setSending(false)} onSent={() => setReloadKey((k) => k + 1)} />}
       <DataTable columns={columns} rows={data.items} rowKey={(p) => p.id} pageSize={PRODUCT_PAGE_SIZE}
         selectable selected={selected} onSelectionChange={setSelected}

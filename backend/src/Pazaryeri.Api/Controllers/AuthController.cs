@@ -1,3 +1,5 @@
+using Pazaryeri.Api.Modules;
+using Pazaryeri.Application.Modules;
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
@@ -9,6 +11,7 @@ namespace Pazaryeri.Api.Controllers;
 
 [ApiController]
 [Route("api/auth")]
+[CoreModule]
 public class AuthController(IAuthService auth) : ControllerBase
 {
     [AllowAnonymous]

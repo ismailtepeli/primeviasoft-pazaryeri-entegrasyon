@@ -1,3 +1,5 @@
+using Pazaryeri.Api.Modules;
+using Pazaryeri.Application.Modules;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Pazaryeri.Application.Pricing;
@@ -19,6 +21,7 @@ public record ApplyPricingResult(int Updated, int Unchanged, int NoCost);
 
 [ApiController]
 [Route("api/pricing")]
+[RequiresModule(ModuleIds.StockPrice)]
 public class PricingController(AppDbContext db, TimeProvider time) : ControllerBase
 {
     private static readonly string[] Channels = [.. SupportedChannels.All];

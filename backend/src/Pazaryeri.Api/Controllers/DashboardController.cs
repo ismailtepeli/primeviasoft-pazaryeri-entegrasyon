@@ -1,3 +1,5 @@
+using Pazaryeri.Api.Modules;
+using Pazaryeri.Application.Modules;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Pazaryeri.Domain;
@@ -28,6 +30,7 @@ public class DashboardController(AppDbContext db, TimeProvider time) : Controlle
     private static readonly TimeSpan TurkeyOffset = TimeSpan.FromHours(3);
 
     /// <summary>Genel bakış KPI kartları: bugünkü sipariş, bekleyen kargo, senkron hatası, aktif ürün.</summary>
+    [CoreModule]
     [HttpGet("summary")]
     public async Task<DashboardSummary> Summary(CancellationToken ct)
     {
@@ -41,6 +44,7 @@ public class DashboardController(AppDbContext db, TimeProvider time) : Controlle
     }
 
     /// <summary>Hata durumundaki senkron işleri, en yeni önce. <paramref name="take"/> kadar kayıt döner; toplam sayı da gelir.</summary>
+    [CoreModule]
     [HttpGet("sync-errors")]
     public async Task<SyncErrorPage> SyncErrors([FromQuery] int skip = 0, [FromQuery] int take = 5, CancellationToken ct = default)
     {
@@ -69,6 +73,7 @@ public class DashboardController(AppDbContext db, TimeProvider time) : Controlle
     };
 
     /// <summary>Desteklenen her kanal için bağlantı durumu ve son senkron zamanı.</summary>
+    [RequiresModule(ModuleIds.Marketplace)]
     [HttpGet("channels")]
     public async Task<List<ChannelStatusDto>> Channels(CancellationToken ct)
     {

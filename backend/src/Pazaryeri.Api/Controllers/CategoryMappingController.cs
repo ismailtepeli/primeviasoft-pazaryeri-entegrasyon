@@ -1,3 +1,5 @@
+using Pazaryeri.Api.Modules;
+using Pazaryeri.Application.Modules;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Pazaryeri.Domain;
@@ -20,6 +22,7 @@ public record SaveCategoryMappingInput(string? Channel, Guid? CategoryId, long? 
 
 [ApiController]
 [Route("api")]
+[RequiresModule(ModuleIds.Marketplace)]
 public class CategoryMappingController(AppDbContext db) : ControllerBase
 {
     public const int SearchLimit = 50;

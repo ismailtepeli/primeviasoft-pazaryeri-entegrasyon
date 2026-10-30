@@ -1,3 +1,5 @@
+using Pazaryeri.Api.Modules;
+using Pazaryeri.Application.Modules;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Pazaryeri.Application.Jobs;
@@ -13,6 +15,7 @@ public record SyncNowResult(int Enqueued, int Skipped, int Channels);
 
 [ApiController]
 [Route("api/sync")]
+[CoreModule]
 public class SyncNowController(AppDbContext db, IJobQueue queue, IEnumerable<ISyncJobHandler> handlers) : ControllerBase
 {
     /// <summary>Kullanıcının "Şimdi senkronla" ile tetikleyebildiği, periyodik çalışan iş türleri.</summary>

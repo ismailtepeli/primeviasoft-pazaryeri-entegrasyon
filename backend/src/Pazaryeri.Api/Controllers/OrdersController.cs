@@ -1,3 +1,5 @@
+using Pazaryeri.Api.Modules;
+using Pazaryeri.Application.Modules;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Pazaryeri.Application.Orders;
@@ -19,6 +21,7 @@ public record OrderListPage(IReadOnlyList<OrderRowDto> Items, int Total, OrderCo
 
 [ApiController]
 [Route("api/orders")]
+[RequiresModule(ModuleIds.Orders)]
 public class OrdersController(AppDbContext db, TimeProvider time) : ControllerBase
 {
     public const int MaxPageSize = 100;

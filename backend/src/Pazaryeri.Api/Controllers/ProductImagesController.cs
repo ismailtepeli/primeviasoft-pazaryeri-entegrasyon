@@ -1,3 +1,5 @@
+using Pazaryeri.Api.Modules;
+using Pazaryeri.Application.Modules;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -13,6 +15,7 @@ public record ReorderImagesInput(List<Guid>? Ids);
 
 [ApiController]
 [Route("api/products/{productId:guid}/images")]
+[CoreModule]
 public class ProductImagesController(IProductImageService images) : ControllerBase
 {
     [HttpPost]
@@ -51,6 +54,7 @@ public class ProductImagesController(IProductImageService images) : ControllerBa
 [ApiController]
 [AllowAnonymous]
 [Route("api/images")]
+[CoreModule]
 public class ImagesController(AppDbContext db, IImageStore store) : ControllerBase
 {
     [HttpGet("{id:guid}")]
