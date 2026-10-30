@@ -91,3 +91,8 @@
 /* Theme toggle */
 .theme-toggle { background: transparent; border: 1.5px solid var(--navy-500); color: var(--on-inverse-muted); border-radius: var(--radius-pill); padding: 8px 14px; font: 500 14px var(--font-sans); cursor: pointer; }
 .theme-toggle:hover { color: var(--on-inverse); border-color: var(--on-inverse-muted); }
+
+/* Bulk action bar */
+.bulk-bar { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--space-3); padding: var(--space-3) var(--space-4); background: var(--teal-50); border: 1px solid var(--line); border-radius: var(--radius-lg); color: var(--navy); }
+[data-theme="dark"] .bulk-bar { background: var(--navy-700); color: var(--ink); }
+.bulk-bar__actions { display: flex; flex-wrap: wrap; gap: var(--space-2); }

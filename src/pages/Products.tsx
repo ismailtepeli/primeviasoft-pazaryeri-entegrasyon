@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { api } from '../api/client'
 import type { Product, ProductChannel, ProductPage } from '../api/types'
-import { Button, DataTable, FilterChips, StatusBadge, type Column } from '../components'
+import { BulkBar, Button, DataTable, FilterChips, StatusBadge, type Column } from '../components'
 import { Link } from 'react-router-dom'
 import { failureReasons, listingBadge } from './listingStatus'
 import ProductImport from './ProductImport'
@@ -57,13 +57,14 @@ export default function Products() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string>()
   const [detail, setDetail] = useState<Detail>()
+  const [selected, setSelected] = useState<string[]>([])
   const [importing, setImporting] = useState(false)
   const [reloadKey, setReloadKey] = useState(0)
   const columns = useMemo(() => makeColumns(setDetail), [])
 
   // Yazarken her tuşta istek atmamak için aramayı kısa bir gecikmeyle uygula.
   useEffect(() => {
-    const t = setTimeout(() => { setSearch(input); setPage(1) }, 300)
+    const t = setTimeout(() => { setSearch(input); setPage(1); setSelected([]) }, 300)
     return () => clearTimeout(t)
   }, [input])
 
@@ -83,7 +84,7 @@ export default function Products() {
         <input className="ps-input products__search" type="search" placeholder="Ürün adı veya barkod ara"
           aria-label="Ürün adı veya barkod ara" value={input} onChange={(e) => setInput(e.target.value)} />
         <Button onClick={() => setImporting((v) => !v)}>Excel ile yükle</Button>
-        <FilterChips items={chips} value={filter} onChange={(v) => { setFilter(v as ProductFilter); setPage(1) }} />
+        <FilterChips items={chips} value={filter} onChange={(v) => { setFilter(v as ProductFilter); setPage(1); setSelected([]) }} />
       </div>
       {importing && <ProductImport onClose={() => setImporting(false)} onImported={() => { setPage(1); setReloadKey((k) => k + 1) }} />}
       {detail && (
@@ -102,7 +103,12 @@ export default function Products() {
         </section>
       )}
       {error && <p role="alert" style={{ color: 'var(--danger)' }}>{error}</p>}
+      <BulkBar count={selected.length} onClear={() => setSelected([])} actions={[
+        { label: 'Kanala gönder', disabledReason: 'Yakında' },
+        { label: 'Kural uygula', disabledReason: 'Yakında' },
+      ]} />
       <DataTable columns={columns} rows={data.items} rowKey={(p) => p.id} pageSize={PRODUCT_PAGE_SIZE}
+        selectable selected={selected} onSelectionChange={setSelected}
         serverPaging={{ page: page - 1, total: data.total, onPageChange: (p) => setPage(p + 1) }}
         emptyTitle={loading ? 'Yükleniyor…' : 'Ürün bulunamadı'}
         emptyText={loading ? '' : 'Aramayı veya filtreyi değiştirmeyi deneyin.'} />
