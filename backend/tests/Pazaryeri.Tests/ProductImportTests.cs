@@ -215,4 +215,22 @@ public class ProductImportTests : IAsyncLifetime
         var images = await NewDb(tenant).ProductImages.OrderBy(i => i.Position).ToListAsync();
         Assert.Equal(["https://cdn.example.com/1.jpg", "https://cdn.example.com/2.jpg"], images.Select(i => i.ExternalUrl));
     }
+
+    [Fact]
+    public async Task Maliyet_sutunu_okunur_bos_birakilirsa_mevcut_maliyet_korunur_ve_gecersiz_maliyet_hata_olur()
+    {
+        var tenant = await NewTenantAsync("Maliyet");
+        string[] header = [.. Header, "Maliyet"];
+        await using (var db = NewDb(tenant))
+            await Import(db, Sheet(header, ["", "A", "M1", null, 1, 100, 60.5], ["", "B", "M2", null, 1, 100, null], ["", "C", "M3", null, 1, 100, -3]));
+
+        await using var again = NewDb(tenant);
+        var result = await Import(again, Sheet(header, ["", "A", "M1", null, 2, 100, null])); // maliyet boş: eski değer kalır
+
+        Assert.Empty(result.Errors);
+        var products = await NewDb(tenant).Products.OrderBy(p => p.Barcode).ToListAsync();
+        Assert.Equal(["M1", "M2"], products.Select(p => p.Barcode)); // M3 hatalı olduğu için kaydedilmedi
+        Assert.Equal((60.5m, 2), (products[0].Cost!.Value, products[0].Stock));
+        Assert.Null(products[1].Cost);
+    }
 }

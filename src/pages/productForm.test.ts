@@ -7,7 +7,7 @@ describe('productForm', () => {
   it('geçerli formda hata yok ve girdi temizlenir', () => {
     expect(validateForm(valid)).toEqual({})
     expect(toInput(valid)).toEqual({
-      name: 'Çanta', barcode: 'B1', mainId: null, variant: null, brand: null, description: null, categoryId: null, stock: 5, price: 99.9, vatRate: 20,
+      name: 'Çanta', barcode: 'B1', mainId: null, variant: null, brand: null, description: null, categoryId: null, stock: 5, price: 99.9, vatRate: 20, cost: null,
     })
   })
 
@@ -16,6 +16,9 @@ describe('productForm', () => {
     expect(Object.keys(errors).sort()).toEqual(['barcode', 'name', 'price', 'stock'])
     expect(validateForm({ ...valid, stock: '-1' }).stock).toBeDefined()
     expect(validateForm({ ...valid, price: 'abc' }).price).toBeDefined()
+    expect(validateForm({ ...valid, cost: '0' }).cost).toBeDefined()
+    expect(validateForm({ ...valid, cost: '60,5' }).cost).toBeUndefined()
+    expect(toInput({ ...valid, cost: '60,5' }).cost).toBe(60.5)
   })
 
   it('uzunluk sınırlarını uygular', () => {

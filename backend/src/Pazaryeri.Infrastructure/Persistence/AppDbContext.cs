@@ -18,6 +18,8 @@ public class AppDbContext(DbContextOptions<AppDbContext> options, ITenantProvide
     public DbSet<ProductListing> ProductListings => Set<ProductListing>();
     public DbSet<ProductImage> ProductImages => Set<ProductImage>();
     public DbSet<Category> Categories => Set<Category>();
+    public DbSet<PricingRule> PricingRules => Set<PricingRule>();
+    public DbSet<ChannelPrice> ChannelPrices => Set<ChannelPrice>();
     public DbSet<AttributeMapping> AttributeMappings => Set<AttributeMapping>();
     public DbSet<AttributeValueMapping> AttributeValueMappings => Set<AttributeValueMapping>();
     public DbSet<CategoryMapping> CategoryMappings => Set<CategoryMapping>();
@@ -100,6 +102,7 @@ public class AppDbContext(DbContextOptions<AppDbContext> options, ITenantProvide
             b.Property(p => p.Variant).HasMaxLength(500);
             b.HasIndex(p => new { p.TenantId, p.MainId });
             b.Property(p => p.Price).HasPrecision(18, 2);
+            b.Property(p => p.Cost).HasPrecision(18, 2);
             b.HasIndex(p => new { p.TenantId, p.Barcode }).IsUnique(); // barkod kiracı içinde tekil
             b.HasOne<Tenant>().WithMany().HasForeignKey(p => p.TenantId).OnDelete(DeleteBehavior.Restrict);
             b.HasMany(p => p.Listings).WithOne().HasForeignKey(l => l.ProductId).OnDelete(DeleteBehavior.Cascade);
@@ -155,6 +158,26 @@ public class AppDbContext(DbContextOptions<AppDbContext> options, ITenantProvide
             b.HasIndex(m => new { m.CategoryId, m.Channel }).IsUnique(); // kategori başına kanal başına tek eşleme
             b.HasOne<Category>().WithMany().HasForeignKey(m => m.CategoryId).OnDelete(DeleteBehavior.Cascade);
             b.HasOne<Tenant>().WithMany().HasForeignKey(m => m.TenantId).OnDelete(DeleteBehavior.Restrict);
+        });
+
+        builder.Entity<PricingRule>(b =>
+        {
+            b.Property(r => r.Channel).HasMaxLength(40).IsRequired();
+            b.Property(r => r.CommissionPercent).HasPrecision(5, 2);
+            b.Property(r => r.ProfitPercent).HasPrecision(7, 2);
+            b.Property(r => r.ShippingCost).HasPrecision(18, 2);
+            b.Property(r => r.Rounding).HasConversion<string>().HasMaxLength(20);
+            b.HasIndex(r => new { r.TenantId, r.Channel }).IsUnique(); // kiracı başına kanal başına tek kural
+            b.HasOne<Tenant>().WithMany().HasForeignKey(r => r.TenantId).OnDelete(DeleteBehavior.Restrict);
+        });
+
+        builder.Entity<ChannelPrice>(b =>
+        {
+            b.Property(c => c.Channel).HasMaxLength(40).IsRequired();
+            b.Property(c => c.Price).HasPrecision(18, 2);
+            b.HasIndex(c => new { c.ProductId, c.Channel }).IsUnique();
+            b.HasOne<Product>().WithMany().HasForeignKey(c => c.ProductId).OnDelete(DeleteBehavior.Cascade);
+            b.HasOne<Tenant>().WithMany().HasForeignKey(c => c.TenantId).OnDelete(DeleteBehavior.Restrict);
         });
 
         builder.Entity<AttributeMapping>(b =>

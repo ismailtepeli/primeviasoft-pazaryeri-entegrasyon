@@ -23,8 +23,9 @@ public class ProductImportService(AppDbContext db) : IProductImportService
     private const string BrandHeader = "Marka";
     private const string CategoryHeader = "Kategori";
     private const string ImagesHeader = "Görseller";
-    private static readonly string[] Headers = [MainIdHeader, NameHeader, BarcodeHeader, VariantHeader, StockHeader, PriceHeader, BrandHeader, CategoryHeader, ImagesHeader];
-    private static readonly string[] Optional = [MainIdHeader, VariantHeader, BrandHeader, CategoryHeader, ImagesHeader];
+    private const string CostHeader = "Maliyet";
+    private static readonly string[] Headers = [MainIdHeader, NameHeader, BarcodeHeader, VariantHeader, StockHeader, PriceHeader, BrandHeader, CategoryHeader, ImagesHeader, CostHeader];
+    private static readonly string[] Optional = [MainIdHeader, VariantHeader, BrandHeader, CategoryHeader, ImagesHeader, CostHeader];
 
     public byte[] BuildTemplate()
     {
@@ -64,7 +65,7 @@ public class ProductImportService(AppDbContext db) : IProductImportService
         return ms.ToArray();
     }
 
-    private sealed record Row(int Number, string MainId, string Name, string Barcode, string? Variant, int Stock, decimal Price, string? Brand, string? Category, List<string> Images);
+    private sealed record Row(int Number, string MainId, string Name, string Barcode, string? Variant, int Stock, decimal Price, string? Brand, string? Category, List<string> Images, decimal? Cost);
 
     public async Task<ProductImportResult> ImportAsync(Stream xlsx, CancellationToken ct = default)
     {
@@ -112,13 +113,19 @@ public class ProductImportService(AppDbContext db) : IProductImportService
                 if (stockError is not null) problems.Add(stockError);
                 var price = ParsePrice(ws.Cell(r, columns[PriceHeader]), out var priceError);
                 if (priceError is not null) problems.Add(priceError);
+                decimal? cost = null;
+                if (!ws.Cell(r, columns[CostHeader]).IsEmpty())
+                {
+                    cost = ParsePrice(ws.Cell(r, columns[CostHeader]), out var costError);
+                    if (costError is not null) problems.Add(costError.Replace("Fiyat", "Maliyet"));
+                }
 
                 if (problems.Count > 0) { errors.Add(new ProductImportError(r, barcode, string.Join(" ", problems))); continue; }
 
                 seen[barcode] = r;
                 var variant = Text(VariantHeader);
                 rows.Add(new Row(r, mainId, name, barcode, variant.Length > 0 ? variant : null, stock, price,
-                    brand.Length > 0 ? brand : null, category.Length > 0 ? category : null, images));
+                    brand.Length > 0 ? brand : null, category.Length > 0 ? category : null, images, cost));
             }
 
             // Aynı ana kodlu varyantlar aynı ürün adını taşımalı; ilk satırın adı geçerli sayılır.
@@ -172,6 +179,7 @@ public class ProductImportService(AppDbContext db) : IProductImportService
             product.Variant = row.Variant;
             product.Stock = row.Stock;
             product.Price = row.Price;
+            if (row.Cost is not null) product.Cost = row.Cost;
         }
         await db.SaveChangesAsync(ct);
         return (created, updated);

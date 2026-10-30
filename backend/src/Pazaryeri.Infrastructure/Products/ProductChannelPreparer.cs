@@ -39,6 +39,9 @@ public class ProductChannelPreparer(AppDbContext db, IConfiguration config)
         var channelAttributes = (await db.ChannelAttributes.Where(a => a.Channel == channel && a.IsActive && mapped.Values.Contains(a.CategoryExternalId)).OrderBy(a => a.Name).ToListAsync(ct))
             .GroupBy(a => a.CategoryExternalId).ToDictionary(g => g.Key, g => g.ToList());
 
+        // Fiyat kuralıyla hesaplanmış kanal fiyatı varsa katalog fiyatı yerine o gönderilir.
+        var prices = await db.ChannelPrices.Where(c => c.Channel == channel && productIds.Contains(c.ProductId)).ToDictionaryAsync(c => c.ProductId, c => c.Price, ct);
+
         var result = new List<PreparedProduct>(products.Count);
         foreach (var product in products)
         {
@@ -63,7 +66,7 @@ public class ProductChannelPreparer(AppDbContext db, IConfiguration config)
                 CategoryId = own?.CategoryId ?? (product.CategoryId is { } c && mapped.TryGetValue(c, out var externalId) ? externalId : null),
                 CargoCompanyId = own?.CargoCompanyId, DimensionalWeight = own?.DimensionalWeight, AttributesJson = attributesJson,
             };
-            var (item, reasons) = TrendyolProductMapper.Map(product, effective, publicBaseUrl);
+            var (item, reasons) = TrendyolProductMapper.Map(product, effective, publicBaseUrl, prices.TryGetValue(product.Id, out var channelPrice) ? channelPrice : null);
             if (requiredMissing.Count > 0)
             {
                 reasons = [.. reasons, MissingRequiredMessage(requiredMissing)];

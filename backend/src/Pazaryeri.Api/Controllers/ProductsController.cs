@@ -17,10 +17,10 @@ public record ProductDto(Guid Id, string Name, string Barcode, string? MainId, s
 public record ProductPage(IReadOnlyList<ProductDto> Items, int Total);
 
 public record ProductDetailDto(Guid Id, string Name, string Barcode, string? MainId, string? Variant, string? Brand, string? Description,
-    Guid? CategoryId, string? CategoryPath, int Stock, decimal Price, int VatRate, IReadOnlyList<ProductImageDto> Images, IReadOnlyList<ProductChannelDto> Channels);
+    Guid? CategoryId, string? CategoryPath, int Stock, decimal Price, int VatRate, decimal? Cost, IReadOnlyList<ProductImageDto> Images, IReadOnlyList<ProductChannelDto> Channels);
 
 public record ProductInput(string? Name, string? Barcode, string? MainId, string? Variant, string? Brand, string? Description,
-    Guid? CategoryId, int Stock, decimal Price, int VatRate = 20);
+    Guid? CategoryId, int Stock, decimal Price, int VatRate = 20, decimal? Cost = null);
 
 [ApiController]
 [Route("api/products")]
@@ -113,6 +113,7 @@ public class ProductsController(AppDbContext db) : ControllerBase
         if (barcode.Length == 0) return "Barkod boş olamaz.";
         if (barcode.Length > 100) return "Barkod 100 karakteri aşamaz.";
         if (input.VatRate is not (0 or 1 or 10 or 20)) return "KDV oranı 0, 1, 10 ya da 20 olmalı.";
+        if (input.Cost is { } cost && (cost <= 0 || cost > 100_000_000m)) return "Maliyet sıfırdan büyük olmalı.";
         if (input.Stock < 0) return "Stok negatif olamaz.";
         if (input.Price <= 0) return "Fiyat sıfırdan büyük olmalı.";
         if (input.Price > 9_999_999_999m) return "Fiyat çok büyük.";
@@ -132,6 +133,7 @@ public class ProductsController(AppDbContext db) : ControllerBase
         product.Description = string.IsNullOrWhiteSpace(input.Description) ? null : input.Description.Trim();
         product.CategoryId = input.CategoryId;
         product.VatRate = input.VatRate;
+        product.Cost = input.Cost is { } c2 ? decimal.Round(c2, 2) : null;
         product.Stock = input.Stock;
         product.Price = decimal.Round(input.Price, 2);
         return null;
@@ -143,7 +145,7 @@ public class ProductsController(AppDbContext db) : ControllerBase
     {
         var paths = await CategoryPaths.LoadAsync(db, ct);
         return new ProductDetailDto(p.Id, p.Name, p.Barcode, p.MainId, p.Variant, p.Brand, p.Description, p.CategoryId,
-            p.CategoryId is { } c ? paths.GetValueOrDefault(c) : null, p.Stock, p.Price, p.VatRate,
+            p.CategoryId is { } c ? paths.GetValueOrDefault(c) : null, p.Stock, p.Price, p.VatRate, p.Cost,
             p.Images.OrderBy(i => i.Position).Select(ProductImageService.ToDto).ToList(),
             p.Listings.OrderBy(l => l.Channel).Select(l => new ProductChannelDto(l.Channel, l.Status.ToString(), l.ErrorMessage)).ToList());
     }

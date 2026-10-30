@@ -108,6 +108,7 @@ export interface ProductDetail {
   stock: number
   price: number
   vatRate: number
+  cost: number | null
   images: ProductImage[]
   channels: ProductChannel[]
 }
@@ -123,6 +124,7 @@ export interface ProductInput {
   stock: number
   price: number
   vatRate: number
+  cost: number | null
 }
 
 export interface Category {
@@ -253,4 +255,20 @@ export interface AttributeMappingList {
   requiredMapped: number
   rows: AttributeRow[]
   sources: SourceAttribute[]
+}
+
+export interface PricingRuleDto {
+  channel: string
+  commissionPercent: number
+  shippingCost: number
+  profitPercent: number
+  rounding: string
+  /** Kural kaydedilmiş mi; false ise gösterilen değerler varsayılandır. */
+  saved: boolean
+}
+
+export interface ApplyPricingResult {
+  updated: number
+  unchanged: number
+  noCost: number
 }

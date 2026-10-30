@@ -1,0 +1,11 @@
+.stock-price { display: flex; flex-direction: column; gap: var(--space-5); max-width: 860px; }
+.pricing { display: flex; flex-direction: column; gap: var(--space-4); max-width: none; }
+.pricing h2 { margin: 0; font: 700 21px var(--font-display); letter-spacing: -0.01em; }
+.pricing__formula { margin: 0; color: var(--ink-muted); font-size: 14.5px; }
+.pricing__grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: var(--space-4); }
+.pricing__preview { display: flex; flex-direction: column; gap: var(--space-3); border: 1px solid var(--line); border-radius: 12px; padding: var(--space-4); background: var(--surface-alt); }
+.pricing__preview .field { max-width: 240px; }
+.pricing__breakdown { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: var(--space-3); margin: 0; }
+.pricing__breakdown dt { color: var(--ink-muted); font-size: 13.5px; }
+.pricing__breakdown dd { margin: 0; font: 600 18px var(--font-sans); }
+.pricing__result dd { font: 700 26px var(--font-display); color: var(--accent); }

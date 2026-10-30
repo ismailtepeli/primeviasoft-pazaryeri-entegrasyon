@@ -12,7 +12,7 @@ public static class TrendyolProductMapper
 
     private sealed record AttributeJson(long AttributeId, long? ValueId, string? CustomValue);
 
-    public static (ProductItem? Item, List<string> Missing) Map(Product p, ProductChannelData? data, string? publicBaseUrl)
+    public static (ProductItem? Item, List<string> Missing) Map(Product p, ProductChannelData? data, string? publicBaseUrl, decimal? channelPrice = null)
     {
         var missing = new List<string>();
         if (data?.BrandId is null) missing.Add("Trendyol marka eşlemesi yok.");
@@ -52,8 +52,8 @@ public static class TrendyolProductMapper
             CategoryId: data.CategoryId!.Value,
             Description: p.Description!,
             Quantity: p.Stock,
-            ListPrice: p.Price,
-            SalePrice: p.Price,
+            ListPrice: channelPrice ?? p.Price,
+            SalePrice: channelPrice ?? p.Price,
             VatRate: p.VatRate,
             ImageUrls: images,
             Attributes: attributes,

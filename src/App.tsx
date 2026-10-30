@@ -8,6 +8,7 @@ import PagePlaceholder from './pages/PagePlaceholder'
 import { AuthProvider } from './auth/AuthContext'
 import ProductEdit from './pages/ProductEdit'
 import Products from './pages/Products'
+import StockPrice from './pages/StockPrice'
 import Stores from './pages/Stores'
 import SyncErrors from './pages/SyncErrors'
 import { routes } from './routes'
@@ -17,6 +18,7 @@ function pageFor(path: string, label: string) {
   if (path === '/magazalar') return <Stores />
   if (path === '/urunler') return <Products />
   if (path === '/esleme') return <Mapping />
+  if (path === '/stok-fiyat') return <StockPrice />
   return <PagePlaceholder name={label} />
 }
 
