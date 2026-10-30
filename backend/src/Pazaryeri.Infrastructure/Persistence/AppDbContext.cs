@@ -21,6 +21,7 @@ public class AppDbContext(DbContextOptions<AppDbContext> options, ITenantProvide
     public DbSet<StockMovement> StockMovements => Set<StockMovement>();
     public DbSet<ChannelStockPriceState> ChannelStockPriceStates => Set<ChannelStockPriceState>();
     public DbSet<StockPriceBatch> StockPriceBatches => Set<StockPriceBatch>();
+    public DbSet<TenantModule> TenantModules => Set<TenantModule>();
     public DbSet<Order> Orders => Set<Order>();
     public DbSet<OrderPackage> OrderPackages => Set<OrderPackage>();
     public DbSet<OrderLine> OrderLines => Set<OrderLine>();
@@ -181,6 +182,13 @@ public class AppDbContext(DbContextOptions<AppDbContext> options, ITenantProvide
             b.HasIndex(m => new { m.TenantId, m.Channel, m.Type, m.Reference, m.ProductId }).IsUnique();
             b.HasIndex(m => new { m.TenantId, m.CreatedAt });
             b.HasOne<Product>().WithMany().HasForeignKey(m => m.ProductId).OnDelete(DeleteBehavior.Cascade);
+            b.HasOne<Tenant>().WithMany().HasForeignKey(m => m.TenantId).OnDelete(DeleteBehavior.Restrict);
+        });
+
+        builder.Entity<TenantModule>(b =>
+        {
+            b.Property(m => m.ModuleId).HasMaxLength(50).IsRequired();
+            b.HasIndex(m => new { m.TenantId, m.ModuleId }).IsUnique();
             b.HasOne<Tenant>().WithMany().HasForeignKey(m => m.TenantId).OnDelete(DeleteBehavior.Restrict);
         });
 

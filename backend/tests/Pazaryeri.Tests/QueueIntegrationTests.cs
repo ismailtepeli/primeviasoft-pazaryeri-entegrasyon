@@ -54,6 +54,7 @@ public class QueueIntegrationTests : IAsyncLifetime
         var services = new ServiceCollection();
         services.AddDbContext<AppDbContext>(o => o.UseSqlServer(Conn));
         services.AddScoped<ITenantProvider, AmbientProvider>();
+        services.AddMemoryCache(); services.AddSingleton(TimeProvider.System); services.AddScoped<Pazaryeri.Application.Modules.IModuleService, Pazaryeri.Infrastructure.Modules.ModuleService>();
         services.AddSingleton<ISyncJobHandler, OkHandler>();
         services.AddSingleton<ISyncJobHandler, AlwaysFailsHandler>();
         services.AddSingleton<ISyncJobHandler>(_flaky);
@@ -126,6 +127,25 @@ public class QueueIntegrationTests : IAsyncLifetime
         var connection = await _rabbit.GetAsync(CancellationToken.None);
         await using var ch = await connection.CreateChannelAsync();
         return (await ch.QueueDeclarePassiveAsync(queue)).MessageCount;
+    }
+
+    [Fact]
+    public async Task Modulu_kapali_kiracinin_isi_calistirilmadan_Cancelled_olur_hata_sayilmaz()
+    {
+        var tenant = await NewTenantAsync("t-modul-kapali");
+        await using (var scope = _sp.CreateAsyncScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+            db.TenantModules.Add(new TenantModule { TenantId = tenant, ModuleId = Pazaryeri.Application.Modules.ModuleIds.Marketplace, Enabled = false });
+            await db.SaveChangesAsync();
+        }
+        var id = await EnqueueAsync(tenant, SyncJobType.CatalogSync); // katalog senkronu pazaryeri modülüne bağlı
+
+        var job = await WaitForAsync(tenant, id, j => j.Status == SyncJobStatus.Cancelled);
+
+        Assert.Equal(0, job.Attempts);
+        Assert.Contains("Modül kapalı", job.Error);
+        Assert.Equal(0u, await QueueCountAsync(RabbitMqTopology.DeadLetterQueue));
     }
 
     [Fact]

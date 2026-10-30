@@ -18,6 +18,8 @@ public enum SyncJobStatus
     Retrying,
     Succeeded,
     Failed,
+    /// <summary>İşin modülü kiracı için kapalıydı; çalıştırılmadı (hata sayılmaz).</summary>
+    Cancelled,
 }
 
 /// <summary>Kanal ile yapılan her senkron işinin kaydı (kuyruğa atılan işin izi).</summary>

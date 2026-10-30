@@ -10,6 +10,8 @@ using Pazaryeri.Application.Jobs;
 using Pazaryeri.Application.Marketplace;
 using Pazaryeri.Application.Products;
 using Pazaryeri.Application.Stock;
+using Pazaryeri.Application.Modules;
+using Pazaryeri.Infrastructure.Modules;
 using Pazaryeri.Infrastructure.Orders;
 using Pazaryeri.Infrastructure.Products;
 using Pazaryeri.Infrastructure.Stock;
@@ -48,6 +50,8 @@ public static class DependencyInjection
         services.AddScoped<StockPriceDeltaPlanner>();
         services.AddScoped<IStockPoolService, StockPoolService>();
         services.AddScoped<ISyncJobHandler, StockPriceSyncHandler>();
+        services.AddMemoryCache();
+        services.AddScoped<IModuleService, ModuleService>();
         services.AddScoped<ISyncJobHandler, OrderSyncHandler>();
         services.AddScoped<OrderIngestService>();
         services.AddScoped<IProductSendService, ProductSendService>();

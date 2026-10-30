@@ -1381,6 +1381,42 @@ namespace Pazaryeri.Infrastructure.Persistence.Migrations
                     b.ToTable("Tenants");
                 });
 
+            modelBuilder.Entity("Pazaryeri.Domain.TenantModule", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<bool>("Enabled")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("ModuleId")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.Property<string>("SettingsJson")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("TenantId");
+
+                    b.HasIndex("TenantId", "ModuleId")
+                        .IsUnique();
+
+                    b.ToTable("TenantModules");
+                });
+
             modelBuilder.Entity("Pazaryeri.Domain.User", b =>
                 {
                     b.Property<Guid>("Id")
@@ -1704,6 +1740,15 @@ namespace Pazaryeri.Infrastructure.Persistence.Migrations
                 });
 
             modelBuilder.Entity("Pazaryeri.Domain.SyncJob", b =>
+                {
+                    b.HasOne("Pazaryeri.Domain.Tenant", null)
+                        .WithMany()
+                        .HasForeignKey("TenantId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("Pazaryeri.Domain.TenantModule", b =>
                 {
                     b.HasOne("Pazaryeri.Domain.Tenant", null)
                         .WithMany()

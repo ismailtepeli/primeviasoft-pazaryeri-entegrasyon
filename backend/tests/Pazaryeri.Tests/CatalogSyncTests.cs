@@ -373,6 +373,7 @@ public class CatalogSyncTests : IAsyncLifetime
         await NewTenantAsync("Katalog C", connected: false);
         var services = new ServiceCollection();
         services.AddSingleton<ITenantProvider, AmbientProvider>();
+        services.AddMemoryCache(); services.AddSingleton(TimeProvider.System); services.AddScoped<Pazaryeri.Application.Modules.IModuleService, Pazaryeri.Infrastructure.Modules.ModuleService>();
         services.AddDbContext<AppDbContext>(o => o.UseSqlServer(Conn));
         services.AddScoped<IJobQueue, RecordingQueue>();
         await using var sp = services.BuildServiceProvider();

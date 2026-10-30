@@ -5,6 +5,7 @@ using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Pazaryeri.Application.Abstractions;
 using Pazaryeri.Application.Jobs;
+using Pazaryeri.Application.Modules;
 using Pazaryeri.Domain;
 using Pazaryeri.Infrastructure.Persistence;
 using RabbitMQ.Client;
@@ -79,8 +80,21 @@ public class SyncJobWorker(
         var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
 
         var job = await db.SyncJobs.FirstOrDefaultAsync(j => j.Id == message.JobId, ct);
-        if (job is null || job.Status is SyncJobStatus.Succeeded or SyncJobStatus.Failed)
+        if (job is null || job.Status is SyncJobStatus.Succeeded or SyncJobStatus.Failed or SyncJobStatus.Cancelled)
         {
+            await channel.BasicAckAsync(ea.DeliveryTag, false, ct);
+            return;
+        }
+
+        var moduleId = ModuleCatalog.ModuleFor(job.Type);
+        if (!await scope.ServiceProvider.GetRequiredService<IModuleService>().IsEnabledAsync(moduleId, message.TenantId, ct))
+        {
+            // Modül kapalı: iş çalıştırılmaz ve yeniden denenmez; hata da sayılmaz.
+            job.Status = SyncJobStatus.Cancelled;
+            job.Error = $"Modül kapalı ({moduleId}); iş çalıştırılmadı.";
+            job.FinishedAt = DateTime.UtcNow;
+            await db.SaveChangesAsync(ct);
+            logger.LogInformation("İş {JobId} ({Type}) iptal edildi: {Module} modülü kapalı.", job.Id, job.Type, moduleId);
             await channel.BasicAckAsync(ea.DeliveryTag, false, ct);
             return;
         }

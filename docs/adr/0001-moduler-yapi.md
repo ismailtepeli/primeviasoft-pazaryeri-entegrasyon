@@ -70,7 +70,7 @@ Modüle özgü ayarlar `SettingsJson` içinde, modülün kendi tipli sınıfıyl
 - B2B storefront ve yönetim paneli **aynı API'yi ve aynı veritabanını** kullanır. Ayrı servis ya da ayrı okuma modeli şimdilik yok (karmaşıklık, tutarsızlık riski; stok havuzu tek doğru kaynak olmalı).
 - Storefront için ayrı yol alanı: `api/store/...`; yönetim panelinin `api/...` uç noktalarından ayrı yetkilendirme (bayi JWT'si, ayrı hedef kitle) ve ayrı hız sınırı.
 - Yük ya da güvenlik gerektirirse `api/store` ileride ayrı bir süreç olarak dağıtılabilir; kod tek çözümde, ayrı klasörlerde tutulur (`storefront/` ön yüz, `Pazaryeri.Api` içinde `Store` denetleyicileri).
-- Kiracı çözümleme storefront'ta alan adı/yol önekinden yapılır (#48 kararına bağlı); yönetim panelinde mevcut JWT'deki kiracı kullanılır.
+- Kiracı çözümleme storefront'ta **alt alan adından** yapılır (`firma.b2b.site`); isteyen firma sonradan kendi alan adını (`b2b.firma.com`) bağlar. Yol öneki (`/s/firma`) yalnızca geliştirme ve ilk deneme için yedektir (joker DNS/SSL gerektirmez). Gerekçe: bayi siteyi firmanın kendi sitesi olarak görür, adresler kısa ve kalıcı kalır, özel alan adına geçiş adresleri bozmaz. Joker DNS/SSL ve alan adı sahipliği #48 ile netleşir. Yönetim panelinde mevcut JWT'deki kiracı kullanılır.
 
 ### 7. Ön yüz
 

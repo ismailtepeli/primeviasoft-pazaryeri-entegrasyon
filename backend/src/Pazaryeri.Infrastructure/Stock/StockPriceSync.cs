@@ -6,6 +6,7 @@ using Pazaryeri.Application.Abstractions;
 using Pazaryeri.Application.Credentials;
 using Pazaryeri.Application.Jobs;
 using Pazaryeri.Application.Marketplace;
+using Pazaryeri.Application.Modules;
 using Pazaryeri.Application.Stock;
 using Pazaryeri.Domain;
 using Pazaryeri.Infrastructure.Persistence;
@@ -234,6 +235,7 @@ public class StockPriceSyncScheduler(IServiceScopeFactory scopes, ILogger<StockP
                 using var scope = scopes.CreateScope();
                 var sp = scope.ServiceProvider;
                 var db = sp.GetRequiredService<AppDbContext>();
+                if (!await sp.GetRequiredService<IModuleService>().IsEnabledAsync(ModuleIds.StockPrice, tenantId, ct)) continue;
                 if (await db.SyncJobs.AnyAsync(j => j.Type == SyncJobType.StockPriceSync && j.Channel == channel && InFlight.Contains(j.Status), ct)) continue;
                 if ((await sp.GetRequiredService<StockPriceDeltaPlanner>().PlanAsync(channel, ct)).Items.Count == 0) continue;
                 await sp.GetRequiredService<IJobQueue>().EnqueueAsync(SyncJobType.StockPriceSync, channel, ct: ct);

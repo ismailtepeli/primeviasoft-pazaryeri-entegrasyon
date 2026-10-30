@@ -3,6 +3,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Pazaryeri.Application.Abstractions;
 using Pazaryeri.Application.Jobs;
+using Pazaryeri.Application.Modules;
 using Pazaryeri.Domain;
 using Pazaryeri.Infrastructure.Persistence;
 using Quartz;
@@ -28,9 +29,13 @@ public class CatalogWeeklySync(IServiceScopeFactory scopes, ILogger<CatalogWeekl
             using (var scope = scopes.CreateScope())
             {
                 var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
-                tenantId = await db.ChannelConnections.IgnoreQueryFilters()
+                var modules = scope.ServiceProvider.GetRequiredService<IModuleService>();
+                var candidates = await db.ChannelConnections.IgnoreQueryFilters()
                     .Where(c => c.Channel == channel && c.Status == ConnectionStatus.Connected)
-                    .OrderBy(c => c.CreatedAt).Select(c => (Guid?)c.TenantId).FirstOrDefaultAsync(ct);
+                    .OrderBy(c => c.CreatedAt).Select(c => c.TenantId).ToListAsync(ct);
+                tenantId = null;
+                foreach (var candidate in candidates) // katalog herkese açık; pazaryeri modülü açık ilk kiracı yeter
+                    if (await modules.IsEnabledAsync(ModuleIds.Marketplace, candidate, ct)) { tenantId = candidate; break; }
             }
             if (tenantId is null) { logger.LogInformation("{Channel} için bağlı kiracı yok; katalog senkronu atlandı.", channel); continue; }
 

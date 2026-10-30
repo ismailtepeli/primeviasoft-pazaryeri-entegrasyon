@@ -5,6 +5,7 @@ using Pazaryeri.Application.Abstractions;
 using Pazaryeri.Application.Credentials;
 using Pazaryeri.Application.Jobs;
 using Pazaryeri.Application.Marketplace;
+using Pazaryeri.Application.Modules;
 using Pazaryeri.Application.Stock;
 using Pazaryeri.Domain;
 using Pazaryeri.Infrastructure.Persistence;
@@ -189,6 +190,7 @@ public class OrderSyncScheduler(IServiceScopeFactory scopes, ILogger<OrderSyncSc
                 using var scope = scopes.CreateScope();
                 var sp = scope.ServiceProvider;
                 var db = sp.GetRequiredService<AppDbContext>();
+                if (!await sp.GetRequiredService<IModuleService>().IsEnabledAsync(ModuleIds.Orders, tenantId, ct)) continue;
                 if (await db.SyncJobs.AnyAsync(j => j.Type == SyncJobType.OrderSync && j.Channel == channel && InFlight.Contains(j.Status), ct)) continue;
                 await sp.GetRequiredService<IJobQueue>().EnqueueAsync(SyncJobType.OrderSync, channel, ct: ct);
             }

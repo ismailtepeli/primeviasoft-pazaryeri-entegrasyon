@@ -312,6 +312,7 @@ public class StockPriceSyncTests : IAsyncLifetime
         services.AddSingleton<IChannelCredentialService>(new FakeCreds());
         services.AddSingleton<IMarketplaceClientFactory>(new FakeFactory(client));
         services.AddSingleton<TimeProvider>(time);
+        services.AddMemoryCache(); services.AddScoped<Pazaryeri.Application.Modules.IModuleService, Pazaryeri.Infrastructure.Modules.ModuleService>();
         services.AddScoped<StockPriceDeltaPlanner>();
         services.AddScoped<IJobQueue, RecordingQueue>();
         return services.BuildServiceProvider();
@@ -385,6 +386,23 @@ public class StockPriceSyncTests : IAsyncLifetime
         Assert.Equal((SyncJobType.StockPriceSync, "Trendyol"), (job.Type, job.Channel));
         await using var all = NewDb();
         Assert.Equal(1, await all.SyncJobs.IgnoreQueryFilters().CountAsync()); // diğer kiracılar için iş yok
+    }
+
+    [Fact]
+    public async Task Zamanlayici_stok_fiyat_modulu_kapali_kiracida_is_acmaz()
+    {
+        var tenant = await NewTenantAsync("Sched Modul");
+        await ProductsAsync(tenant, 1);
+        await using (var db = NewDb(tenant))
+        {
+            db.TenantModules.Add(new TenantModule { ModuleId = Pazaryeri.Application.Modules.ModuleIds.StockPrice, Enabled = false });
+            await db.SaveChangesAsync();
+        }
+        using var sp = Services(new FakeClient(), new FakeTime());
+
+        await new StockPriceSyncScheduler(sp.GetRequiredService<IServiceScopeFactory>(), NullLogger<StockPriceSyncScheduler>.Instance).Execute(null!, default);
+
+        Assert.Empty(await NewDb(tenant).SyncJobs.ToListAsync());
     }
 
     // --- durum uç noktası ---
