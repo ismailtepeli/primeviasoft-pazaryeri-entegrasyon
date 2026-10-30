@@ -1,7 +1,9 @@
 import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom'
 import { ProductDetailPage, ProductsPage } from './catalogPages'
+import { CartProvider } from './CartContext'
+import { CartPage, OrderDetailPage, OrdersPage } from './orderPages'
 import Layout from './Layout'
-import { ApplyPage, LoginPage, RequireLogin, SoonPage, StatusPage } from './pages'
+import { ApplyPage, LoginPage, RequireLogin, StatusPage } from './pages'
 import { StoreProvider } from './StoreContext'
 import { resolveTenant } from './tenant'
 
@@ -21,17 +23,20 @@ export default function App() {
         if (state === 'unavailable') return <StatusPage title="Site şu an hizmet dışı" text="Bayi sitesi geçici olarak kapalı. Lütfen daha sonra tekrar deneyin." action={{ label: 'Tekrar dene', onClick: retry }} />
         return <StatusPage title="Site açılamadı" text={state.error} action={{ label: 'Tekrar dene', onClick: retry }} />
       }}>
+        <CartProvider>
         <Routes>
           <Route element={<Layout />}>
             <Route index element={<RequireLogin><ProductsPage /></RequireLogin>} />
             <Route path="urun/:id" element={<RequireLogin><ProductDetailPage /></RequireLogin>} />
             <Route path="giris" element={<LoginPage />} />
             <Route path="basvuru" element={<ApplyPage />} />
-            <Route path="sepet" element={<RequireLogin><SoonPage title="Sepet" /></RequireLogin>} />
-            <Route path="siparislerim" element={<RequireLogin><SoonPage title="Siparişlerim" /></RequireLogin>} />
+            <Route path="sepet" element={<RequireLogin><CartPage /></RequireLogin>} />
+            <Route path="siparislerim" element={<RequireLogin><OrdersPage /></RequireLogin>} />
+            <Route path="siparis/:id" element={<RequireLogin><OrderDetailPage /></RequireLogin>} />
             <Route path="*" element={<Navigate to="/" replace />} />
           </Route>
         </Routes>
+        </CartProvider>
       </StoreProvider>
     </BrowserRouter>
   )

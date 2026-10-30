@@ -27,6 +27,8 @@ public class AppDbContext(DbContextOptions<AppDbContext> options, ITenantProvide
     public DbSet<DealerUser> DealerUsers => Set<DealerUser>();
     public DbSet<B2BSettings> B2BSettings => Set<B2BSettings>();
     public DbSet<GroupVisibilityRule> GroupVisibilityRules => Set<GroupVisibilityRule>();
+    public DbSet<Cart> Carts => Set<Cart>();
+    public DbSet<CartItem> CartItems => Set<CartItem>();
     public DbSet<PriceList> PriceLists => Set<PriceList>();
     public DbSet<PriceListItem> PriceListItems => Set<PriceListItem>();
     public DbSet<Order> Orders => Set<Order>();
@@ -247,6 +249,23 @@ public class AppDbContext(DbContextOptions<AppDbContext> options, ITenantProvide
             b.HasOne<Tenant>().WithMany().HasForeignKey(r => r.TenantId).OnDelete(DeleteBehavior.Restrict);
         });
 
+        builder.Entity<Cart>(b =>
+        {
+            b.Property(c => c.RowVersion).IsRowVersion();
+            b.HasIndex(c => new { c.TenantId, c.DealerId }).IsUnique();
+            b.HasMany(c => c.Items).WithOne().HasForeignKey(i => i.CartId).OnDelete(DeleteBehavior.Cascade);
+            b.HasOne<Dealer>().WithMany().HasForeignKey(c => c.DealerId).OnDelete(DeleteBehavior.Cascade);
+            b.HasOne<Tenant>().WithMany().HasForeignKey(c => c.TenantId).OnDelete(DeleteBehavior.Restrict);
+        });
+
+        builder.Entity<CartItem>(b =>
+        {
+            b.Property(i => i.PriceAtAdd).HasPrecision(18, 2);
+            b.HasIndex(i => new { i.CartId, i.ProductId }).IsUnique();
+            b.HasOne<Product>().WithMany().HasForeignKey(i => i.ProductId).OnDelete(DeleteBehavior.Cascade);
+            b.HasOne<Tenant>().WithMany().HasForeignKey(i => i.TenantId).OnDelete(DeleteBehavior.Restrict);
+        });
+
         builder.Entity<PriceList>(b =>
         {
             b.Property(l => l.Name).HasMaxLength(120).IsRequired();
@@ -283,6 +302,11 @@ public class AppDbContext(DbContextOptions<AppDbContext> options, ITenantProvide
             b.Property(o => o.CustomerName).HasMaxLength(200);
             b.Property(o => o.Status).HasConversion<string>().HasMaxLength(20);
             b.Property(o => o.TotalPrice).HasPrecision(18, 2);
+            b.Property(o => o.TotalNet).HasPrecision(18, 2);
+            b.Property(o => o.ShippingAddress).HasMaxLength(1000);
+            b.Property(o => o.Note).HasMaxLength(1000);
+            b.Property(o => o.Currency).HasMaxLength(3);
+            b.HasIndex(o => new { o.TenantId, o.DealerId, o.OrderDate });
             b.HasIndex(o => new { o.TenantId, o.Channel, o.OrderNumber }).IsUnique();
             b.HasIndex(o => new { o.TenantId, o.Status, o.OrderDate });
             b.HasMany(o => o.Packages).WithOne().HasForeignKey(p => p.OrderId).OnDelete(DeleteBehavior.Cascade);

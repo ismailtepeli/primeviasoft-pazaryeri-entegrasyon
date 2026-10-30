@@ -1,10 +1,12 @@
 export class StoreApiError extends Error {
   status: number
   code?: string
-  constructor(status: number, message: string, code?: string) {
+  body?: unknown
+  constructor(status: number, message: string, code?: string, body?: unknown) {
     super(message)
     this.status = status
     this.code = code
+    this.body = body
   }
 }
 
@@ -25,7 +27,7 @@ export async function storeApi<T>(path: string, init: RequestInit = {}, token?: 
   if (!res.ok) {
     const body = await res.json().catch(() => null)
     const fallback = res.status === 429 ? 'Çok fazla istek; bir dakika sonra tekrar deneyin.' : `İstek başarısız (${res.status})`
-    throw new StoreApiError(res.status, body?.error ?? body?.message ?? fallback, body?.code)
+    throw new StoreApiError(res.status, body?.error ?? body?.message ?? fallback, body?.code, body)
   }
   if (res.status === 204) return undefined as T
   return res.json() as Promise<T>

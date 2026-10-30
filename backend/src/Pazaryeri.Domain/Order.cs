@@ -25,6 +25,13 @@ public class Order : TenantEntity
     public string CustomerName { get; set; } = string.Empty;
     /// <summary>Kanalda son değişiklik zamanı (paketlerin en yenisi).</summary>
     public DateTime LastModifiedAt { get; set; }
+    /// <summary>B2B siparişlerinde siparişi veren bayi; pazaryeri siparişlerinde boş.</summary>
+    public Guid? DealerId { get; set; }
+    public string? ShippingAddress { get; set; }
+    public string? Note { get; set; }
+    /// <summary>B2B: KDV hariç toplam (TotalPrice KDV dahildir). Pazaryeri siparişlerinde boş.</summary>
+    public decimal? TotalNet { get; set; }
+    public string? Currency { get; set; }
     public List<OrderPackage> Packages { get; set; } = [];
 }
 
@@ -54,6 +61,11 @@ public class OrderLine : TenantEntity
     public string Name { get; set; } = string.Empty;
     public int Quantity { get; set; }
     public decimal Price { get; set; }
+    /// <summary>B2B: Price KDV dahil mi ve KDV oranı.</summary>
+    public bool PriceIncludesVat { get; set; }
+    public int VatRate { get; set; }
+    /// <summary>B2B: ürün kaydı (sipariş geçmişinden tekrar sipariş için).</summary>
+    public Guid? ProductId { get; set; }
     /// <summary>Satış stok havuzundan düşüldü (ya da denendi); aynı satır bir daha düşülmez.</summary>
     public bool StockDeducted { get; set; }
     /// <summary>İptal/iade stoğu geri eklendi (ya da denendi).</summary>

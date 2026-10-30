@@ -2,30 +2,35 @@ import { useEffect, useState, type FormEvent } from 'react'
 import { Link, NavLink, Outlet, useNavigate, useSearchParams } from 'react-router-dom'
 import { storeApi } from './api'
 import { childrenOf, type StoreCategory } from './catalog'
+import { useCart } from './CartContext'
 import { useStore } from './StoreContext'
+import { applyTheme, readPreference, savePreference, themeOptions, type ThemePreference } from './theme'
 
-type Theme = 'light' | 'dark'
-
-function initialTheme(): Theme {
-  try {
-    const saved = localStorage.getItem('theme')
-    if (saved === 'light' || saved === 'dark') return saved
-  } catch { /* depolama kapalı olabilir */ }
-  return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'
-}
-
-function ThemeToggle() {
-  const [theme, setTheme] = useState<Theme>(initialTheme)
+/** Açık / Koyu / Sistem seçimi; tercih saklanır, varsayılan açıktır. */
+function ThemeSwitch() {
+  const [preference, setPreference] = useState<ThemePreference>(readPreference)
   useEffect(() => {
-    document.documentElement.dataset.theme = theme
-    try { localStorage.setItem('theme', theme) } catch { /* depolama kapalı olabilir */ }
-  }, [theme])
-  return <button type="button" className="store-link-btn" onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}>{theme === 'dark' ? 'Açık tema' : 'Koyu tema'}</button>
+    applyTheme(preference)
+    savePreference(preference)
+    if (preference !== 'system') return
+    const media = window.matchMedia('(prefers-color-scheme: dark)')
+    const onChange = () => applyTheme('system')
+    media.addEventListener('change', onChange)
+    return () => media.removeEventListener('change', onChange)
+  }, [preference])
+  return (
+    <div className="store-theme" role="group" aria-label="Tema">
+      {themeOptions.map((o) => (
+        <button key={o.value} type="button" className="store-theme__btn" aria-pressed={preference === o.value} onClick={() => setPreference(o.value)}>{o.label}</button>
+      ))}
+    </div>
+  )
 }
 
 /** Sayfa iskeleti: üst çubuk (logo, arama, sepet, hesap), kategori menüsü, içerik, alt bilgi. */
 export default function Layout() {
   const { info, user, token, logout } = useStore()
+  const { cart } = useCart()
   const navigate = useNavigate()
   const [q, setQ] = useState('')
   const [categories, setCategories] = useState<StoreCategory[]>([])
@@ -63,7 +68,7 @@ export default function Layout() {
         <nav className="store-account" aria-label="Hesap">
           {token ? (
             <>
-              <Link to="/sepet" className="store-link">Sepet (0)</Link>
+              <Link to="/sepet" className="store-link">Sepet ({cart.itemCount})</Link>
               <Link to="/siparislerim" className="store-link">Siparişlerim</Link>
               <span className="store-user" title={user?.email}>{user?.fullName || user?.email}</span>
               <button type="button" className="store-link-btn" onClick={logout}>Çıkış yap</button>
@@ -87,7 +92,7 @@ export default function Layout() {
       <main className="store-content"><Outlet context={{ categories }} /></main>
       <footer className="store-footer">
         <span>© {new Date().getFullYear()} {info.name}</span>
-        <ThemeToggle />
+        <ThemeSwitch />
       </footer>
     </div>
   )

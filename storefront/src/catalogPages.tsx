@@ -5,6 +5,7 @@ import {
   PAGE_SIZE, apiQuery, categoryTrail, checkQuantity, effectiveMin, formatMoney, parseListParams, quantityNote, sortOptions, toSearchParams, vatNote,
   type StoreCategory, type StoreProduct, type StoreProductDetail, type StoreProductPage, type StoreStock, type ViewMode,
 } from './catalog'
+import { useCart } from './CartContext'
 import { useStore } from './StoreContext'
 
 export interface CatalogContext { categories: StoreCategory[] }
@@ -25,15 +26,23 @@ function Thumb({ url, name }: { url: string | null; name: string }) {
   return url ? <img className="store-thumb" src={url} alt={name} loading="lazy" /> : <span className="store-thumb store-thumb--empty" aria-label="Görsel yok">—</span>
 }
 
-/** Adet girişi: koli/minimum kuralını yazarken gösterir. Sepet #70 ile gelecek; o zamana kadar yalnızca doğrulama yapılır. */
+/** Adet girişi: koli/minimum kuralını yazarken gösterir ve geçerliyse ürünü sepete ekler. */
 function QuantityBox({ product, value, onChange }: { product: StoreProduct; value: string; onChange: (v: string) => void }) {
+  const { add } = useCart()
+  const [state, setState] = useState<{ ok: boolean; text: string }>()
   const check = checkQuantity(value, product.minOrderQuantity, product.packSize)
+
+  async function addToCart() {
+    try { await add(product.id, Number(value)); setState({ ok: true, text: 'Sepete eklendi.' }) }
+    catch (e) { setState({ ok: false, text: (e as Error).message }) }
+  }
   return (
     <div className="store-qty">
       <div className="store-qty__row">
         <input className="ps-input store-qty__input" inputMode="numeric" aria-label={`${product.name} adet`} aria-invalid={!check.valid} value={value} onChange={(e) => onChange(e.target.value)} />
-        <button type="button" className="ps-btn" disabled title="Sepet yakında">Sepete ekle</button>
+        <button type="button" className="ps-btn" disabled={!check.valid || !product.stock.inStock} onClick={addToCart}>Sepete ekle</button>
       </div>
+      {state && <span role={state.ok ? 'status' : 'alert'} className={state.ok ? 'store-ok' : 'store-error'}>{state.text}</span>}
       {!check.valid && <button type="button" className="store-qty__fix" onClick={() => onChange(String(check.suggested))}>{check.error} ({check.suggested} yap)</button>}
     </div>
   )
