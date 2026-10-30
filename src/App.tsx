@@ -4,6 +4,7 @@ import DesignSystem from './pages/DesignSystem'
 import Login from './pages/Login'
 import Mapping from './pages/Mapping'
 import Dealers from './pages/Dealers'
+import PriceLists from './pages/PriceLists'
 import Orders from './pages/Orders'
 import Overview from './pages/Overview'
 import PagePlaceholder from './pages/PagePlaceholder'
@@ -26,6 +27,7 @@ function pageFor(path: string, label: string) {
   if (path === '/siparisler') return <Orders />
   if (path === '/ayarlar') return <Settings />
   if (path === '/bayiler') return <Dealers />
+  if (path === '/fiyat-listeleri') return <PriceLists />
   return <PagePlaceholder name={label} />
 }
 

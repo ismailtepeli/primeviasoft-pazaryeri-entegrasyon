@@ -33,6 +33,7 @@ export const routes: RouteDef[] = [
   { path: '/esleme', label: 'Eşleme', title: 'Eşleme', subtitle: 'Kategori, özellik ve değerleri kanallarla eşleyin.', action: 'Eşlemeyi kaydet', module: 'marketplace' },
   { path: '/stok-fiyat', label: 'Stok ve fiyat', title: 'Stok ve fiyat', subtitle: 'Kanal bazlı stok dağıtımı ve fiyat kurallarını belirleyin.', action: 'Kuralı kaydet', module: 'stock-price' },
   { path: '/bayiler', label: 'Bayiler', title: 'Bayiler', subtitle: 'Bayi başvurularını onaylayın, bayileri ve gruplarını yönetin.', action: '', module: 'dealers' },
+  { path: '/fiyat-listeleri', label: 'Fiyat listeleri', title: 'Fiyat listeleri', subtitle: 'Bayi gruplarına ve bayilere özel fiyat, iskonto, minimum sipariş ve koli adedi.', action: '', module: 'price-lists' },
   { path: '/siparisler', label: 'Siparişler', title: 'Siparişler', subtitle: 'Tüm kanallardaki siparişleri tek listede takip edin.', action: 'Siparişleri çek', module: 'orders' },
   { path: '/iadeler', label: 'İadeler', title: 'İadeler', subtitle: 'İade taleplerini görüntüleyin ve yönetin.', action: 'İadeleri çek', module: 'orders' },
   { path: '/faturalar', label: 'Faturalar', title: 'Faturalar', subtitle: 'Kesilen faturaları ve durumlarını izleyin.', action: 'Fatura kes', module: 'invoices' },

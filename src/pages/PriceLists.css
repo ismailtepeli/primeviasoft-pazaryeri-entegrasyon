@@ -1,0 +1,22 @@
+.price-lists { display: flex; flex-direction: column; gap: var(--space-4); }
+.price-toolbar { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--space-3); }
+.price-toolbar p { margin: 0; }
+.price-toolbar__search { width: min(360px, 100%); }
+.price-cell { display: flex; flex-direction: column; gap: 2px; }
+.price-cell__meta { color: var(--ink-muted); font-size: 13px; }
+.price-editor { display: flex; flex-direction: column; gap: var(--space-4); }
+.price-editor__head { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-3); }
+.price-editor__head h2 { margin: 0; font-size: 18px; margin-right: auto; }
+.price-editor__actions { display: flex; justify-content: flex-end; gap: var(--space-2); }
+.price-form { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: var(--space-3) var(--space-4); }
+.price-checks { display: flex; flex-wrap: wrap; gap: var(--space-2) var(--space-5); }
+.price-checks label, .price-toolbar label { display: inline-flex; align-items: center; gap: var(--space-2); }
+.price-items { display: flex; flex-direction: column; gap: var(--space-3); border-top: 1px solid var(--line); padding-top: var(--space-4); }
+.price-items h3 { margin: 0; font-size: 16px; }
+.price-import { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-3); }
+.price-fields { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2); }
+.price-fields__input { width: 120px; }
+.price-fields__qty { width: 72px; }
+.price-errors { margin: 0; padding-left: var(--space-5); color: var(--danger); }
+.price-ok { margin: 0; color: var(--success); }
+.price-error { margin: 0; color: var(--danger); }

@@ -25,6 +25,8 @@ public class AppDbContext(DbContextOptions<AppDbContext> options, ITenantProvide
     public DbSet<Dealer> Dealers => Set<Dealer>();
     public DbSet<DealerGroup> DealerGroups => Set<DealerGroup>();
     public DbSet<DealerUser> DealerUsers => Set<DealerUser>();
+    public DbSet<PriceList> PriceLists => Set<PriceList>();
+    public DbSet<PriceListItem> PriceListItems => Set<PriceListItem>();
     public DbSet<Order> Orders => Set<Order>();
     public DbSet<OrderPackage> OrderPackages => Set<OrderPackage>();
     public DbSet<OrderLine> OrderLines => Set<OrderLine>();
@@ -225,6 +227,28 @@ public class AppDbContext(DbContextOptions<AppDbContext> options, ITenantProvide
             b.Property(u => u.Role).HasConversion<string>().HasMaxLength(20);
             b.HasIndex(u => new { u.TenantId, u.Email }).IsUnique();
             b.HasOne<Tenant>().WithMany().HasForeignKey(u => u.TenantId).OnDelete(DeleteBehavior.Restrict);
+        });
+
+        builder.Entity<PriceList>(b =>
+        {
+            b.Property(l => l.Name).HasMaxLength(120).IsRequired();
+            b.Property(l => l.Currency).HasMaxLength(3).IsRequired();
+            b.Property(l => l.DiscountPercent).HasPrecision(5, 2);
+            b.HasIndex(l => new { l.TenantId, l.Name }).IsUnique();
+            b.HasIndex(l => new { l.TenantId, l.GroupId });
+            b.HasIndex(l => new { l.TenantId, l.DealerId });
+            b.HasMany(l => l.Items).WithOne().HasForeignKey(i => i.PriceListId).OnDelete(DeleteBehavior.Cascade);
+            b.HasOne<DealerGroup>().WithMany().HasForeignKey(l => l.GroupId).OnDelete(DeleteBehavior.Restrict);
+            b.HasOne<Dealer>().WithMany().HasForeignKey(l => l.DealerId).OnDelete(DeleteBehavior.Restrict);
+            b.HasOne<Tenant>().WithMany().HasForeignKey(l => l.TenantId).OnDelete(DeleteBehavior.Restrict);
+        });
+
+        builder.Entity<PriceListItem>(b =>
+        {
+            b.Property(i => i.Price).HasPrecision(18, 2);
+            b.HasIndex(i => new { i.PriceListId, i.ProductId }).IsUnique();
+            b.HasOne<Product>().WithMany().HasForeignKey(i => i.ProductId).OnDelete(DeleteBehavior.Cascade);
+            b.HasOne<Tenant>().WithMany().HasForeignKey(i => i.TenantId).OnDelete(DeleteBehavior.Restrict);
         });
 
         builder.Entity<TenantModule>(b =>

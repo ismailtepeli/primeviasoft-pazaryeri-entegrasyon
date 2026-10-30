@@ -47,6 +47,8 @@ public static class DependencyInjection
         services.AddSingleton<ITokenService, JwtTokenService>();
         services.AddScoped<IAuthService, AuthService>();
         services.AddScoped<IDealerAuthService, DealerAuthService>();
+        services.AddScoped<Pricing.DealerPriceService>();
+        services.AddScoped<Pricing.PriceListImportService>();
         services.AddScoped<IProductImportService, ProductImportService>();
         services.AddScoped<IProductImageService, ProductImageService>();
         services.AddScoped<ProductChannelPreparer>();

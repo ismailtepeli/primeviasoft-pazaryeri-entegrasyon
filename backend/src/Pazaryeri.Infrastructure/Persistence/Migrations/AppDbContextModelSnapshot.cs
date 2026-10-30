@@ -993,6 +993,99 @@ namespace Pazaryeri.Infrastructure.Persistence.Migrations
                     b.ToTable("OrderSyncStates");
                 });
 
+            modelBuilder.Entity("Pazaryeri.Domain.PriceList", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("Currency")
+                        .IsRequired()
+                        .HasMaxLength(3)
+                        .HasColumnType("nvarchar(3)");
+
+                    b.Property<Guid?>("DealerId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<decimal?>("DiscountPercent")
+                        .HasPrecision(5, 2)
+                        .HasColumnType("decimal(5,2)");
+
+                    b.Property<Guid?>("GroupId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(120)
+                        .HasColumnType("nvarchar(120)");
+
+                    b.Property<bool>("PricesIncludeVat")
+                        .HasColumnType("bit");
+
+                    b.Property<bool>("ShowVatIncluded")
+                        .HasColumnType("bit");
+
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("DealerId");
+
+                    b.HasIndex("GroupId");
+
+                    b.HasIndex("TenantId");
+
+                    b.HasIndex("TenantId", "DealerId");
+
+                    b.HasIndex("TenantId", "GroupId");
+
+                    b.HasIndex("TenantId", "Name")
+                        .IsUnique();
+
+                    b.ToTable("PriceLists");
+                });
+
+            modelBuilder.Entity("Pazaryeri.Domain.PriceListItem", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<decimal>("Price")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<Guid>("PriceListId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("ProductId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ProductId");
+
+                    b.HasIndex("TenantId");
+
+                    b.HasIndex("PriceListId", "ProductId")
+                        .IsUnique();
+
+                    b.ToTable("PriceListItems");
+                });
+
             modelBuilder.Entity("Pazaryeri.Domain.PricingRule", b =>
                 {
                     b.Property<Guid>("Id")
@@ -1073,10 +1166,16 @@ namespace Pazaryeri.Infrastructure.Persistence.Migrations
                         .HasMaxLength(100)
                         .HasColumnType("nvarchar(100)");
 
+                    b.Property<int>("MinOrderQuantity")
+                        .HasColumnType("int");
+
                     b.Property<string>("Name")
                         .IsRequired()
                         .HasMaxLength(500)
                         .HasColumnType("nvarchar(500)");
+
+                    b.Property<int>("PackSize")
+                        .HasColumnType("int");
 
                     b.Property<decimal>("Price")
                         .HasPrecision(18, 2)
@@ -1826,6 +1925,46 @@ namespace Pazaryeri.Infrastructure.Persistence.Migrations
                         .IsRequired();
                 });
 
+            modelBuilder.Entity("Pazaryeri.Domain.PriceList", b =>
+                {
+                    b.HasOne("Pazaryeri.Domain.Dealer", null)
+                        .WithMany()
+                        .HasForeignKey("DealerId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("Pazaryeri.Domain.DealerGroup", null)
+                        .WithMany()
+                        .HasForeignKey("GroupId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("Pazaryeri.Domain.Tenant", null)
+                        .WithMany()
+                        .HasForeignKey("TenantId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("Pazaryeri.Domain.PriceListItem", b =>
+                {
+                    b.HasOne("Pazaryeri.Domain.PriceList", null)
+                        .WithMany("Items")
+                        .HasForeignKey("PriceListId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("Pazaryeri.Domain.Product", null)
+                        .WithMany()
+                        .HasForeignKey("ProductId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("Pazaryeri.Domain.Tenant", null)
+                        .WithMany()
+                        .HasForeignKey("TenantId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+                });
+
             modelBuilder.Entity("Pazaryeri.Domain.PricingRule", b =>
                 {
                     b.HasOne("Pazaryeri.Domain.Tenant", null)
@@ -1990,6 +2129,11 @@ namespace Pazaryeri.Infrastructure.Persistence.Migrations
             modelBuilder.Entity("Pazaryeri.Domain.OrderPackage", b =>
                 {
                     b.Navigation("Lines");
+                });
+
+            modelBuilder.Entity("Pazaryeri.Domain.PriceList", b =>
+                {
+                    b.Navigation("Items");
                 });
 
             modelBuilder.Entity("Pazaryeri.Domain.Product", b =>

@@ -255,6 +255,8 @@ public class DealerGroupsController(AppDbContext db) : ControllerBase
         if (group is null) return NotFound(new { error = "Grup bulunamadı." });
         var count = await db.Dealers.CountAsync(d => d.GroupId == id, ct);
         if (count > 0) return Conflict(new { error = $"Bu grupta {count} bayi var; önce bayilerin grubunu değiştirin." });
+        var lists = await db.PriceLists.CountAsync(l => l.GroupId == id, ct);
+        if (lists > 0) return Conflict(new { error = $"Bu gruba bağlı {lists} fiyat listesi var; önce listeyi silin ya da başka gruba bağlayın." });
         db.DealerGroups.Remove(group);
         await db.SaveChangesAsync(ct);
         return NoContent();

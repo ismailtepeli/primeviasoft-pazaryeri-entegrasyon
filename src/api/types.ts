@@ -426,6 +426,67 @@ export interface DealerGroup {
   dealerCount: number
 }
 
+export interface PriceListRow {
+  id: string
+  name: string
+  currency: string
+  groupId: string | null
+  groupName: string | null
+  dealerId: string | null
+  dealerName: string | null
+  discountPercent: number | null
+  pricesIncludeVat: boolean
+  showVatIncluded: boolean
+  isActive: boolean
+  itemCount: number
+}
+
+export interface PriceListInput {
+  name: string
+  currency: string
+  groupId: string | null
+  dealerId: string | null
+  discountPercent: number | null
+  pricesIncludeVat: boolean
+  showVatIncluded: boolean
+  isActive: boolean
+}
+
+export interface PriceListItemRow {
+  productId: string
+  name: string
+  barcode: string
+  generalPrice: number
+  listPrice: number | null
+  minOrderQuantity: number
+  packSize: number
+}
+
+export interface PriceListItemPage {
+  items: PriceListItemRow[]
+  total: number
+}
+
+export interface PriceImportResult {
+  created: number
+  updated: number
+  skipped: number
+  errors: { row: number; message: string }[]
+}
+
+export interface PricePreviewRow {
+  productId: string
+  name: string
+  net: number
+  gross: number
+  display: number
+  displayIncludesVat: boolean
+  currency: string
+  source: 'General' | 'GroupList' | 'DealerList'
+  minOrderQuantity: number
+  packSize: number
+}
+
 export interface DashboardSummary {
   todayOrders: number
   awaitingShipment: number

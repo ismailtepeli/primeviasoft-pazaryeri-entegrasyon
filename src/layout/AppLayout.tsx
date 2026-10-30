@@ -12,6 +12,7 @@ function headerAction(path: string, label: string) {
   if (path.startsWith('/urunler/')) return <Link to="/urunler" className="ps-btn ps-btn--secondary">← Ürünlere dön</Link>
   if (path === '/ayarlar') return null
   if (path === '/bayiler') return null // bayi ekleme eylemi sayfanın içinde
+  if (path === '/fiyat-listeleri') return null // liste ekleme eylemi sayfanın içinde
   if (path === '/stok-fiyat') return null // kural kaydetme/uygulama eylemleri sayfanın içinde
   if (path === '/esleme') return null // eşleme düzenleme eylemleri #22+ ile gelecek
   if (path === '/urunler') return <Link to="/urunler/yeni" className="ps-btn ps-btn--primary">Ürün ekle</Link>
