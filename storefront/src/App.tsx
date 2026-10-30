@@ -27,6 +27,7 @@ export default function App() {
         <Routes>
           <Route element={<Layout />}>
             <Route index element={<RequireLogin><ProductsPage /></RequireLogin>} />
+            <Route path="kategori/*" element={<RequireLogin><ProductsPage /></RequireLogin>} />
             <Route path="urun/:id" element={<RequireLogin><ProductDetailPage /></RequireLogin>} />
             <Route path="giris" element={<LoginPage />} />
             <Route path="basvuru" element={<ApplyPage />} />

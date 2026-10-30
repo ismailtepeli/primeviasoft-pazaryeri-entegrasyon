@@ -1,0 +1,10 @@
+.cat-filter { display: flex; flex-direction: column; gap: 2px; padding: var(--space-3); background: var(--surface); border: 1px solid var(--line); border-radius: 22px; }
+.cat-filter__list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 2px; }
+.cat-filter__nested { margin-left: var(--space-3); padding-left: var(--space-2); border-left: 1px solid var(--line); }
+.cat-filter__item { display: flex; align-items: center; gap: var(--space-2); width: 100%; padding: 7px 10px; border: 0; border-radius: 12px; background: none; color: var(--ink-soft); font: 500 14px var(--font-sans); text-align: left; cursor: pointer; }
+.cat-filter__item:hover { background: var(--surface-alt); color: var(--ink); }
+.cat-filter__item:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+.cat-filter__item--active { background: var(--info-bg); color: var(--info-fg); font-weight: 700; }
+.cat-filter__item--off .cat-filter__name { text-decoration: line-through; color: var(--ink-muted); }
+.cat-filter__name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.cat-filter__count { color: var(--ink-muted); font-size: 12.5px; }

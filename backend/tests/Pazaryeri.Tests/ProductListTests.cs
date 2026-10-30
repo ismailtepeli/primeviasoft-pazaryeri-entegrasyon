@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Pazaryeri.Api.Controllers;
 using Pazaryeri.Application.Abstractions;
@@ -103,5 +104,53 @@ public class ProductListTests : IAsyncLifetime
         Assert.Equal(["Amazon", "Trendyol"], item.Channels.Select(x => x.Channel));
         Assert.Equal("Barkod geçersiz", item.Channels[1].ErrorMessage);
         Assert.NotEqual(a, b);
+    }
+
+    [Fact]
+    public async Task Kategori_susgeci_alt_kategorileri_kapsar_none_kategorisizleri_getirir()
+    {
+        var tenant = await SeedTenantAsync("KategoriSuzgec");
+        await using var db = NewDb(tenant);
+        var root = new Category { Name = "Giyim" };
+        db.Categories.Add(root);
+        await db.SaveChangesAsync();
+        var child = new Category { Name = "Tişört", ParentId = root.Id };
+        var other = new Category { Name = "Kırtasiye" };
+        db.Categories.AddRange(child, other);
+        await db.SaveChangesAsync();
+        db.Products.AddRange(
+            new Product { Name = "A", Barcode = "A", CategoryId = root.Id }, new Product { Name = "B", Barcode = "B", CategoryId = child.Id },
+            new Product { Name = "C", Barcode = "C", CategoryId = other.Id }, new Product { Name = "D", Barcode = "D" });
+        await db.SaveChangesAsync();
+        var c = new ProductsController(db);
+
+        Assert.Equal(["A", "B"], (await c.List(null, null, 1, 20, root.Id.ToString(), default)).Items.Select(i => i.Name).OrderBy(n => n).ToList());
+        Assert.Equal(["B"], (await c.List(null, null, 1, 20, child.Id.ToString(), default)).Items.Select(i => i.Name).ToList());
+        Assert.Equal(["D"], (await c.List(null, null, 1, 20, "none", default)).Items.Select(i => i.Name).ToList());
+        Assert.Equal(4, (await c.List(null, null, 1, 20, null, default)).Total);
+        Assert.Equal(4, (await c.List(null, null, 1, 20, "geçersiz", default)).Total); // tanınmayan değer süzgeç sayılmaz
+    }
+
+    [Fact]
+    public async Task Toplu_kategori_degistirme_dogrulanir_ve_kategorisiz_yapabilir()
+    {
+        var tenant = await SeedTenantAsync("TopluKategori");
+        await using var db = NewDb(tenant);
+        var cat = new Category { Name = "Hedef" };
+        db.Categories.Add(cat);
+        var a = new Product { Name = "A", Barcode = "A" };
+        var b = new Product { Name = "B", Barcode = "B", CategoryId = cat.Id };
+        db.Products.AddRange(a, b);
+        await db.SaveChangesAsync();
+        var c = new ProductsController(db);
+
+        Assert.IsType<BadRequestObjectResult>((await c.SetCategory(new BulkCategoryInput([], cat.Id), default)).Result);
+        Assert.IsType<BadRequestObjectResult>((await c.SetCategory(new BulkCategoryInput([a.Id], Guid.NewGuid()), default)).Result);
+        Assert.IsType<BadRequestObjectResult>((await c.SetCategory(new BulkCategoryInput(Enumerable.Range(0, 1001).Select(_ => Guid.NewGuid()).ToList(), cat.Id), default)).Result);
+
+        await c.SetCategory(new BulkCategoryInput([a.Id, Guid.NewGuid()], cat.Id), default);
+        await using (var check = NewDb(tenant)) Assert.Equal(2, await check.Products.CountAsync(p => p.CategoryId == cat.Id));
+        await c.SetCategory(new BulkCategoryInput([a.Id, b.Id], null), default);
+        await using (var check = NewDb(tenant)) Assert.Equal(2, await check.Products.CountAsync(p => p.CategoryId == null));
     }
 }

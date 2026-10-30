@@ -1,12 +1,14 @@
 import { useEffect, useMemo, useState } from 'react'
 import { api } from '../api/client'
-import type { Product, ProductChannel, ProductPage } from '../api/types'
+import type { Category, Product, ProductChannel, ProductPage } from '../api/types'
 import { useModules } from '../modules/ModulesContext'
 import { isModuleEnabled } from '../modules/moduleState'
-import { BulkBar, Button, DataTable, FilterChips, StatusBadge, type Column } from '../components'
+import { BulkBar, Button, DataTable, FilterChips, Select, StatusBadge, type Column } from '../components'
 import { Link } from 'react-router-dom'
 import { failureReasons, listingBadge } from './listingStatus'
+import CategoryFilter from './CategoryFilter'
 import CategoryManager from './CategoryManager'
+import { indentedLabel } from './categoryTree'
 import ProductImport from './ProductImport'
 import SendToChannel from './SendToChannel'
 import { RECOMMENDED_IMAGES } from './imageOrder'
@@ -77,16 +79,31 @@ export default function Products() {
   const [data, setData] = useState<ProductPage>({ items: [], total: 0 })
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string>()
+  const [notice, setNotice] = useState<string>()
   const [detail, setDetail] = useState<Detail>()
   const [selected, setSelected] = useState<string[]>([])
   const [importing, setImporting] = useState(false)
   const [categoriesOpen, setCategoriesOpen] = useState(false)
   const [sending, setSending] = useState(false)
   const [reloadKey, setReloadKey] = useState(0)
+  const [categories, setCategories] = useState<Category[]>([])
+  const [category, setCategory] = useState('')
+  const [moving, setMoving] = useState(false)
+  const [target, setTarget] = useState('')
   const { enabled } = useModules()
   const marketplaceOn = isModuleEnabled('marketplace', enabled)
   const b2bOn = isModuleEnabled('b2b-store', enabled)
   const columns = useMemo(() => makeColumns(setDetail, marketplaceOn, b2bOn), [marketplaceOn, b2bOn])
+
+  useEffect(() => { api<Category[]>('/categories').then(setCategories).catch(() => setCategories([])) }, [reloadKey, categoriesOpen])
+
+  async function moveToCategory() {
+    try {
+      const r = await api<{ updated: number }>('/products/category', { method: 'PUT', body: JSON.stringify({ productIds: selected, categoryId: target || null }) })
+      setSelected([]); setMoving(false); setTarget(''); setError(undefined); setReloadKey((k) => k + 1)
+      setNotice(`${r.updated} ürünün kategorisi değiştirildi.`)
+    } catch (e) { setError((e as Error).message) }
+  }
 
   async function setB2BVisible(visible: boolean) {
     try {
@@ -104,12 +121,12 @@ export default function Products() {
   useEffect(() => {
     let current = true
     setLoading(true)
-    api<ProductPage>(`/products?${productsQuery(search, filter, page)}`)
+    api<ProductPage>(`/products?${productsQuery(search, filter, page, category)}`)
       .then((d) => { if (current) { setData(d); setError(undefined) } })
       .catch((e: Error) => { if (current) setError(e.message) })
       .finally(() => { if (current) setLoading(false) })
     return () => { current = false } // eski isteğin cevabı yenisini ezmesin
-  }, [search, filter, page, reloadKey])
+  }, [search, filter, page, reloadKey, category])
 
   // Kanal sonucu beklenen ürün varsa listeyi arada yenile; durum kendiliğinden güncellensin.
   const hasPending = data.items.some((p) => p.channels.some((c) => c.status === 'Pending'))
@@ -120,6 +137,8 @@ export default function Products() {
   }, [hasPending])
 
   return (
+    <div className="products-layout">
+      <aside className="products-layout__side"><CategoryFilter categories={categories} value={category} onChange={(v) => { setCategory(v); setPage(1); setSelected([]) }} /></aside>
     <div className="products">
       <div className="products__toolbar">
         <input className="ps-input products__search" type="search" placeholder="Ürün adı veya barkod ara"
@@ -146,7 +165,9 @@ export default function Products() {
         </section>
       )}
       {error && <p role="alert" style={{ color: 'var(--danger)' }}>{error}</p>}
+      {notice && <p role="status" style={{ color: 'var(--success)' }}>{notice}</p>}
       <BulkBar count={selected.length} onClear={() => setSelected([])} actions={[
+        { label: 'Kategori değiştir', onClick: () => { setMoving(true); setNotice(undefined) } },
         ...(marketplaceOn ? [
           { label: 'Kanala gönder', onClick: () => setSending(true) },
           { label: 'Kural uygula', disabledReason: 'Yakında' },
@@ -156,12 +177,22 @@ export default function Products() {
           { label: 'B2B sitesinden kaldır', onClick: () => setB2BVisible(false) },
         ] : []),
       ]} />
+      {moving && selected.length > 0 && (
+        <section className="ps-card products__move" aria-label="Kategori değiştir">
+          <Select label={`${selected.length} ürün için yeni kategori`} value={target} onChange={(e) => setTarget(e.target.value)}>
+            <option value="">Kategorisiz yap</option>
+            {categories.map((c) => <option key={c.id} value={c.id}>{indentedLabel(c)}</option>)}
+          </Select>
+          <div className="products__move-actions"><Button onClick={moveToCategory}>Uygula</Button><Button onClick={() => setMoving(false)}>Vazgeç</Button></div>
+        </section>
+      )}
       {sending && selected.length > 0 && <SendToChannel productIds={selected} onClose={() => setSending(false)} onSent={() => setReloadKey((k) => k + 1)} />}
       <DataTable columns={columns} rows={data.items} rowKey={(p) => p.id} pageSize={PRODUCT_PAGE_SIZE}
         selectable selected={selected} onSelectionChange={setSelected}
         serverPaging={{ page: page - 1, total: data.total, onPageChange: (p) => setPage(p + 1) }}
         emptyTitle={loading ? 'Yükleniyor…' : 'Ürün bulunamadı'}
-        emptyText={loading ? '' : 'Aramayı veya filtreyi değiştirmeyi deneyin.'} />
+        emptyText={loading ? '' : 'Aramayı, kategoriyi veya filtreyi değiştirmeyi deneyin.'} />
+    </div>
     </div>
   )
 }

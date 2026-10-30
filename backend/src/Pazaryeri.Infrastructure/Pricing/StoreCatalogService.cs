@@ -12,11 +12,16 @@ public record StoreStock(int? Quantity, string? Label, bool InStock);
 public record StoreProductRow(Guid Id, string Name, string Code, string? MainId, string? Variant, string? Brand, string? CategoryPath,
     string? CoverUrl, StorePrice Price, StoreStock Stock, int MinOrderQuantity, int PackSize);
 
-public record StoreProductPage(IReadOnlyList<StoreProductRow> Items, int Total);
+public record BrandFacet(string Name, int Count);
+
+/// <param name="PriceMin">Mevcut sonuçtaki en düşük/yüksek bayi fiyatı (gösterilen); sonuç çok büyükse null.</param>
+public record StoreFacets(IReadOnlyList<BrandFacet> Brands, decimal? PriceMin, decimal? PriceMax);
+
+public record StoreProductPage(IReadOnlyList<StoreProductRow> Items, int Total, StoreFacets? Facets = null);
 
 public record StoreVariant(Guid Id, string? Variant, string Code, bool InStock);
 
-public record StoreCrumb(Guid Id, string Name);
+public record StoreCrumb(Guid Id, string Name, string SlugPath);
 
 public record StoreProductDetail(Guid Id, string Name, string Code, string? MainId, string? Variant, string? Brand, string? Description,
     IReadOnlyList<StoreCrumb> Breadcrumb, IReadOnlyList<string> Images, StorePrice Price, StoreStock Stock, int MinOrderQuantity, int PackSize,
@@ -24,7 +29,8 @@ public record StoreProductDetail(Guid Id, string Name, string Code, string? Main
 
 public record StoreCategory(Guid Id, string Name, Guid? ParentId, int ProductCount, string? ImageUrl, string SlugPath);
 
-public record StoreQuery(string? Search, Guid? CategoryId, string? Sort, int Page, int PageSize);
+public record StoreQuery(string? Search, Guid? CategoryId, string? Sort, int Page, int PageSize,
+    IReadOnlyList<string>? Brands = null, decimal? MinPrice = null, decimal? MaxPrice = null, bool InStock = false);
 
 /// <summary>Bayi sitesinin ürün okuma tarafı: görünürlük (<see cref="StoreCatalog"/>), bayiye özel fiyat (<see cref="DealerPriceService"/>) ve stok durumu tek yerde birleşir.</summary>
 public class StoreCatalogService(AppDbContext db, StoreCatalog catalog, DealerPriceService prices)
@@ -54,26 +60,51 @@ public class StoreCatalogService(AppDbContext db, StoreCatalog catalog, DealerPr
             var ids = StoreCatalog.Descendants(all.Select(c => (c.Id, c.ParentId)).ToList(), new HashSet<Guid> { cid }).ToList();
             visible = visible.Where(p => p.CategoryId != null && ids.Contains(p.CategoryId.Value));
         }
+        if (q.InStock) visible = visible.Where(p => p.Stock - (p.SafetyStock ?? 0) > 0);
 
-        var total = await visible.CountAsync(ct);
+        // Marka sayıları, marka süzgeci hariç mevcut sonuca göredir (seçili markayla birlikte diğerleri de görünür kalsın).
+        var brandCounts = await visible.Where(p => p.Brand != null && p.Brand != "").GroupBy(p => p.Brand!)
+            .Select(g => new { Name = g.Key, N = g.Count() }).ToListAsync(ct);
+        var brands = brandCounts.OrderBy(b => b.Name, StringComparer.CurrentCultureIgnoreCase).Select(b => new BrandFacet(b.Name, b.N)).ToList();
+
+        var chosen = q.Brands?.Where(b => !string.IsNullOrWhiteSpace(b)).Select(b => b.Trim()).Distinct().ToList() ?? [];
+        if (chosen.Count > 0) visible = visible.Where(p => p.Brand != null && chosen.Contains(p.Brand));
+
         var sort = Sorts.Contains(q.Sort) ? q.Sort! : "name";
-        var byPrice = sort is "price" or "price_desc" && total <= MaxPriceSort;
-
+        var count = await visible.CountAsync(ct);
+        var wantsPrice = q.MinPrice is not null || q.MaxPrice is not null || sort is "price" or "price_desc";
+        var resolveAll = count <= MaxPriceSort; // fiyat süzgeci, fiyat sıralaması ve fiyat aralığı için tüm sonucu çözümleriz
+        decimal? priceMin = null, priceMax = null;
         List<Product> products;
         Dictionary<Guid, DealerProductPrice> resolved;
-        if (byPrice)
+        int total;
+
+        if (resolveAll)
         {
             var everything = await visible.ToListAsync(ct);
             resolved = ((await prices.ResolveAsync(dealerId, everything.Select(p => p.Id).ToList(), ct)) ?? []).ToDictionary(r => r.ProductId);
-            Func<Product, decimal> key = p => resolved[p.Id].Price.Gross;
-            var ordered = sort == "price" ? everything.OrderBy(key) : everything.OrderByDescending(key);
-            products = ordered.ThenBy(p => p.Name).ThenBy(p => p.Id).Skip((page - 1) * pageSize).Take(pageSize).ToList();
+            if (everything.Count > 0) { priceMin = everything.Min(p => resolved[p.Id].Price.Display); priceMax = everything.Max(p => resolved[p.Id].Price.Display); }
+            IEnumerable<Product> filtered = everything;
+            if (q.MinPrice is { } lo) filtered = filtered.Where(p => resolved[p.Id].Price.Display >= lo);
+            if (q.MaxPrice is { } hi) filtered = filtered.Where(p => resolved[p.Id].Price.Display <= hi);
+            var list = filtered.ToList();
+            total = list.Count;
+            IOrderedEnumerable<Product> ordered = sort switch
+            {
+                "price" => list.OrderBy(p => resolved[p.Id].Price.Gross),
+                "price_desc" => list.OrderByDescending(p => resolved[p.Id].Price.Gross),
+                "name_desc" => list.OrderByDescending(p => p.Name, StringComparer.CurrentCultureIgnoreCase),
+                _ => list.OrderBy(p => p.Name, StringComparer.CurrentCultureIgnoreCase),
+            };
+            products = ordered.ThenBy(p => p.Id).Skip((page - 1) * pageSize).Take(pageSize).ToList();
         }
         else
         {
+            total = count;
             var ordered = sort == "name_desc" ? visible.OrderByDescending(p => p.Name).ThenBy(p => p.Id) : visible.OrderBy(p => p.Name).ThenBy(p => p.Id);
             products = await ordered.Skip((page - 1) * pageSize).Take(pageSize).ToListAsync(ct);
             resolved = ((await prices.ResolveAsync(dealerId, products.Select(p => p.Id).ToList(), ct)) ?? []).ToDictionary(r => r.ProductId);
+            _ = wantsPrice; // çok büyük sonuçta fiyat süzgeci/sıralaması uygulanmaz; istemci önce kategori ya da marka ile daraltmalı
         }
 
         var settings = await catalog.SettingsAsync(ct);
@@ -89,7 +120,7 @@ public class StoreCatalogService(AppDbContext db, StoreCatalog catalog, DealerPr
                 p.CategoryId is { } c ? paths.GetValueOrDefault(c) : null, cover is null ? null : ImageUrl(cover.Id, cover.Kind, cover.ExternalUrl),
                 ToPrice(resolved[p.Id], p.VatRate), ToStock(p, settings), resolved[p.Id].MinOrderQuantity, resolved[p.Id].PackSize);
         }).ToList();
-        return new StoreProductPage(rows, total);
+        return new StoreProductPage(rows, total, new StoreFacets(brands, priceMin, priceMax));
     }
 
     /// <summary>Ürün bayiye görünmüyorsa (bayrak kapalı, kategori/grup kısıtı) null; sitede yokmuş gibi davranılır.</summary>
@@ -108,11 +139,12 @@ public class StoreCatalogService(AppDbContext db, StoreCatalog catalog, DealerPr
         if (p.CategoryId is { } cid)
         {
             var all = await db.Categories.AsNoTracking().Select(c => new { c.Id, c.Name, c.ParentId }).ToListAsync(ct);
+            var slugs = Pazaryeri.Application.Catalog.CategoryRules.SlugPaths(all.Select(c => (c.Id, c.Name, c.ParentId)).ToList());
             for (Guid? cur = cid; cur is { } id && crumbs.Count < 20; )
             {
                 var node = all.FirstOrDefault(c => c.Id == id);
                 if (node is null) break;
-                crumbs.Insert(0, new StoreCrumb(node.Id, node.Name));
+                crumbs.Insert(0, new StoreCrumb(node.Id, node.Name, slugs[node.Id]));
                 cur = node.ParentId;
             }
         }

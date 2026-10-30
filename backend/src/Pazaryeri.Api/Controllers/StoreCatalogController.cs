@@ -20,8 +20,9 @@ public class StoreCatalogController(StoreCatalogService catalog) : ControllerBas
 
     [HttpGet("products")]
     public async Task<StoreProductPage> Products([FromQuery] string? q, [FromQuery] Guid? categoryId, [FromQuery] string? sort,
-        [FromQuery] int page = 1, [FromQuery] int pageSize = 24, CancellationToken ct = default) =>
-        await catalog.ListAsync(DealerId, new StoreQuery(q, categoryId, sort, page, pageSize), ct);
+        [FromQuery] int page = 1, [FromQuery] int pageSize = 24, [FromQuery] string[]? brand = null, [FromQuery] decimal? minPrice = null,
+        [FromQuery] decimal? maxPrice = null, [FromQuery] bool inStock = false, CancellationToken ct = default) =>
+        await catalog.ListAsync(DealerId, new StoreQuery(q, categoryId, sort, page, pageSize, brand, minPrice, maxPrice, inStock), ct);
 
     [HttpGet("products/{id:guid}")]
     public async Task<ActionResult<StoreProductDetail>> Product(Guid id, CancellationToken ct) =>

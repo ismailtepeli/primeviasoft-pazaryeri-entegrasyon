@@ -44,5 +44,11 @@ export function moveTargets(all: Category[], c: Category, maxDepth = 5): Categor
   return all.filter((t) => !subtree.has(t.id) && t.id !== c.parentId && depthOf(t) + h <= maxDepth)
 }
 
+/** Seçim listelerinde ağaç görünümü için girintili etiket ("— — Tişört"); derinlik yoldan hesaplanır. */
+export function indentedLabel(c: Pick<Category, 'name' | 'path'>): string {
+  const depth = c.path.split(' > ').length - 1
+  return `${'— '.repeat(depth)}${c.name}`
+}
+
 /** Kategori adresinin kısa gösterimi: "/giyim/tisort". */
 export const slugLabel = (c: Category): string => `/${c.slugPath}`

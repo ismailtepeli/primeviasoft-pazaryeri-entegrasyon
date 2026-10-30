@@ -14,4 +14,10 @@ describe('productsQuery', () => {
     expect(productsQuery('', 'error', 1)).toContain('filter=error')
     expect(productsQuery('', 'pending', 1)).toContain('filter=pending')
   })
+
+  it('kategori süzgecini yalnızca seçiliyse ekler', () => {
+    expect(productsQuery('', 'all', 1, '')).not.toContain('category')
+    expect(productsQuery('', 'all', 1, 'abc')).toContain('category=abc')
+    expect(productsQuery('', 'all', 1, 'none')).toContain('category=none')
+  })
 })

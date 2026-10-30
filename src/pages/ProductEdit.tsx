@@ -4,6 +4,7 @@ import { api } from '../api/client'
 import type { Category, ProductDetail, ProductImage, ProductInput } from '../api/types'
 import { Button, Select, TextInput } from '../components'
 import ImageManager from './ImageManager'
+import { indentedLabel } from './categoryTree'
 import { VAT_RATES, emptyForm, toInput, validateForm, type ProductForm } from './productForm'
 import './ChannelForm.css'
 import './ProductEdit.css'
@@ -88,7 +89,7 @@ export default function ProductEdit() {
           <TextInput label="Marka" value={form.brand} onChange={set('brand')} error={errors.brand} />
           <Select label="Kategori" value={form.categoryId} onChange={set('categoryId')}>
             <option value="">Kategorisiz</option>
-            {categories.map((c) => <option key={c.id} value={c.id}>{c.path}</option>)}
+            {categories.map((c) => <option key={c.id} value={c.id}>{indentedLabel(c)}</option>)}
           </Select>
           <TextInput label="Stok" type="number" min={0} step={1} value={form.stock} onChange={set('stock')} error={errors.stock} />
           <TextInput label="Fiyat (₺)" type="number" min={0} step="0.01" value={form.price} onChange={set('price')} error={errors.price} />

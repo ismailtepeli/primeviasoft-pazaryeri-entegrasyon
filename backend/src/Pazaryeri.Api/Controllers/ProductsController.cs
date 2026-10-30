@@ -16,6 +16,8 @@ public record ProductChannelDto(string Channel, string Status, string? ErrorMess
 public record ProductDto(Guid Id, string Name, string Barcode, string? MainId, string? Variant, string? Brand, string? CategoryPath,
     int Stock, decimal Price, int ImageCount, string? CoverUrl, IReadOnlyList<ProductChannelDto> Channels, bool VisibleOnB2B = false);
 
+public record BulkCategoryInput(List<Guid>? ProductIds, Guid? CategoryId);
+
 public record ProductPage(IReadOnlyList<ProductDto> Items, int Total);
 
 public record ProductDetailDto(Guid Id, string Name, string Barcode, string? MainId, string? Variant, string? Brand, string? Description,
@@ -37,7 +39,7 @@ public class ProductsController(AppDbContext db) : ControllerBase
     /// </summary>
     [HttpGet]
     public async Task<ProductPage> List([FromQuery] string? q, [FromQuery] string? filter,
-        [FromQuery] int page = 1, [FromQuery] int pageSize = 20, CancellationToken ct = default)
+        [FromQuery] int page = 1, [FromQuery] int pageSize = 20, [FromQuery] string? category = null, CancellationToken ct = default)
     {
         pageSize = Math.Clamp(pageSize, 1, MaxPageSize);
         page = Math.Max(page, 1);
@@ -48,6 +50,15 @@ public class ProductsController(AppDbContext db) : ControllerBase
         {
             var term = q.Trim();
             query = query.Where(p => p.Name.Contains(term) || p.Barcode.Contains(term));
+        }
+
+        // Kategori süzgeci: bir kategori kimliği (alt kategorileriyle birlikte) ya da "none" (kategorisiz ürünler).
+        if (string.Equals(category, "none", StringComparison.OrdinalIgnoreCase)) query = query.Where(p => p.CategoryId == null);
+        else if (Guid.TryParse(category, out var categoryId))
+        {
+            var all = await db.Categories.AsNoTracking().Select(c => new { c.Id, c.ParentId }).ToListAsync(ct);
+            var ids = Pazaryeri.Infrastructure.Pricing.StoreCatalog.Descendants(all.Select(c => (c.Id, c.ParentId)).ToList(), new HashSet<Guid> { categoryId }).ToList();
+            query = query.Where(p => p.CategoryId != null && ids.Contains(p.CategoryId.Value));
         }
 
         query = filter?.ToLowerInvariant() switch
@@ -78,6 +89,18 @@ public class ProductsController(AppDbContext db) : ControllerBase
     }
 
     private static string CoverUrl(Guid id, ImageKind kind, string? external) => kind == ImageKind.Url ? external! : $"/api/images/{id}";
+
+    /// <summary>Seçili ürünlerin kategorisini toplu değiştirir; kategori boş gönderilirse kategorisiz yapılır.</summary>
+    [HttpPut("category")]
+    public async Task<ActionResult<object>> SetCategory(BulkCategoryInput input, CancellationToken ct)
+    {
+        var ids = input.ProductIds?.Distinct().ToList() ?? [];
+        if (ids.Count == 0) return BadRequest(new { error = "En az bir ürün seçin." });
+        if (ids.Count > 1000) return BadRequest(new { error = "Tek seferde en fazla 1000 ürün değiştirilebilir." });
+        if (input.CategoryId is { } cid && !await db.Categories.AnyAsync(c => c.Id == cid, ct)) return BadRequest(new { error = "Kategori bulunamadı." });
+        var updated = await db.Products.Where(p => ids.Contains(p.Id)).ExecuteUpdateAsync(u => u.SetProperty(p => p.CategoryId, input.CategoryId), ct);
+        return new { updated };
+    }
 
     [HttpGet("{id:guid}")]
     public async Task<ActionResult<ProductDetailDto>> Get(Guid id, CancellationToken ct)

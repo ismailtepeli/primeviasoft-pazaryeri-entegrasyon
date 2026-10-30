@@ -196,6 +196,76 @@ public class StoreCatalogTests : IAsyncLifetime
         Assert.DoesNotContain(await svc.CategoriesAsync(w.DealerId, default), c => c.Id == w.Other.Id);
     }
 
+    private static async Task SeedBrandsAsync(World w)
+    {
+        await using var db = NewDb(w.Tenant);
+        foreach (var (barcode, brand) in new[] { ("T1", "Nike"), ("T2", "Nike"), ("D1", "Faber"), ("K1", "Faber") })
+            (await db.Products.SingleAsync(p => p.Barcode == barcode)).Brand = brand;
+        await db.SaveChangesAsync();
+    }
+
+    [Fact]
+    public async Task Marka_susgeci_ve_facet_sayilari_marka_secimine_ragmen_digerlerini_gosterir()
+    {
+        var w = await SeedAsync();
+        await SeedBrandsAsync(w);
+        await using var db = NewDb(w.Tenant);
+        var svc = Service(db);
+
+        var all = await svc.ListAsync(w.DealerId, new StoreQuery(null, null, null, 1, 24), default);
+        Assert.Equal([("Faber", 2), ("Nike", 2)], all.Facets!.Brands.Select(b => (b.Name, b.Count)).ToList());
+
+        var nike = await svc.ListAsync(w.DealerId, new StoreQuery(null, null, null, 1, 24, ["Nike"]), default);
+        Assert.Equal(["T1", "T2"], nike.Items.Select(i => i.Code).OrderBy(c => c).ToList());
+        Assert.Equal(2, nike.Facets!.Brands.Count); // Faber de listede kalır
+
+        var both = await svc.ListAsync(w.DealerId, new StoreQuery(null, null, null, 1, 24, ["Nike", "Faber"]), default);
+        Assert.Equal(4, both.Total);
+        Assert.Equal(0, (await svc.ListAsync(w.DealerId, new StoreQuery(null, null, null, 1, 24, ["Yok"]), default)).Total);
+
+        // Kategori daraltınca markalar da daralır.
+        var cat = await svc.ListAsync(w.DealerId, new StoreQuery(null, w.Other.Id, null, 1, 24), default);
+        Assert.Equal([("Faber", 2)], cat.Facets!.Brands.Select(b => (b.Name, b.Count)).ToList());
+    }
+
+    [Fact]
+    public async Task Fiyat_araligi_bayiye_ozel_fiyatla_uygulanir_ve_aralik_bilgisi_doner()
+    {
+        var w = await SeedAsync();
+        await using var db = NewDb(w.Tenant);
+        var svc = Service(db);
+
+        var all = await svc.ListAsync(w.DealerId, new StoreQuery(null, null, null, 1, 24), default);
+        Assert.Equal((10.8m, 108m), (all.Facets!.PriceMin, all.Facets.PriceMax)); // 12 → 10,8 ; 120 → 108 (grup %10)
+
+        var mid = await svc.ListAsync(w.DealerId, new StoreQuery(null, null, "price", 1, 24, null, 50m, 100m), default);
+        Assert.Equal(["D1"], mid.Items.Select(i => i.Code).ToList());      // yalnızca 54 ₺
+        Assert.Equal(1, mid.Total);
+        Assert.Equal(2, (await svc.ListAsync(w.DealerId, new StoreQuery(null, null, null, 1, 24, null, 100m, null), default)).Total); // iki tişört
+        Assert.Equal(1, (await svc.ListAsync(w.DealerId, new StoreQuery(null, null, null, 1, 24, null, null, 10.8m), default)).Total);  // sınır dahil
+
+        // Grupsuz bayide aynı aralık genel fiyatla değerlendirilir.
+        var plain = await Service(db).ListAsync(w.GoldDealerId, new StoreQuery(null, null, null, 1, 24, null, 100m, null), default);
+        Assert.Equal(2, plain.Total);
+        Assert.Equal(0, (await Service(db).ListAsync(w.GoldDealerId, new StoreQuery(null, null, null, 1, 24, null, 65m, 100m), default)).Total); // defter 60 ₺ (genel fiyat) aralık dışı
+    }
+
+    [Fact]
+    public async Task Yalnizca_stokta_olanlar_guvenlik_stogu_dusulerek_suzulur_ve_sayfalama_toplami_dogrudur()
+    {
+        var w = await SeedAsync();
+        await using var db = NewDb(w.Tenant);
+        var svc = Service(db);
+        var inStock = await svc.ListAsync(w.DealerId, new StoreQuery(null, null, null, 1, 24, null, null, null, true), default);
+        Assert.DoesNotContain(inStock.Items, i => i.Code == "T2");  // stok 0
+        Assert.Equal(3, inStock.Total);
+
+        await using (var admin = NewDb(w.Tenant)) { (await admin.Products.SingleAsync(p => p.Barcode == "D1")).Stock = 1; await admin.SaveChangesAsync(); } // 1 - güvenlik 1 = 0
+        var after = await svc.ListAsync(w.DealerId, new StoreQuery(null, null, null, 1, 2, null, null, null, true), default);
+        Assert.Equal((2, 2), (after.Total, after.Items.Count));          // T1, K1; sayfa boyu 2
+        Assert.DoesNotContain(after.Items, i => i.Code == "D1");
+    }
+
     [Fact]
     public async Task Baska_kiracinin_bayisi_ve_urunleri_karismaz()
     {

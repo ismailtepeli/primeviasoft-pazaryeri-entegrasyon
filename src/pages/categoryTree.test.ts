@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { Category } from '../api/types'
-import { movedOrder, moveTargets, siblingsOf, slugLabel, visibleRows } from './categoryTree'
+import { indentedLabel, movedOrder, moveTargets, siblingsOf, slugLabel, visibleRows } from './categoryTree'
 
 const c = (id: string, name: string, parentId: string | null): Category => ({
   id, name, parentId, path: name, productCount: 0, totalProductCount: 0, sortOrder: 0, isActive: true, imageUrl: null, slugPath: name.toLowerCase(), childCount: 0,
@@ -32,6 +32,12 @@ describe('categoryTree', () => {
     expect(moveTargets(all, all[0]).map((x) => x.id)).toEqual(['E']) // A, B, C, D alt dalı
     expect(moveTargets(all, all[2]).map((x) => x.id)).toEqual(['A', 'D', 'E']) // C: mevcut üst B hariç
     expect(moveTargets(all, all[0], 3).map((x) => x.id)).toEqual([]) // A dalı 3 seviye; E altına konursa 4 olur
+  })
+
+  it('seçim listesi etiketi derinliğe göre girintilenir', () => {
+    expect(indentedLabel({ name: 'Giyim', path: 'Giyim' })).toBe('Giyim')
+    expect(indentedLabel({ name: 'Tişört', path: 'Giyim > Tişört' })).toBe('— Tişört')
+    expect(indentedLabel({ name: 'Erkek', path: 'Giyim > Tişört > Erkek' })).toBe('— — Erkek')
   })
 
   it('adres etiketi', () => {
