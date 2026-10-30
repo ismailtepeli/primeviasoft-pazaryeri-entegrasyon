@@ -15,12 +15,19 @@ public class DevDataSeeder(AppDbContext db, IConfiguration config)
         var password = config["Seed:AdminPassword"];
         if (string.IsNullOrWhiteSpace(tenantName) || string.IsNullOrWhiteSpace(email) || string.IsNullOrEmpty(password)) return;
 
-        if (await db.Users.IgnoreQueryFilters().AnyAsync(u => u.Email == email, ct)) return;
+        var slug = config["Seed:TenantSlug"]?.Trim().ToLowerInvariant();
+        if (await db.Users.IgnoreQueryFilters().AnyAsync(u => u.Email == email, ct))
+        {
+            // Var olan geliştirme kiracısına slug sonradan eklenir (bayi sitesi girişi için).
+            var existing = await db.Tenants.FirstOrDefaultAsync(t => t.Name == tenantName && t.Slug == null, ct);
+            if (existing is not null && !string.IsNullOrEmpty(slug) && !await db.Tenants.AnyAsync(t => t.Slug == slug, ct)) { existing.Slug = slug; await db.SaveChangesAsync(ct); }
+            return;
+        }
 
         var tenant = await db.Tenants.FirstOrDefaultAsync(t => t.Name == tenantName, ct);
         if (tenant is null)
         {
-            tenant = new Tenant { Name = tenantName };
+            tenant = new Tenant { Name = tenantName, Slug = string.IsNullOrEmpty(slug) ? null : slug };
             db.Tenants.Add(tenant);
         }
 

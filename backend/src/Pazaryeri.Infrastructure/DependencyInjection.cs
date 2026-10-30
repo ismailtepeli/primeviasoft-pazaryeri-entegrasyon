@@ -11,6 +11,8 @@ using Pazaryeri.Application.Marketplace;
 using Pazaryeri.Application.Products;
 using Pazaryeri.Application.Stock;
 using Pazaryeri.Application.Modules;
+using Pazaryeri.Application.Dealers;
+using Pazaryeri.Infrastructure.Dealers;
 using Pazaryeri.Infrastructure.Modules;
 using Pazaryeri.Infrastructure.Orders;
 using Pazaryeri.Infrastructure.Products;
@@ -44,6 +46,7 @@ public static class DependencyInjection
         services.Configure<JwtOptions>(config.GetSection(JwtOptions.Section));
         services.AddSingleton<ITokenService, JwtTokenService>();
         services.AddScoped<IAuthService, AuthService>();
+        services.AddScoped<IDealerAuthService, DealerAuthService>();
         services.AddScoped<IProductImportService, ProductImportService>();
         services.AddScoped<IProductImageService, ProductImageService>();
         services.AddScoped<ProductChannelPreparer>();

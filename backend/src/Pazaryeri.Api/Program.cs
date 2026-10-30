@@ -1,3 +1,4 @@
+using Pazaryeri.Infrastructure.Auth;
 using System.Text;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
@@ -27,14 +28,13 @@ builder.Services
         o.TokenValidationParameters = new TokenValidationParameters
         {
             ValidIssuer = jwt.Issuer,
-            ValidAudience = jwt.Audience,
+            ValidAudiences = [jwt.Audience, jwt.DealerAudience],
             IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwt.Key)),
             NameClaimType = System.Security.Claims.ClaimTypes.Name,
             ClockSkew = TimeSpan.FromMinutes(1),
         };
     });
-builder.Services.AddAuthorization(o =>
-    o.FallbackPolicy = new Microsoft.AspNetCore.Authorization.AuthorizationPolicyBuilder().RequireAuthenticatedUser().Build());
+builder.Services.AddAuthorization(AuthSetup.Configure);
 
 // Geliştirmede Vite sunucusundan gelen isteklere izin ver.
 builder.Services.AddCors(o => o.AddDefaultPolicy(p =>

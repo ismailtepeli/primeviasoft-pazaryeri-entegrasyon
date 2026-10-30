@@ -14,10 +14,22 @@ namespace Pazaryeri.Infrastructure.Auth;
 public static class AppClaims
 {
     public const string TenantId = "tenant_id";
+    public const string DealerId = "dealer_id";
+    /// <summary>"admin" ya da "dealer"; eski yönetici token'larında yoktur ve yönetici sayılır.</summary>
+    public const string Principal = "principal";
+    public const string PrincipalAdmin = "admin";
+    public const string PrincipalDealer = "dealer";
+}
+
+public static class AuthPolicies
+{
+    public const string Dealer = "Dealer";
 }
 
 public class JwtTokenService(IOptions<JwtOptions> options) : ITokenService
 {
+    public (string Token, DateTime ExpiresAt) CreateForDealer(DealerUser user, Dealer dealer) => DealerTokenFactory.Create(options.Value, user, dealer);
+
     public (string Token, DateTime ExpiresAt) Create(User user)
     {
         var o = options.Value;
@@ -28,9 +40,30 @@ public class JwtTokenService(IOptions<JwtOptions> options) : ITokenService
             new Claim(JwtRegisteredClaimNames.Email, user.Email),
             new Claim(ClaimTypes.Name, user.FullName),
             new Claim(AppClaims.TenantId, user.TenantId.ToString()),
+            new Claim(AppClaims.Principal, AppClaims.PrincipalAdmin),
         };
         var creds = new SigningCredentials(new SymmetricSecurityKey(Encoding.UTF8.GetBytes(o.Key)), SecurityAlgorithms.HmacSha256);
         var jwt = new JwtSecurityToken(o.Issuer, o.Audience, claims, expires: expires, signingCredentials: creds);
+        return (new JwtSecurityTokenHandler().WriteToken(jwt), expires);
+    }
+}
+
+public class DealerTokenFactory
+{
+    public static (string Token, DateTime ExpiresAt) Create(JwtOptions o, DealerUser user, Dealer dealer)
+    {
+        var expires = DateTime.UtcNow.AddMinutes(o.ExpiryMinutes);
+        var claims = new[]
+        {
+            new Claim(JwtRegisteredClaimNames.Sub, user.Id.ToString()),
+            new Claim(JwtRegisteredClaimNames.Email, user.Email),
+            new Claim(ClaimTypes.Name, user.FullName),
+            new Claim(AppClaims.TenantId, user.TenantId.ToString()),
+            new Claim(AppClaims.DealerId, dealer.Id.ToString()),
+            new Claim(AppClaims.Principal, AppClaims.PrincipalDealer),
+        };
+        var creds = new SigningCredentials(new SymmetricSecurityKey(Encoding.UTF8.GetBytes(o.Key)), SecurityAlgorithms.HmacSha256);
+        var jwt = new JwtSecurityToken(o.Issuer, o.DealerAudience, claims, expires: expires, signingCredentials: creds);
         return (new JwtSecurityTokenHandler().WriteToken(jwt), expires);
     }
 }

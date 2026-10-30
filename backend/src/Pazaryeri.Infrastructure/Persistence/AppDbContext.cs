@@ -22,6 +22,9 @@ public class AppDbContext(DbContextOptions<AppDbContext> options, ITenantProvide
     public DbSet<ChannelStockPriceState> ChannelStockPriceStates => Set<ChannelStockPriceState>();
     public DbSet<StockPriceBatch> StockPriceBatches => Set<StockPriceBatch>();
     public DbSet<TenantModule> TenantModules => Set<TenantModule>();
+    public DbSet<Dealer> Dealers => Set<Dealer>();
+    public DbSet<DealerGroup> DealerGroups => Set<DealerGroup>();
+    public DbSet<DealerUser> DealerUsers => Set<DealerUser>();
     public DbSet<Order> Orders => Set<Order>();
     public DbSet<OrderPackage> OrderPackages => Set<OrderPackage>();
     public DbSet<OrderLine> OrderLines => Set<OrderLine>();
@@ -48,6 +51,8 @@ public class AppDbContext(DbContextOptions<AppDbContext> options, ITenantProvide
     protected override void OnModelCreating(ModelBuilder builder)
     {
         builder.Entity<Tenant>().HasIndex(t => t.Name).IsUnique();
+        builder.Entity<Tenant>().Property(t => t.Slug).HasMaxLength(60);
+        builder.Entity<Tenant>().HasIndex(t => t.Slug).IsUnique().HasFilter("[Slug] IS NOT NULL");
 
         builder.Entity<User>(b =>
         {
@@ -183,6 +188,43 @@ public class AppDbContext(DbContextOptions<AppDbContext> options, ITenantProvide
             b.HasIndex(m => new { m.TenantId, m.CreatedAt });
             b.HasOne<Product>().WithMany().HasForeignKey(m => m.ProductId).OnDelete(DeleteBehavior.Cascade);
             b.HasOne<Tenant>().WithMany().HasForeignKey(m => m.TenantId).OnDelete(DeleteBehavior.Restrict);
+        });
+
+        builder.Entity<DealerGroup>(b =>
+        {
+            b.Property(g => g.Name).HasMaxLength(100).IsRequired();
+            b.Property(g => g.Description).HasMaxLength(500);
+            b.HasIndex(g => new { g.TenantId, g.Name }).IsUnique();
+            b.HasOne<Tenant>().WithMany().HasForeignKey(g => g.TenantId).OnDelete(DeleteBehavior.Restrict);
+        });
+
+        builder.Entity<Dealer>(b =>
+        {
+            b.Property(d => d.Name).HasMaxLength(200).IsRequired();
+            b.Property(d => d.TaxNumber).HasMaxLength(11).IsRequired();
+            b.Property(d => d.TaxOffice).HasMaxLength(100);
+            b.Property(d => d.ContactName).HasMaxLength(150);
+            b.Property(d => d.Email).HasMaxLength(200).IsRequired();
+            b.Property(d => d.Phone).HasMaxLength(40);
+            b.Property(d => d.Address).HasMaxLength(500);
+            b.Property(d => d.City).HasMaxLength(100);
+            b.Property(d => d.Notes).HasMaxLength(2000);
+            b.Property(d => d.Status).HasConversion<string>().HasMaxLength(20);
+            b.HasIndex(d => new { d.TenantId, d.TaxNumber }).IsUnique();
+            b.HasIndex(d => new { d.TenantId, d.Status, d.CreatedAt });
+            b.HasMany(d => d.Users).WithOne().HasForeignKey(u => u.DealerId).OnDelete(DeleteBehavior.Cascade);
+            b.HasOne<DealerGroup>().WithMany().HasForeignKey(d => d.GroupId).OnDelete(DeleteBehavior.Restrict);
+            b.HasOne<Tenant>().WithMany().HasForeignKey(d => d.TenantId).OnDelete(DeleteBehavior.Restrict);
+        });
+
+        builder.Entity<DealerUser>(b =>
+        {
+            b.Property(u => u.Email).HasMaxLength(200).IsRequired();
+            b.Property(u => u.FullName).HasMaxLength(150).IsRequired();
+            b.Property(u => u.PasswordHash).HasMaxLength(500).IsRequired();
+            b.Property(u => u.Role).HasConversion<string>().HasMaxLength(20);
+            b.HasIndex(u => new { u.TenantId, u.Email }).IsUnique();
+            b.HasOne<Tenant>().WithMany().HasForeignKey(u => u.TenantId).OnDelete(DeleteBehavior.Restrict);
         });
 
         builder.Entity<TenantModule>(b =>

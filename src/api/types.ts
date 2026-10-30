@@ -351,6 +351,81 @@ export interface ModuleStatus {
   dependsOn: string[]
 }
 
+export type DealerStatusKind = 'Pending' | 'Active' | 'Passive'
+
+export interface DealerRow {
+  id: string
+  name: string
+  taxNumber: string
+  contactName: string | null
+  email: string
+  phone: string | null
+  city: string | null
+  status: DealerStatusKind
+  groupId: string | null
+  groupName: string | null
+  createdAt: string
+}
+
+export interface DealerCounts {
+  pending: number
+  active: number
+  passive: number
+}
+
+export interface DealerListPage {
+  items: DealerRow[]
+  total: number
+  counts: DealerCounts
+}
+
+export interface DealerUser {
+  id: string
+  email: string
+  fullName: string
+  role: 'Owner' | 'Buyer'
+  isActive: boolean
+  lastLoginAt: string | null
+}
+
+export interface DealerDetail {
+  id: string
+  name: string
+  taxNumber: string
+  taxOffice: string | null
+  contactName: string | null
+  email: string
+  phone: string | null
+  address: string | null
+  city: string | null
+  notes: string | null
+  status: DealerStatusKind
+  groupId: string | null
+  createdAt: string
+  approvedAt: string | null
+  users: DealerUser[]
+}
+
+export interface DealerInput {
+  name: string
+  taxNumber: string
+  taxOffice: string | null
+  contactName: string | null
+  email: string
+  phone: string | null
+  address: string | null
+  city: string | null
+  notes: string | null
+  groupId: string | null
+}
+
+export interface DealerGroup {
+  id: string
+  name: string
+  description: string | null
+  dealerCount: number
+}
+
 export interface DashboardSummary {
   todayOrders: number
   awaitingShipment: number
