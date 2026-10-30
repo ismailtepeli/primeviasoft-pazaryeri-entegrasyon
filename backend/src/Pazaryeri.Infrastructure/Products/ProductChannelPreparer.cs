@@ -2,6 +2,7 @@ using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Pazaryeri.Application.Marketplace;
+using Pazaryeri.Application.Stock;
 using Pazaryeri.Domain;
 using Pazaryeri.Infrastructure.Persistence;
 
@@ -42,6 +43,9 @@ public class ProductChannelPreparer(AppDbContext db, IConfiguration config)
         // Fiyat kuralıyla hesaplanmış kanal fiyatı varsa katalog fiyatı yerine o gönderilir.
         var prices = await db.ChannelPrices.Where(c => c.Channel == channel && productIds.Contains(c.ProductId)).ToDictionaryAsync(c => c.ProductId, c => c.Price, ct);
 
+        // Kanala açılan miktar: stok kuralı (güvenlik stoğu + pay) uygulanır; kural yoksa tüm stok açılır.
+        var stockRule = await db.StockRules.AsNoTracking().FirstOrDefaultAsync(r => r.Channel == channel, ct);
+
         var result = new List<PreparedProduct>(products.Count);
         foreach (var product in products)
         {
@@ -66,7 +70,8 @@ public class ProductChannelPreparer(AppDbContext db, IConfiguration config)
                 CategoryId = own?.CategoryId ?? (product.CategoryId is { } c && mapped.TryGetValue(c, out var externalId) ? externalId : null),
                 CargoCompanyId = own?.CargoCompanyId, DimensionalWeight = own?.DimensionalWeight, AttributesJson = attributesJson,
             };
-            var (item, reasons) = TrendyolProductMapper.Map(product, effective, publicBaseUrl, prices.TryGetValue(product.Id, out var channelPrice) ? channelPrice : null);
+            var (item, reasons) = TrendyolProductMapper.Map(product, effective, publicBaseUrl, prices.TryGetValue(product.Id, out var channelPrice) ? channelPrice : null,
+                stockRule is null ? null : StockCalculator.ChannelQuantity(product.Stock, StockCalculator.EffectiveSafety(product.SafetyStock, stockRule.SafetyStock), stockRule.AllocationPercent));
             if (requiredMissing.Count > 0)
             {
                 reasons = [.. reasons, MissingRequiredMessage(requiredMissing)];

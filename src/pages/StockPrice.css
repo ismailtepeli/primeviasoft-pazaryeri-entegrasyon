@@ -9,3 +9,17 @@
 .pricing__breakdown dt { color: var(--ink-muted); font-size: 13.5px; }
 .pricing__breakdown dd { margin: 0; font: 600 18px var(--font-sans); }
 .pricing__result dd { font: 700 26px var(--font-display); color: var(--accent); }
+.stock { display: flex; flex-direction: column; gap: var(--space-4); max-width: none; }
+.stock h2 { margin: 0; font: 700 21px var(--font-display); letter-spacing: -0.01em; }
+.stock__subtitle { margin: var(--space-3) 0 0; font: 700 17px var(--font-display); }
+.stock__search { max-width: 360px; }
+.stock__toggle { display: flex; align-items: flex-start; gap: var(--space-3); cursor: pointer; }
+.stock__toggle input { width: 20px; height: 20px; margin-top: 2px; accent-color: var(--accent); }
+.stock__toggle span { display: flex; flex-direction: column; gap: 2px; }
+.stock__toggle small { color: var(--ink-muted); font-size: 13.5px; }
+.stock-product { display: flex; flex-direction: column; gap: 2px; }
+.stock-product span { color: var(--ink-muted); font-size: 13px; }
+.stock__safety { display: inline-flex; align-items: center; gap: var(--space-2); }
+.stock__safety input { width: 150px; padding: 8px 12px; }
+.stock__ok { color: var(--success); font-weight: 700; }
+.stock__bad { color: var(--danger); font-size: 13px; }

@@ -272,3 +272,32 @@ export interface ApplyPricingResult {
   unchanged: number
   noCost: number
 }
+
+export interface StockRuleDto {
+  channel: string
+  safetyStock: number
+  allocationPercent: number
+  /** Kural kaydedilmiş mi; false ise gösterilen değerler varsayılandır. */
+  saved: boolean
+}
+
+export interface StockSettings {
+  deductAcrossChannels: boolean
+}
+
+export interface StockRow {
+  productId: string
+  name: string
+  barcode: string
+  stock: number
+  /** Ürüne özel güvenlik stoğu; null ise kanalın varsayılanı geçerli. */
+  safetyStock: number | null
+  effectiveSafety: number
+  channelQuantity: number
+}
+
+export interface StockPage {
+  channel: string
+  items: StockRow[]
+  total: number
+}

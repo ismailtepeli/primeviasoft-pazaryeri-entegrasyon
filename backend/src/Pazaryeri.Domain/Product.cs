@@ -30,7 +30,10 @@ public class Product : TenantEntity
     public Guid? CategoryId { get; set; }
     /// <summary>KDV oranı (%); kanallar gönderimde ister.</summary>
     public int VatRate { get; set; } = 20;
+    /// <summary>Fiziksel stok (depodaki toplam adet).</summary>
     public int Stock { get; set; }
+    /// <summary>Ürüne özel güvenlik stoğu; boşsa kanalın varsayılanı kullanılır.</summary>
+    public int? SafetyStock { get; set; }
     public decimal Price { get; set; }
     /// <summary>Birim maliyet (TL); kanal fiyat kuralları satış fiyatını bundan hesaplar. Bilinmiyorsa null.</summary>
     public decimal? Cost { get; set; }
