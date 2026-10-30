@@ -11,6 +11,19 @@ export const hiddenRoutes: RouteDef[] = [
   { path: '/senkron-hatalari', label: 'Senkron hataları', title: 'Senkron hataları', subtitle: 'Kanallarla yapılan senkronlarda oluşan tüm hatalar.', action: 'Yenile' },
 ]
 
+export const productRoutes: RouteDef[] = [
+  { path: '/urunler/yeni', label: 'Yeni ürün', title: 'Yeni ürün', subtitle: 'Ürün bilgilerini girin; görselleri kaydettikten sonra eklersiniz.', action: '' },
+  { path: '/urunler/:id', label: 'Ürün', title: 'Ürünü düzenle', subtitle: 'Bilgileri, kategoriyi ve görselleri yönetin.', action: '' },
+]
+
+/** Yola karşılık gelen ekran tanımı; parametreli ürün sayfalarını da bulur. */
+export function routeFor(pathname: string): RouteDef {
+  const exact = [...routes, ...hiddenRoutes, ...productRoutes].find((r) => r.path === pathname)
+  if (exact) return exact
+  if (/^\/urunler\/[^/]+$/.test(pathname)) return productRoutes[1]
+  return routes[0]
+}
+
 export const routes: RouteDef[] = [
   { path: '/', label: 'Genel bakış', title: 'Genel bakış', subtitle: 'Mağaza, stok ve sipariş durumunuza tek bakışta ulaşın.', action: 'Şimdi senkronla' },
   { path: '/magazalar', label: 'Mağazalar', title: 'Mağazalar', subtitle: 'Pazaryeri bağlantılarınızı yönetin.', action: '+ Kanal ekle' },

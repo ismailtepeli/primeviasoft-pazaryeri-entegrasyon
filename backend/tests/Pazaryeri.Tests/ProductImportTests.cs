@@ -171,4 +171,48 @@ public class ProductImportTests : IAsyncLifetime
         var ex = await Assert.ThrowsAsync<ProductImportException>(() => Import(db, Sheet(["Ürün Adı", "Barkod", "Stok", "Fiyat"], many)));
         Assert.Contains("en fazla", ex.Message);
     }
+
+    private static readonly string[] HeaderPlus = [.. Header, "Marka", "Kategori", "Görseller"];
+
+    [Fact]
+    public async Task Marka_kategori_ve_gorsel_adresleri_yuklenir_kategori_agaci_olusur()
+    {
+        var tenant = await NewTenantAsync("Zengin");
+        await using var db = NewDb(tenant);
+
+        var result = await Import(db, Sheet(HeaderPlus,
+            ["", "A", "Z1", null, 1, 10, "Marka X", "Giyim > Tişört", "https://cdn.example.com/1.jpg; https://cdn.example.com/2.jpg"],
+            ["", "B", "Z2", null, 1, 10, "Marka X", "giyim > tişört", null]));
+
+        Assert.Empty(result.Errors);
+        await using var check = NewDb(tenant);
+        var cats = await check.Categories.ToListAsync();
+        Assert.Equal(2, cats.Count); // aynı yol (büyük/küçük harf duyarsız) tek kez oluşur
+        var products = await check.Products.Include(p => p.Images).OrderBy(p => p.Barcode).ToListAsync();
+        Assert.Equal("Marka X", products[0].Brand);
+        Assert.Equal(products[0].CategoryId, products[1].CategoryId);
+        Assert.Equal(["https://cdn.example.com/1.jpg", "https://cdn.example.com/2.jpg"], products[0].Images.OrderBy(i => i.Position).Select(i => i.ExternalUrl));
+        Assert.Empty(products[1].Images);
+    }
+
+    [Fact]
+    public async Task Gorsel_adresi_yeniden_yuklenince_tekrarlanmaz_ve_gecersiz_adres_satiri_hata_olur()
+    {
+        var tenant = await NewTenantAsync("Zengin2");
+        await using var db = NewDb(tenant);
+        var rows = new object?[][] { ["", "A", "Z1", null, 1, 10, null, null, "https://cdn.example.com/1.jpg"] };
+        await Import(db, Sheet(HeaderPlus, rows));
+
+        await using var db2 = NewDb(tenant);
+        var again = await Import(db2, Sheet(HeaderPlus,
+            ["", "A", "Z1", null, 1, 10, null, null, "https://cdn.example.com/1.jpg;https://cdn.example.com/2.jpg"],
+            ["", "B", "Z2", null, 1, 10, null, null, "javascript:alert(1)"],
+            ["", "C", "Z3", null, 1, 10, null, null, string.Join(";", Enumerable.Range(1, 9).Select(i => $"https://x.com/{i}.jpg"))]));
+
+        Assert.Equal([3, 4], again.Errors.Select(e => e.Row));
+        Assert.Contains("Geçersiz görsel adresi", again.Errors[0].Message);
+        Assert.Contains("en fazla 8", again.Errors[1].Message, StringComparison.OrdinalIgnoreCase);
+        var images = await NewDb(tenant).ProductImages.OrderBy(i => i.Position).ToListAsync();
+        Assert.Equal(["https://cdn.example.com/1.jpg", "https://cdn.example.com/2.jpg"], images.Select(i => i.ExternalUrl));
+    }
 }

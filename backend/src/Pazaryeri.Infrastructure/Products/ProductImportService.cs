@@ -20,8 +20,11 @@ public class ProductImportService(AppDbContext db) : IProductImportService
     private const string VariantHeader = "Varyant";
     private const string StockHeader = "Stok";
     private const string PriceHeader = "Fiyat";
-    private static readonly string[] Headers = [MainIdHeader, NameHeader, BarcodeHeader, VariantHeader, StockHeader, PriceHeader];
-    private static readonly string[] Optional = [MainIdHeader, VariantHeader];
+    private const string BrandHeader = "Marka";
+    private const string CategoryHeader = "Kategori";
+    private const string ImagesHeader = "Görseller";
+    private static readonly string[] Headers = [MainIdHeader, NameHeader, BarcodeHeader, VariantHeader, StockHeader, PriceHeader, BrandHeader, CategoryHeader, ImagesHeader];
+    private static readonly string[] Optional = [MainIdHeader, VariantHeader, BrandHeader, CategoryHeader, ImagesHeader];
 
     public byte[] BuildTemplate()
     {
@@ -41,12 +44,18 @@ public class ProductImportService(AppDbContext db) : IProductImportService
             ["TSH-001", "Basic Tişört", "8690000000011", "Beden: M, Renk: Mavi"],
             ["TSH-001", "Basic Tişört", "8690000000028", "Beden: L, Renk: Mavi"],
         ];
+        string[][] extra =
+        [
+            ["Örnek Marka", "Giyim > Tişört", "https://cdn.example.com/tisort-1.jpg; https://cdn.example.com/tisort-2.jpg; https://cdn.example.com/tisort-3.jpg"],
+            ["Örnek Marka", "Giyim > Tişört", ""],
+        ];
         decimal[][] numbers = [[25, 199.90m], [18, 199.90m]];
         for (var r = 0; r < sample.Length; r++)
         {
             for (var c = 0; c < sample[r].Length; c++) ws.Cell(r + 2, c + 1).SetValue(sample[r][c]);
             ws.Cell(r + 2, 5).Value = numbers[r][0];
             ws.Cell(r + 2, 6).Value = numbers[r][1];
+            for (var c = 0; c < extra[r].Length; c++) ws.Cell(r + 2, 7 + c).SetValue(extra[r][c]);
         }
         ws.Columns().AdjustToContents();
 
@@ -55,7 +64,7 @@ public class ProductImportService(AppDbContext db) : IProductImportService
         return ms.ToArray();
     }
 
-    private sealed record Row(int Number, string MainId, string Name, string Barcode, string? Variant, int Stock, decimal Price);
+    private sealed record Row(int Number, string MainId, string Name, string Barcode, string? Variant, int Stock, decimal Price, string? Brand, string? Category, List<string> Images);
 
     public async Task<ProductImportResult> ImportAsync(Stream xlsx, CancellationToken ct = default)
     {
@@ -93,6 +102,11 @@ public class ProductImportService(AppDbContext db) : IProductImportService
                 else if (barcode.Length > 100) problems.Add("Barkod 100 karakteri aşıyor.");
                 else if (seen.TryGetValue(barcode, out var first)) problems.Add($"Barkod dosyada {first}. satırda da var.");
                 if (mainId.Length > 100) problems.Add("Ürün ana kodu 100 karakteri aşıyor.");
+                var brand = Text(BrandHeader);
+                if (brand.Length > 200) problems.Add("Marka 200 karakteri aşıyor.");
+                var category = Text(CategoryHeader);
+                if (category.Length > 0 && !TryParseCategory(category, out _, out var categoryError)) problems.Add(categoryError!);
+                var images = ParseImages(Text(ImagesHeader), problems);
 
                 var stock = ParseStock(ws.Cell(r, columns[StockHeader]), out var stockError);
                 if (stockError is not null) problems.Add(stockError);
@@ -103,7 +117,8 @@ public class ProductImportService(AppDbContext db) : IProductImportService
 
                 seen[barcode] = r;
                 var variant = Text(VariantHeader);
-                rows.Add(new Row(r, mainId, name, barcode, variant.Length > 0 ? variant : null, stock, price));
+                rows.Add(new Row(r, mainId, name, barcode, variant.Length > 0 ? variant : null, stock, price,
+                    brand.Length > 0 ? brand : null, category.Length > 0 ? category : null, images));
             }
 
             // Aynı ana kodlu varyantlar aynı ürün adını taşımalı; ilk satırın adı geçerli sayılır.
@@ -137,11 +152,21 @@ public class ProductImportService(AppDbContext db) : IProductImportService
         var existing = (await db.Products.Where(p => barcodes.Contains(p.Barcode)).ToListAsync(ct))
             .ToDictionary(p => p.Barcode, StringComparer.OrdinalIgnoreCase);
 
+        var existingImages = (await db.ProductImages.Where(i => i.Kind == ImageKind.Url && existing.Values.Select(p => p.Id).Contains(i.ProductId)).ToListAsync(ct))
+            .ToLookup(i => i.ProductId);
+        var allCounts = await db.ProductImages.Where(i => existing.Values.Select(p => p.Id).Contains(i.ProductId))
+            .GroupBy(i => i.ProductId).Select(g => new { g.Key, N = g.Count() }).ToDictionaryAsync(x => x.Key, x => x.N, ct);
+        var categories = await db.Categories.ToListAsync(ct);
+
         int created = 0, updated = 0;
         foreach (var row in rows)
         {
             if (existing.TryGetValue(row.Barcode, out var product)) updated++;
             else { product = new Product { Barcode = row.Barcode }; db.Products.Add(product); created++; }
+            if (row.Brand is not null) product.Brand = row.Brand;
+            if (row.Category is not null) product.CategoryId = EnsureCategory(row.Category, categories).Id;
+            AddImages(product, row.Images, existingImages[product.Id].Select(i => i.ExternalUrl!).ToHashSet(StringComparer.OrdinalIgnoreCase),
+                allCounts.GetValueOrDefault(product.Id));
             product.MainId = row.MainId.Length > 0 ? row.MainId : null;
             product.Name = row.Name;
             product.Variant = row.Variant;
@@ -150,6 +175,59 @@ public class ProductImportService(AppDbContext db) : IProductImportService
         }
         await db.SaveChangesAsync(ct);
         return (created, updated);
+    }
+
+    /// <summary>"Giyim > Tişört" yolunu kategori kaydına çevirir; olmayan basamakları oluşturur.</summary>
+    private Category EnsureCategory(string path, List<Category> categories)
+    {
+        TryParseCategory(path, out var parts, out _);
+        Category? current = null;
+        foreach (var part in parts!)
+        {
+            var parent = current?.Id;
+            var next = categories.FirstOrDefault(c => c.ParentId == parent && string.Equals(c.Name, part, StringComparison.CurrentCultureIgnoreCase));
+            if (next is null)
+            {
+                next = new Category { Name = part, ParentId = parent };
+                db.Categories.Add(next);
+                categories.Add(next);
+            }
+            current = next;
+        }
+        return current!;
+    }
+
+    private static bool TryParseCategory(string path, out string[]? parts, out string? error)
+    {
+        parts = path.Split('>', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries);
+        error = null;
+        if (parts.Length == 0) { error = "Kategori yolu geçersiz."; return false; }
+        if (parts.Length > 5) { error = "Kategori en fazla 5 seviye olabilir."; return false; }
+        if (parts.Any(p => p.Length > 200)) { error = "Kategori adı 200 karakteri aşıyor."; return false; }
+        return true;
+    }
+
+    /// <summary>Hücredeki adresleri (; ya da satır sonu ile ayrılmış) doğrular.</summary>
+    private static List<string> ParseImages(string cell, List<string> problems)
+    {
+        var urls = cell.Split([';', (char)10, (char)13], StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries)
+            .Distinct(StringComparer.OrdinalIgnoreCase).ToList();
+        if (urls.Count > ProductImage.MaxPerProduct) problems.Add($"En fazla {ProductImage.MaxPerProduct} görsel adresi girilebilir.");
+        foreach (var u in urls.Where(u => u.Length > 2000 || !Uri.TryCreate(u, UriKind.Absolute, out var uri) || uri.Scheme is not ("http" or "https") || !string.IsNullOrEmpty(uri.UserInfo)))
+            problems.Add($"Geçersiz görsel adresi: {(u.Length > 60 ? u[..60] + "…" : u)}");
+        return urls;
+    }
+
+    /// <summary>Var olan görselleri bozmadan yeni adresleri sona ekler (üst sınır aşılırsa fazlası atlanır).</summary>
+    private void AddImages(Product product, List<string> urls, HashSet<string> known, int currentCount)
+    {
+        foreach (var url in urls)
+        {
+            if (currentCount >= ProductImage.MaxPerProduct) break;
+            var normalized = new Uri(url).AbsoluteUri;
+            if (!known.Add(normalized)) continue;
+            db.ProductImages.Add(new ProductImage { ProductId = product.Id, Kind = ImageKind.Url, ExternalUrl = normalized, Position = currentCount++ });
+        }
     }
 
     private static Dictionary<string, int> MapColumns(IXLWorksheet ws, int lastColumn)

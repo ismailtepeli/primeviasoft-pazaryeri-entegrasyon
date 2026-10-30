@@ -38,6 +38,12 @@ public static class DependencyInjection
         services.AddSingleton<ITokenService, JwtTokenService>();
         services.AddScoped<IAuthService, AuthService>();
         services.AddScoped<IProductImportService, ProductImportService>();
+        services.AddScoped<IProductImageService, ProductImageService>();
+        // Yüklenen görseller; üretimde Storage:ImagesPath kalıcı bir diske işaret etmeli.
+        var imagesPath = config["Storage:ImagesPath"] is { Length: > 0 } configured
+            ? configured
+            : Path.Combine(Directory.GetCurrentDirectory(), "App_Data", "images");
+        services.AddSingleton<IImageStore>(new LocalImageStore(imagesPath));
         services.AddScoped<DevDataSeeder>();
 
         // API bilgileri AES-256-GCM ile şifrelenir; anahtar yapılandırmadan (üretimde Key Vault/ortam değişkeni) gelir.

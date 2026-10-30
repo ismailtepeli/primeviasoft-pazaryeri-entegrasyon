@@ -25,8 +25,13 @@ public class Product : TenantEntity
     public string? MainId { get; set; }
     /// <summary>Varyant özeti, örn. "Beden: M, Renk: Mavi".</summary>
     public string? Variant { get; set; }
+    public string? Brand { get; set; }
+    public string? Description { get; set; }
+    public Guid? CategoryId { get; set; }
     public int Stock { get; set; }
     public decimal Price { get; set; }
+    /// <summary>Görseller; <see cref="ProductImage.Position"/> sırasına göre, ilki kapak.</summary>
+    public List<ProductImage> Images { get; set; } = [];
     public List<ProductListing> Listings { get; set; } = [];
 }
 
@@ -38,4 +43,28 @@ public class ProductListing : TenantEntity
     public ListingStatus Status { get; set; } = ListingStatus.Pending;
     /// <summary>Kanalın bildirdiği hata nedenleri (batch failureReasons); birden fazlaysa satır satır.</summary>
     public string? ErrorMessage { get; set; }
+}
+
+public enum ImageKind
+{
+    /// <summary>Sunucuya yüklenmiş dosya.</summary>
+    Upload,
+    /// <summary>Dışarıdaki bir adrese işaret eder; dosya saklanmaz.</summary>
+    Url,
+}
+
+/// <summary>Ürün görseli. Sıra 0'dan başlar; 0 kapak görselidir.</summary>
+public class ProductImage : TenantEntity
+{
+    public const int MaxPerProduct = 8;
+    /// <summary>Katalogda ürün başına önerilen asgari görsel sayısı.</summary>
+    public const int RecommendedMin = 3;
+
+    public Guid ProductId { get; set; }
+    public int Position { get; set; }
+    public ImageKind Kind { get; set; }
+    /// <summary>Upload ise saklanan dosyanın uzantısı (.jpg/.png/.webp); Url ise boş.</summary>
+    public string? Extension { get; set; }
+    /// <summary>Url ise görselin adresi; Upload ise boş.</summary>
+    public string? ExternalUrl { get; set; }
 }

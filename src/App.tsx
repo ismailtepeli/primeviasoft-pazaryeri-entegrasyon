@@ -5,6 +5,7 @@ import Login from './pages/Login'
 import Overview from './pages/Overview'
 import PagePlaceholder from './pages/PagePlaceholder'
 import { AuthProvider } from './auth/AuthContext'
+import ProductEdit from './pages/ProductEdit'
 import Products from './pages/Products'
 import Stores from './pages/Stores'
 import SyncErrors from './pages/SyncErrors'
@@ -29,6 +30,8 @@ export default function App() {
               <Route key={r.path} path={r.path} element={pageFor(r.path, r.label)} />
             ))}
             <Route path="/senkron-hatalari" element={<SyncErrors />} />
+            <Route path="/urunler/yeni" element={<ProductEdit />} />
+            <Route path="/urunler/:id" element={<ProductEdit />} />
           </Route>
         </Routes>
       </BrowserRouter>

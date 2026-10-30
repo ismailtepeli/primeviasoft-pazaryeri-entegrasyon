@@ -13,3 +13,8 @@
 .listing-detail__reasons { margin: 0; padding-left: var(--space-5); color: var(--danger); }
 .listing-detail__none { margin: 0; color: var(--ink-muted); }
 .listing-detail__actions { display: flex; align-items: center; justify-content: space-between; gap: var(--space-3); }
+
+.product-row { display: flex; align-items: center; gap: var(--space-3); }
+.product-thumb { width: 56px; height: 56px; flex: none; object-fit: cover; border-radius: 12px; border: 1px solid var(--line); background: var(--surface-alt); }
+.product-thumb--empty { display: grid; place-items: center; color: var(--ink-muted); }
+.category-actions { display: inline-flex; gap: var(--space-2); }

@@ -50,9 +50,57 @@ export interface Product {
   barcode: string
   mainId: string | null
   variant: string | null
+  brand: string | null
+  /** "Giyim > Tişört" gibi tam yol; kategorisizse null. */
+  categoryPath: string | null
   stock: number
   price: number
+  imageCount: number
+  /** Kapak görselinin adresi; görseli yoksa null. */
+  coverUrl: string | null
   channels: ProductChannel[]
+}
+
+export interface ProductImage {
+  id: string
+  url: string
+  position: number
+}
+
+export interface ProductDetail {
+  id: string
+  name: string
+  barcode: string
+  mainId: string | null
+  variant: string | null
+  brand: string | null
+  description: string | null
+  categoryId: string | null
+  categoryPath: string | null
+  stock: number
+  price: number
+  images: ProductImage[]
+  channels: ProductChannel[]
+}
+
+export interface ProductInput {
+  name: string
+  barcode: string
+  mainId: string | null
+  variant: string | null
+  brand: string | null
+  description: string | null
+  categoryId: string | null
+  stock: number
+  price: number
+}
+
+export interface Category {
+  id: string
+  name: string
+  parentId: string | null
+  path: string
+  productCount: number
 }
 
 export interface ProductPage {

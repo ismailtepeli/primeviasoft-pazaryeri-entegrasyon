@@ -4,7 +4,9 @@ import type { Product, ProductChannel, ProductPage } from '../api/types'
 import { BulkBar, Button, DataTable, FilterChips, StatusBadge, type Column } from '../components'
 import { Link } from 'react-router-dom'
 import { failureReasons, listingBadge } from './listingStatus'
+import CategoryManager from './CategoryManager'
 import ProductImport from './ProductImport'
+import { RECOMMENDED_IMAGES } from './imageOrder'
 import { PRODUCT_PAGE_SIZE, productsQuery, type ProductFilter } from './productFilters'
 import './Products.css'
 
@@ -22,12 +24,24 @@ function makeColumns(onDetail: (d: Detail) => void): Column<Product>[] { return 
   {
     key: 'product', header: 'Ürün',
     render: (p) => (
-      <div className="product-cell">
-        <strong>{p.name}</strong>
-        {p.variant && <span className="product-cell__barcode">{p.variant}</span>}
-        <span className="product-cell__barcode">{p.barcode}{p.mainId ? ` · ${p.mainId}` : ''}</span>
+      <div className="product-row">
+        {p.coverUrl
+          ? <img className="product-thumb" src={p.coverUrl} alt="" loading="lazy" />
+          : <span className="product-thumb product-thumb--empty" aria-label="Görsel yok">—</span>}
+        <div className="product-cell">
+          <Link to={`/urunler/${p.id}`}><strong>{p.name}</strong></Link>
+          {p.variant && <span className="product-cell__barcode">{p.variant}</span>}
+          <span className="product-cell__barcode">{p.barcode}{p.mainId ? ` · ${p.mainId}` : ''}</span>
+          {p.imageCount < RECOMMENDED_IMAGES && <StatusBadge variant="warning">{p.imageCount}/{RECOMMENDED_IMAGES} görsel</StatusBadge>}
+        </div>
       </div>
     ),
+  },
+  {
+    key: 'category', header: 'Kategori',
+    render: (p) => (p.categoryPath || p.brand)
+      ? <div className="product-cell">{p.categoryPath ?? '—'}{p.brand && <span className="product-cell__barcode">{p.brand}</span>}</div>
+      : '—',
   },
   { key: 'stock', header: 'Stok', render: (p) => p.stock },
   { key: 'price', header: 'Fiyat', render: (p) => money.format(p.price) },
@@ -59,6 +73,7 @@ export default function Products() {
   const [detail, setDetail] = useState<Detail>()
   const [selected, setSelected] = useState<string[]>([])
   const [importing, setImporting] = useState(false)
+  const [categoriesOpen, setCategoriesOpen] = useState(false)
   const [reloadKey, setReloadKey] = useState(0)
   const columns = useMemo(() => makeColumns(setDetail), [])
 
@@ -84,8 +99,10 @@ export default function Products() {
         <input className="ps-input products__search" type="search" placeholder="Ürün adı veya barkod ara"
           aria-label="Ürün adı veya barkod ara" value={input} onChange={(e) => setInput(e.target.value)} />
         <Button onClick={() => setImporting((v) => !v)}>Excel ile yükle</Button>
+        <Button onClick={() => setCategoriesOpen((v) => !v)}>Kategoriler</Button>
         <FilterChips items={chips} value={filter} onChange={(v) => { setFilter(v as ProductFilter); setPage(1); setSelected([]) }} />
       </div>
+      {categoriesOpen && <CategoryManager onClose={() => setCategoriesOpen(false)} />}
       {importing && <ProductImport onClose={() => setImporting(false)} onImported={() => { setPage(1); setReloadKey((k) => k + 1) }} />}
       {detail && (
         <section className="ps-card listing-detail" aria-label="Kanal durumu ayrıntısı">

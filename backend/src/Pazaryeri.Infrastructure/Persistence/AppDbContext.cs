@@ -16,6 +16,8 @@ public class AppDbContext(DbContextOptions<AppDbContext> options, ITenantProvide
     public DbSet<ChannelCredential> ChannelCredentials => Set<ChannelCredential>();
     public DbSet<Product> Products => Set<Product>();
     public DbSet<ProductListing> ProductListings => Set<ProductListing>();
+    public DbSet<ProductImage> ProductImages => Set<ProductImage>();
+    public DbSet<Category> Categories => Set<Category>();
 
     // Filtre ifadesi bu özelliğe bağlanır; EF her sorguda geçerli context örneğinin değerini okur.
     // Oturum yoksa Guid.Empty olur ve hiçbir kayıt eşleşmez.
@@ -81,12 +83,33 @@ public class AppDbContext(DbContextOptions<AppDbContext> options, ITenantProvide
             b.Property(p => p.Name).HasMaxLength(500).IsRequired();
             b.Property(p => p.Barcode).HasMaxLength(100).IsRequired();
             b.Property(p => p.MainId).HasMaxLength(100);
+            b.Property(p => p.Brand).HasMaxLength(200);
+            b.Property(p => p.Description).HasMaxLength(5000);
+            b.HasOne<Category>().WithMany().HasForeignKey(p => p.CategoryId).OnDelete(DeleteBehavior.Restrict);
+            b.HasMany(p => p.Images).WithOne().HasForeignKey(i => i.ProductId).OnDelete(DeleteBehavior.Cascade);
             b.Property(p => p.Variant).HasMaxLength(500);
             b.HasIndex(p => new { p.TenantId, p.MainId });
             b.Property(p => p.Price).HasPrecision(18, 2);
             b.HasIndex(p => new { p.TenantId, p.Barcode }).IsUnique(); // barkod kiracı içinde tekil
             b.HasOne<Tenant>().WithMany().HasForeignKey(p => p.TenantId).OnDelete(DeleteBehavior.Restrict);
             b.HasMany(p => p.Listings).WithOne().HasForeignKey(l => l.ProductId).OnDelete(DeleteBehavior.Cascade);
+        });
+
+        builder.Entity<ProductImage>(b =>
+        {
+            b.Property(i => i.Kind).HasConversion<string>().HasMaxLength(20);
+            b.Property(i => i.Extension).HasMaxLength(10);
+            b.Property(i => i.ExternalUrl).HasMaxLength(2000);
+            b.HasIndex(i => new { i.ProductId, i.Position });
+            b.HasOne<Tenant>().WithMany().HasForeignKey(i => i.TenantId).OnDelete(DeleteBehavior.Restrict);
+        });
+
+        builder.Entity<Category>(b =>
+        {
+            b.Property(c => c.Name).HasMaxLength(200).IsRequired();
+            b.HasIndex(c => new { c.TenantId, c.ParentId, c.Name }).IsUnique(); // aynı üst altında aynı ad olmaz
+            b.HasOne<Category>().WithMany().HasForeignKey(c => c.ParentId).OnDelete(DeleteBehavior.Restrict);
+            b.HasOne<Tenant>().WithMany().HasForeignKey(c => c.TenantId).OnDelete(DeleteBehavior.Restrict);
         });
 
         builder.Entity<ProductListing>(b =>

@@ -1,11 +1,13 @@
-import { Navigate, NavLink, Outlet, useLocation } from 'react-router-dom'
+import { Link, Navigate, NavLink, Outlet, useLocation } from 'react-router-dom'
 import { useAuth } from '../auth/AuthContext'
 import { AddChannelButton, Button, SyncNowButton, ThemeToggle } from '../components'
-import { hiddenRoutes, routes } from '../routes'
+import { routeFor, routes } from '../routes'
 import './AppLayout.css'
 
 /** Ekrana özgü başlık aksiyonu; tanımsızsa şimdilik yalnızca etiket gösteren buton. */
 function headerAction(path: string, label: string) {
+  if (path.startsWith('/urunler/')) return <Link to="/urunler" className="ps-btn ps-btn--secondary">← Ürünlere dön</Link>
+  if (path === '/urunler') return <Link to="/urunler/yeni" className="ps-btn ps-btn--primary">Ürün ekle</Link>
   if (path === '/') return <SyncNowButton />
   if (path === '/magazalar') return <AddChannelButton />
   return <Button variant="primary">{label}</Button>
@@ -14,7 +16,7 @@ function headerAction(path: string, label: string) {
 export default function AppLayout() {
   const { pathname } = useLocation()
   const { authenticated, logout } = useAuth()
-  const current = [...routes, ...hiddenRoutes].find((r) => r.path === pathname) ?? routes[0]
+  const current = routeFor(pathname)
 
   if (!authenticated) return <Navigate to="/giris" replace />
 
