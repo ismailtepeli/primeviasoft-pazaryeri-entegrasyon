@@ -1,3 +1,11 @@
+# Pazaryeri Entegrasyon
+
+## Dokümantasyon
+
+- [B2B kullanıcı rehberi](docs/b2b-kullanici-rehberi.md)
+- [Yeni modül ekleme (geliştirici)](docs/gelistirici-modul-ekleme.md)
+- [ADR 0001: Modüler yapı](docs/adr/0001-moduler-yapi.md)
+
 # React + TypeScript + Vite
 
 This template provides a minimal setup to get React working in Vite with HMR and some Oxlint rules.
