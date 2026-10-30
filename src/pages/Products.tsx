@@ -4,6 +4,7 @@ import type { Product, ProductChannel, ProductPage } from '../api/types'
 import { Button, DataTable, FilterChips, StatusBadge, type Column } from '../components'
 import { Link } from 'react-router-dom'
 import { failureReasons, listingBadge } from './listingStatus'
+import ProductImport from './ProductImport'
 import { PRODUCT_PAGE_SIZE, productsQuery, type ProductFilter } from './productFilters'
 import './Products.css'
 
@@ -23,7 +24,8 @@ function makeColumns(onDetail: (d: Detail) => void): Column<Product>[] { return 
     render: (p) => (
       <div className="product-cell">
         <strong>{p.name}</strong>
-        <span className="product-cell__barcode">{p.barcode}</span>
+        {p.variant && <span className="product-cell__barcode">{p.variant}</span>}
+        <span className="product-cell__barcode">{p.barcode}{p.mainId ? ` · ${p.mainId}` : ''}</span>
       </div>
     ),
   },
@@ -55,6 +57,8 @@ export default function Products() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string>()
   const [detail, setDetail] = useState<Detail>()
+  const [importing, setImporting] = useState(false)
+  const [reloadKey, setReloadKey] = useState(0)
   const columns = useMemo(() => makeColumns(setDetail), [])
 
   // Yazarken her tuşta istek atmamak için aramayı kısa bir gecikmeyle uygula.
@@ -71,15 +75,17 @@ export default function Products() {
       .catch((e: Error) => { if (current) setError(e.message) })
       .finally(() => { if (current) setLoading(false) })
     return () => { current = false } // eski isteğin cevabı yenisini ezmesin
-  }, [search, filter, page])
+  }, [search, filter, page, reloadKey])
 
   return (
     <div className="products">
       <div className="products__toolbar">
         <input className="ps-input products__search" type="search" placeholder="Ürün adı veya barkod ara"
           aria-label="Ürün adı veya barkod ara" value={input} onChange={(e) => setInput(e.target.value)} />
+        <Button onClick={() => setImporting((v) => !v)}>Excel ile yükle</Button>
         <FilterChips items={chips} value={filter} onChange={(v) => { setFilter(v as ProductFilter); setPage(1) }} />
       </div>
+      {importing && <ProductImport onClose={() => setImporting(false)} onImported={() => { setPage(1); setReloadKey((k) => k + 1) }} />}
       {detail && (
         <section className="ps-card listing-detail" aria-label="Kanal durumu ayrıntısı">
           <header className="listing-detail__head">

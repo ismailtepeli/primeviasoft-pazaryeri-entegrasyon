@@ -21,6 +21,10 @@ public class Product : TenantEntity
 {
     public string Name { get; set; } = string.Empty;
     public string Barcode { get; set; } = string.Empty;
+    /// <summary>Varyantları gruplayan ürün ana kodu (productMainId); tek başına ürünlerde boş.</summary>
+    public string? MainId { get; set; }
+    /// <summary>Varyant özeti, örn. "Beden: M, Renk: Mavi".</summary>
+    public string? Variant { get; set; }
     public int Stock { get; set; }
     public decimal Price { get; set; }
     public List<ProductListing> Listings { get; set; } = [];

@@ -179,6 +179,10 @@ namespace Pazaryeri.Infrastructure.Persistence.Migrations
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("datetime2");
 
+                    b.Property<string>("MainId")
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
                     b.Property<string>("Name")
                         .IsRequired()
                         .HasMaxLength(500)
@@ -194,12 +198,18 @@ namespace Pazaryeri.Infrastructure.Persistence.Migrations
                     b.Property<Guid>("TenantId")
                         .HasColumnType("uniqueidentifier");
 
+                    b.Property<string>("Variant")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
                     b.HasKey("Id");
 
                     b.HasIndex("TenantId");
 
                     b.HasIndex("TenantId", "Barcode")
                         .IsUnique();
+
+                    b.HasIndex("TenantId", "MainId");
 
                     b.ToTable("Products");
                 });

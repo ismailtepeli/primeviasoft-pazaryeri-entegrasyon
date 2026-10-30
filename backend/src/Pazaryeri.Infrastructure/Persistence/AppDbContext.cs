@@ -80,6 +80,9 @@ public class AppDbContext(DbContextOptions<AppDbContext> options, ITenantProvide
         {
             b.Property(p => p.Name).HasMaxLength(500).IsRequired();
             b.Property(p => p.Barcode).HasMaxLength(100).IsRequired();
+            b.Property(p => p.MainId).HasMaxLength(100);
+            b.Property(p => p.Variant).HasMaxLength(500);
+            b.HasIndex(p => new { p.TenantId, p.MainId });
             b.Property(p => p.Price).HasPrecision(18, 2);
             b.HasIndex(p => new { p.TenantId, p.Barcode }).IsUnique(); // barkod kiracı içinde tekil
             b.HasOne<Tenant>().WithMany().HasForeignKey(p => p.TenantId).OnDelete(DeleteBehavior.Restrict);

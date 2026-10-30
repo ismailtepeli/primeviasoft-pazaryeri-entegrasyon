@@ -8,7 +8,7 @@ namespace Pazaryeri.Api.Controllers;
 /// <param name="Status">"Pending", "Live" veya "Error".</param>
 public record ProductChannelDto(string Channel, string Status, string? ErrorMessage);
 
-public record ProductDto(Guid Id, string Name, string Barcode, int Stock, decimal Price, IReadOnlyList<ProductChannelDto> Channels);
+public record ProductDto(Guid Id, string Name, string Barcode, string? MainId, string? Variant, int Stock, decimal Price, IReadOnlyList<ProductChannelDto> Channels);
 
 public record ProductPage(IReadOnlyList<ProductDto> Items, int Total);
 
@@ -48,10 +48,10 @@ public class ProductsController(AppDbContext db) : ControllerBase
         var rows = await query
             .OrderBy(p => p.Name).ThenBy(p => p.Id)
             .Skip((page - 1) * pageSize).Take(pageSize)
-            .Select(p => new { p.Id, p.Name, p.Barcode, p.Stock, p.Price, Listings = p.Listings.Select(l => new { l.Channel, l.Status, l.ErrorMessage }).ToList() })
+            .Select(p => new { p.Id, p.Name, p.Barcode, p.MainId, p.Variant, p.Stock, p.Price, Listings = p.Listings.Select(l => new { l.Channel, l.Status, l.ErrorMessage }).ToList() })
             .ToListAsync(ct);
 
-        var items = rows.Select(r => new ProductDto(r.Id, r.Name, r.Barcode, r.Stock, r.Price,
+        var items = rows.Select(r => new ProductDto(r.Id, r.Name, r.Barcode, r.MainId, r.Variant, r.Stock, r.Price,
             r.Listings.OrderBy(l => l.Channel).Select(l => new ProductChannelDto(l.Channel, l.Status.ToString(), l.ErrorMessage)).ToList())).ToList();
         return new ProductPage(items, total);
     }

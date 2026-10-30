@@ -25,6 +25,19 @@ export interface SyncErrorPage {
 
 export type ListingState = 'Live' | 'Missing' | 'Pending' | 'Passive' | 'Error'
 
+export interface ProductImportError {
+  row: number
+  barcode: string
+  message: string
+}
+
+export interface ProductImportResult {
+  created: number
+  updated: number
+  groups: number
+  errors: ProductImportError[]
+}
+
 export interface ProductChannel {
   channel: string
   status: ListingState
@@ -35,6 +48,8 @@ export interface Product {
   id: string
   name: string
   barcode: string
+  mainId: string | null
+  variant: string | null
   stock: number
   price: number
   channels: ProductChannel[]

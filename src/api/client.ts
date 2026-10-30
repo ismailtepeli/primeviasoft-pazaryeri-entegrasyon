@@ -23,7 +23,8 @@ export async function api<T>(path: string, init: RequestInit = {}): Promise<T> {
   const res = await fetch(`/api${path}`, {
     ...init,
     headers: {
-      'Content-Type': 'application/json',
+      // FormData'da tarayıcı sınır (boundary) içeren Content-Type'ı kendisi koyar.
+      ...(init.body instanceof FormData ? {} : { 'Content-Type': 'application/json' }),
       ...(token ? { Authorization: `Bearer ${token}` } : {}),
       ...init.headers,
     },
@@ -34,4 +35,22 @@ export async function api<T>(path: string, init: RequestInit = {}): Promise<T> {
     throw new ApiError(res.status, body?.error ?? `İstek başarısız (${res.status})`)
   }
   return res.json() as Promise<T>
+}
+
+/** Dosya indirir (Excel şablonu gibi); yetki başlığı gerektiği için düz bağlantı yerine fetch kullanılır. */
+export async function download(path: string, fileName: string): Promise<void> {
+  const token = tokenStore.get()
+  const res = await fetch(`/api${path}`, { headers: token ? { Authorization: `Bearer ${token}` } : {} })
+  if (res.status === 401 && token) onUnauthorized()
+  if (!res.ok) throw new ApiError(res.status, `İndirilemedi (${res.status})`)
+  saveBlob(await res.blob(), fileName)
+}
+
+export function saveBlob(blob: Blob, fileName: string): void {
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement('a')
+  a.href = url
+  a.download = fileName
+  a.click()
+  URL.revokeObjectURL(url)
 }

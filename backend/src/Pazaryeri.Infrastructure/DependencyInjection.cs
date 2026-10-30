@@ -6,6 +6,10 @@ using Pazaryeri.Application.Auth;
 using Pazaryeri.Application.Credentials;
 using Pazaryeri.Application.Jobs;
 using Pazaryeri.Application.Marketplace;
+using Pazaryeri.Application.Products;
+using Pazaryeri.Infrastructure.Products;
+using Pazaryeri.Application.Products;
+using Pazaryeri.Infrastructure.Products;
 using Pazaryeri.Infrastructure.Amazon;
 using Pazaryeri.Infrastructure.Auth;
 using Pazaryeri.Infrastructure.Credentials;
@@ -33,6 +37,7 @@ public static class DependencyInjection
         services.Configure<JwtOptions>(config.GetSection(JwtOptions.Section));
         services.AddSingleton<ITokenService, JwtTokenService>();
         services.AddScoped<IAuthService, AuthService>();
+        services.AddScoped<IProductImportService, ProductImportService>();
         services.AddScoped<DevDataSeeder>();
 
         // API bilgileri AES-256-GCM ile şifrelenir; anahtar yapılandırmadan (üretimde Key Vault/ortam değişkeni) gelir.
