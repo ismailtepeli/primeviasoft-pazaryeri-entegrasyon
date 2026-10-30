@@ -248,6 +248,52 @@ public class ProductSendTests : IAsyncLifetime
         await Assert.ThrowsAsync<InvalidOperationException>(() => Handler(db, client).HandleAsync(new SyncJob { Channel = "Trendyol" }, default));
     }
 
+    [Fact]
+    public async Task Isleyici_kategori_eslemesini_ve_marka_adini_kullanir_eslenmemis_kategori_eksik_olur()
+    {
+        var tenant = await NewTenantAsync("Isleyici3");
+        await using (var seed = NewDb(null))
+        {
+            seed.ChannelBrands.Add(new ChannelBrand { Channel = "Trendyol", ExternalId = 77, Name = "Nike" });
+            await seed.SaveChangesAsync();
+        }
+        Guid mappedCat, unmappedCat;
+        await using (var seed = NewDb(tenant))
+        {
+            var a = new Category { Name = "Tişört" };
+            var b = new Category { Name = "Şapka" };
+            seed.Categories.AddRange(a, b);
+            await seed.SaveChangesAsync();
+            seed.CategoryMappings.Add(new CategoryMapping { Channel = "Trendyol", CategoryId = a.Id, ExternalCategoryId = 411 });
+            await seed.SaveChangesAsync();
+            (mappedCat, unmappedCat) = (a.Id, b.Id);
+        }
+        Product Make(string barcode, Guid cat)
+        {
+            var p = new Product { Name = "Ürün " + barcode, Barcode = barcode, Description = "d", Price = 5, Brand = "nike", CategoryId = cat };
+            p.Images.Add(new ProductImage { Kind = ImageKind.Url, ExternalUrl = "https://cdn.example.com/x.jpg" });
+            return p;
+        }
+        var ok = Make("MAP1", mappedCat);
+        var bad = Make("MAP2", unmappedCat);
+        await using (var seed = NewDb(tenant)) { seed.Products.AddRange(ok, bad); await seed.SaveChangesAsync(); }
+
+        var client = new FakeClient();
+        await using var db = NewDb(tenant);
+        var job = new SyncJob { Type = SyncJobType.ProductSend, Channel = "Trendyol", Payload = Payload(ok.Id, bad.Id) };
+        db.SyncJobs.Add(job);
+        await db.SaveChangesAsync();
+
+        await Handler(db, client).HandleAsync(job, default);
+
+        var item = Assert.Single(Assert.Single(client.Sent));
+        Assert.Equal(("MAP1", 411L, 77L), (item.Barcode, item.CategoryId, item.BrandId)); // eşleme + marka adı (büyük/küçük harf duyarsız)
+        var listing = await NewDb(tenant).ProductListings.SingleAsync(l => l.ProductId == bad.Id);
+        Assert.Equal(ListingStatus.Missing, listing.Status);
+        Assert.Contains("kategori eşlemesi yok", listing.ErrorMessage);
+        Assert.DoesNotContain("marka", listing.ErrorMessage);
+    }
+
     // --- sonuç uygulayıcı ---
 
     private static (SyncJob Job, Dictionary<Guid, string> Barcodes, List<ProductListing> Listings) Scenario(DateTime sentAt, params string[] barcodes)

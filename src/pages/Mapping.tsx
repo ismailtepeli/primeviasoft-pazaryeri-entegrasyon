@@ -2,13 +2,21 @@ import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { api } from '../api/client'
 import type { CatalogStatus } from '../api/types'
-import { Button, StatusBadge } from '../components'
+import { Button, StatusBadge, Tabs } from '../components'
+import CategoryMappingSection from './CategoryMappingSection'
 import { timeAgo } from '../lib/timeAgo'
 import { kindLabel, runSummary } from './catalogRuns'
 import './ChannelForm.css'
 import './Mapping.css'
 
+const CHANNEL_TABS = [
+  { value: 'Trendyol', label: 'Trendyol' },
+  { value: 'Hepsiburada', label: 'Hepsiburada' },
+  { value: 'N11', label: 'N11' },
+]
+
 export default function Mapping() {
+  const [channel, setChannel] = useState('Trendyol')
   const [catalogs, setCatalogs] = useState<CatalogStatus[]>()
   const [error, setError] = useState<string>()
   const [notice, setNotice] = useState<{ ok: boolean; text: string }>()
@@ -44,8 +52,12 @@ export default function Mapping() {
 
   return (
     <div className="mapping">
+      <Tabs items={CHANNEL_TABS} value={channel} onChange={setChannel} />
+      {!catalogs.some((c) => c.channel === channel) && (
+        <section className="ps-card"><p className="channel-form__note">{channel} için eşleme henüz desteklenmiyor; kanal adapter'ı eklendiğinde burada açılacak.</p></section>
+      )}
       {notice && <p role={notice.ok ? 'status' : 'alert'} className={notice.ok ? 'channel-form__ok' : 'channel-form__error'}>{notice.text}</p>}
-      {catalogs.map((c) => (
+      {catalogs.filter((c) => c.channel === channel).map((c) => (
         <section key={c.channel} className="ps-card mapping-card" aria-labelledby={`cat-${c.channel}`}>
           <header className="mapping-card__head">
             <h2 id={`cat-${c.channel}`}>{c.channel} kanal kataloğu</h2>
@@ -81,6 +93,7 @@ export default function Mapping() {
           </div>
         </section>
       ))}
+      {catalogs.some((c) => c.channel === channel) && <CategoryMappingSection channel={channel} />}
     </div>
   )
 }

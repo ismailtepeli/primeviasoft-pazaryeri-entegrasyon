@@ -180,3 +180,28 @@ export interface LoginResponse {
   expiresAt: string
   user: { id: string; tenantId: string; email: string; fullName: string }
 }
+
+export interface ChannelCategory {
+  externalId: number
+  name: string
+  /** "Giyim > Tişört" gibi üstten alta tam yol. */
+  path: string
+  isLeaf: boolean
+  hasChildren: boolean
+  /** Kanalda hâlâ var mı; kaldırılmışsa false. */
+  isActive: boolean
+}
+
+export interface CategoryMappingRow {
+  categoryId: string
+  path: string
+  productCount: number
+  mapped: ChannelCategory | null
+}
+
+export interface CategoryMappingList {
+  channel: string
+  total: number
+  mappedCount: number
+  rows: CategoryMappingRow[]
+}

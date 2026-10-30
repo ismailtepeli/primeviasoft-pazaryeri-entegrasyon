@@ -38,12 +38,28 @@ public class ProductSendHandler(
             .ToDictionary(d => d.ProductId);
         var publicBaseUrl = config["Storage:PublicBaseUrl"];
 
+        // Kategori eşlemesi (kendi kategori → kanal kategorisi) ve marka adı eşleşmesi, ürüne özel veride yoksa kullanılır.
+        var categoryIds = products.Where(p => p.CategoryId != null).Select(p => p.CategoryId!.Value).Distinct().ToList();
+        var mapped = await db.CategoryMappings.Where(m => m.Channel == job.Channel && categoryIds.Contains(m.CategoryId))
+            .ToDictionaryAsync(m => m.CategoryId, m => m.ExternalCategoryId, ct);
+        var brandNames = products.Where(p => !string.IsNullOrWhiteSpace(p.Brand)).Select(p => p.Brand!.Trim()).Distinct().ToList();
+        var brands = (await db.ChannelBrands.Where(b => b.Channel == job.Channel && b.IsActive && brandNames.Contains(b.Name)).ToListAsync(ct))
+            .GroupBy(b => b.Name, StringComparer.CurrentCultureIgnoreCase).ToDictionary(g => g.Key, g => g.First().ExternalId, StringComparer.CurrentCultureIgnoreCase);
+
         var items = new List<ProductItem>();
         var sent = new List<Product>();
         var missing = 0;
         foreach (var product in products)
         {
-            var (item, reasons) = TrendyolProductMapper.Map(product, data.GetValueOrDefault(product.Id), publicBaseUrl);
+            var own = data.GetValueOrDefault(product.Id);
+            var effective = new ProductChannelData
+            {
+                ProductId = product.Id, Channel = job.Channel,
+                BrandId = own?.BrandId ?? (product.Brand is { } b && brands.TryGetValue(b.Trim(), out var brandId) ? brandId : null),
+                CategoryId = own?.CategoryId ?? (product.CategoryId is { } c && mapped.TryGetValue(c, out var externalId) ? externalId : null),
+                CargoCompanyId = own?.CargoCompanyId, DimensionalWeight = own?.DimensionalWeight, AttributesJson = own?.AttributesJson,
+            };
+            var (item, reasons) = TrendyolProductMapper.Map(product, effective, publicBaseUrl);
             var listing = product.Listings.FirstOrDefault(l => l.Channel == job.Channel);
             if (listing is null)
             {

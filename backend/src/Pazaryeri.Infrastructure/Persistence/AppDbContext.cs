@@ -18,6 +18,7 @@ public class AppDbContext(DbContextOptions<AppDbContext> options, ITenantProvide
     public DbSet<ProductListing> ProductListings => Set<ProductListing>();
     public DbSet<ProductImage> ProductImages => Set<ProductImage>();
     public DbSet<Category> Categories => Set<Category>();
+    public DbSet<CategoryMapping> CategoryMappings => Set<CategoryMapping>();
     public DbSet<ChannelCategory> ChannelCategories => Set<ChannelCategory>();
     public DbSet<ChannelBrand> ChannelBrands => Set<ChannelBrand>();
     public DbSet<ChannelAttribute> ChannelAttributes => Set<ChannelAttribute>();
@@ -144,6 +145,14 @@ public class AppDbContext(DbContextOptions<AppDbContext> options, ITenantProvide
             b.Property(r => r.Kind).HasConversion<string>().HasMaxLength(20);
             b.Property(r => r.Error).HasMaxLength(2000);
             b.HasIndex(r => new { r.Channel, r.Kind, r.FinishedAt });
+        });
+
+        builder.Entity<CategoryMapping>(b =>
+        {
+            b.Property(m => m.Channel).HasMaxLength(40).IsRequired();
+            b.HasIndex(m => new { m.CategoryId, m.Channel }).IsUnique(); // kategori başına kanal başına tek eşleme
+            b.HasOne<Category>().WithMany().HasForeignKey(m => m.CategoryId).OnDelete(DeleteBehavior.Cascade);
+            b.HasOne<Tenant>().WithMany().HasForeignKey(m => m.TenantId).OnDelete(DeleteBehavior.Restrict);
         });
 
         builder.Entity<ProductChannelData>(b =>

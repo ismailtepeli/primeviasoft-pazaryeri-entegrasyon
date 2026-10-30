@@ -8,3 +8,10 @@
 .mapping-card__runs { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: var(--space-2); }
 .mapping-card__runs li { display: grid; grid-template-columns: 140px 1fr auto; gap: var(--space-3); font-size: 14.5px; padding: var(--space-2) 0; border-top: 1px solid var(--line); }
 .mapping-card__when { color: var(--ink-muted); }
+.mapping-section { display: flex; flex-direction: column; gap: var(--space-4); }
+.mapping-section__head { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: var(--space-3); }
+.mapping-section__head h2 { margin: 0; font: 700 21px var(--font-display); letter-spacing: -0.01em; }
+.mapping-section__head span { color: var(--ink-muted); font-size: 14px; }
+.mapping-stale { color: var(--danger); text-decoration: line-through; }
+.category-actions { display: inline-flex; gap: var(--space-2); }
+.mapping { max-width: 960px; }

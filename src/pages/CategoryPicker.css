@@ -1,0 +1,10 @@
+.category-picker { display: flex; flex-direction: column; gap: var(--space-3); max-width: 720px; }
+.category-picker h2 { margin: 0; font: 700 21px var(--font-display); letter-spacing: -0.01em; }
+.category-picker__trail { font-size: 14px; color: var(--ink-muted); }
+.category-picker__trail button { background: none; border: 0; padding: 0; font: inherit; color: var(--link, var(--accent)); cursor: pointer; text-decoration: underline; }
+.category-picker__trail button:disabled { color: var(--ink); cursor: default; text-decoration: none; font-weight: 600; }
+.category-picker__list { list-style: none; margin: 0; padding: 0; max-height: 340px; overflow-y: auto; border: 1px solid var(--line); border-radius: 12px; }
+.category-picker__list li { display: flex; align-items: center; justify-content: space-between; gap: var(--space-3); padding: var(--space-2) var(--space-3); border-bottom: 1px solid var(--line); }
+.category-picker__list li:last-child { border-bottom: 0; }
+.category-picker__list li > span { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.category-picker__path { color: var(--ink-muted); font-size: 13px; }
