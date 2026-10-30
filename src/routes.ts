@@ -4,6 +4,8 @@ export interface RouteDef {
   title: string
   subtitle: string
   action: string
+  /** Ekranın ait olduğu modül (ADR 0001); yoksa çekirdek, her zaman görünür. */
+  module?: string
 }
 
 /** Sol menüde görünmeyen ama başlık/alt başlık taşıyan ekranlar. */
@@ -26,12 +28,13 @@ export function routeFor(pathname: string): RouteDef {
 
 export const routes: RouteDef[] = [
   { path: '/', label: 'Genel bakış', title: 'Genel bakış', subtitle: 'Mağaza, stok ve sipariş durumunuza tek bakışta ulaşın.', action: 'Şimdi senkronla' },
-  { path: '/magazalar', label: 'Mağazalar', title: 'Mağazalar', subtitle: 'Pazaryeri bağlantılarınızı yönetin.', action: '+ Kanal ekle' },
+  { path: '/magazalar', label: 'Mağazalar', title: 'Mağazalar', subtitle: 'Pazaryeri bağlantılarınızı yönetin.', action: '+ Kanal ekle', module: 'marketplace' },
   { path: '/urunler', label: 'Ürünler', title: 'Ürünler', subtitle: 'Kataloğunuzu ve kanal durumlarını izleyin.', action: 'Ürün ekle' },
-  { path: '/esleme', label: 'Eşleme', title: 'Eşleme', subtitle: 'Kategori, özellik ve değerleri kanallarla eşleyin.', action: 'Eşlemeyi kaydet' },
-  { path: '/stok-fiyat', label: 'Stok ve fiyat', title: 'Stok ve fiyat', subtitle: 'Kanal bazlı stok dağıtımı ve fiyat kurallarını belirleyin.', action: 'Kuralı kaydet' },
-  { path: '/siparisler', label: 'Siparişler', title: 'Siparişler', subtitle: 'Tüm kanallardaki siparişleri tek listede takip edin.', action: 'Siparişleri çek' },
-  { path: '/iadeler', label: 'İadeler', title: 'İadeler', subtitle: 'İade taleplerini görüntüleyin ve yönetin.', action: 'İadeleri çek' },
-  { path: '/faturalar', label: 'Faturalar', title: 'Faturalar', subtitle: 'Kesilen faturaları ve durumlarını izleyin.', action: 'Fatura kes' },
+  { path: '/esleme', label: 'Eşleme', title: 'Eşleme', subtitle: 'Kategori, özellik ve değerleri kanallarla eşleyin.', action: 'Eşlemeyi kaydet', module: 'marketplace' },
+  { path: '/stok-fiyat', label: 'Stok ve fiyat', title: 'Stok ve fiyat', subtitle: 'Kanal bazlı stok dağıtımı ve fiyat kurallarını belirleyin.', action: 'Kuralı kaydet', module: 'stock-price' },
+  { path: '/siparisler', label: 'Siparişler', title: 'Siparişler', subtitle: 'Tüm kanallardaki siparişleri tek listede takip edin.', action: 'Siparişleri çek', module: 'orders' },
+  { path: '/iadeler', label: 'İadeler', title: 'İadeler', subtitle: 'İade taleplerini görüntüleyin ve yönetin.', action: 'İadeleri çek', module: 'orders' },
+  { path: '/faturalar', label: 'Faturalar', title: 'Faturalar', subtitle: 'Kesilen faturaları ve durumlarını izleyin.', action: 'Fatura kes', module: 'invoices' },
   { path: '/raporlar', label: 'Raporlar', title: 'Raporlar', subtitle: 'Satış ve operasyon raporlarını inceleyin.', action: 'Rapor oluştur' },
+  { path: '/ayarlar', label: 'Ayarlar', title: 'Ayarlar', subtitle: 'Hangi modüllerin açık olacağını belirleyin.', action: '' },
 ]

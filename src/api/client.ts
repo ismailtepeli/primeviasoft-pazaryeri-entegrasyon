@@ -32,7 +32,7 @@ export async function api<T>(path: string, init: RequestInit = {}): Promise<T> {
   if (res.status === 401 && token) onUnauthorized()
   if (!res.ok) {
     const body = await res.json().catch(() => null)
-    throw new ApiError(res.status, body?.error ?? `İstek başarısız (${res.status})`)
+    throw new ApiError(res.status, body?.message ?? body?.error ?? `İstek başarısız (${res.status})`)
   }
   if (res.status === 204) return undefined as T
   return res.json() as Promise<T>

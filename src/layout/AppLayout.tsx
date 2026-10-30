@@ -1,12 +1,16 @@
 import { Link, Navigate, NavLink, Outlet, useLocation } from 'react-router-dom'
 import { useAuth } from '../auth/AuthContext'
 import { AddChannelButton, Button, SyncNowButton, ThemeToggle } from '../components'
+import { isRouteEnabled, visibleRoutes } from '../modules/moduleState'
+import { useModules } from '../modules/ModulesContext'
+import ModuleDisabled from '../pages/ModuleDisabled'
 import { routeFor, routes } from '../routes'
 import './AppLayout.css'
 
 /** Ekrana özgü başlık aksiyonu; tanımsızsa şimdilik yalnızca etiket gösteren buton. */
 function headerAction(path: string, label: string) {
   if (path.startsWith('/urunler/')) return <Link to="/urunler" className="ps-btn ps-btn--secondary">← Ürünlere dön</Link>
+  if (path === '/ayarlar') return null
   if (path === '/stok-fiyat') return null // kural kaydetme/uygulama eylemleri sayfanın içinde
   if (path === '/esleme') return null // eşleme düzenleme eylemleri #22+ ile gelecek
   if (path === '/urunler') return <Link to="/urunler/yeni" className="ps-btn ps-btn--primary">Ürün ekle</Link>
@@ -19,6 +23,7 @@ export default function AppLayout() {
   const { pathname } = useLocation()
   const { authenticated, logout } = useAuth()
   const current = routeFor(pathname)
+  const { enabled } = useModules()
 
   if (!authenticated) return <Navigate to="/giris" replace />
 
@@ -34,7 +39,7 @@ export default function AppLayout() {
           <span className="app__brand-text">Primevia<span>Soft</span></span>
         </div>
         <nav className="app__nav" aria-label="Ana menü">
-          {routes.map((r) => (
+          {visibleRoutes(routes, enabled).map((r) => (
             <NavLink key={r.path} to={r.path} end className="app__nav-link">
               {r.label}
             </NavLink>
@@ -48,10 +53,10 @@ export default function AppLayout() {
             <h1>{current.title}</h1>
             <p>{current.subtitle}</p>
           </div>
-          {headerAction(current.path, current.action)}
+          {isRouteEnabled(current, enabled) && headerAction(current.path, current.action)}
         </header>
         <main className="app__content">
-          <Outlet />
+          {isRouteEnabled(current, enabled) ? <Outlet /> : <ModuleDisabled moduleId={current.module!} />}
         </main>
       </div>
     </div>

@@ -341,6 +341,16 @@ export interface StockMovementPage {
   total: number
 }
 
+export interface ModuleStatus {
+  id: string
+  name: string
+  description: string
+  /** Çekirdek modül kapatılamaz. */
+  core: boolean
+  enabled: boolean
+  dependsOn: string[]
+}
+
 export interface DashboardSummary {
   todayOrders: number
   awaitingShipment: number

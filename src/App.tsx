@@ -7,6 +7,8 @@ import Orders from './pages/Orders'
 import Overview from './pages/Overview'
 import PagePlaceholder from './pages/PagePlaceholder'
 import { AuthProvider } from './auth/AuthContext'
+import { ModulesProvider } from './modules/ModulesContext'
+import Settings from './pages/Settings'
 import ProductEdit from './pages/ProductEdit'
 import Products from './pages/Products'
 import StockPrice from './pages/StockPrice'
@@ -21,12 +23,14 @@ function pageFor(path: string, label: string) {
   if (path === '/esleme') return <Mapping />
   if (path === '/stok-fiyat') return <StockPrice />
   if (path === '/siparisler') return <Orders />
+  if (path === '/ayarlar') return <Settings />
   return <PagePlaceholder name={label} />
 }
 
 export default function App() {
   return (
     <AuthProvider>
+      <ModulesProvider>
       <BrowserRouter>
         <Routes>
           <Route path="/tasarim-sistemi" element={<DesignSystem />} />
@@ -41,6 +45,7 @@ export default function App() {
           </Route>
         </Routes>
       </BrowserRouter>
+      </ModulesProvider>
     </AuthProvider>
   )
 }
