@@ -97,6 +97,7 @@ public class TrendyolClient(HttpClient http, MarketplaceCredentials credentials)
         if (query.Status is not null) qs.Add($"status={Uri.EscapeDataString(query.Status)}");
         if (query.From is not null) qs.Add($"startDate={ToEpochMs(query.From.Value)}");
         if (query.To is not null) qs.Add($"endDate={ToEpochMs(query.To.Value)}");
+        if (query.ModifiedFrom is not null) qs.Add($"lastModifiedStartDate={ToEpochMs(query.ModifiedFrom.Value)}");
 
         using var doc = await SendAsync(HttpMethod.Get, $"/integration/order/sellers/{Seller}/orders?{string.Join('&', qs)}", null, TrendyolServiceGroup.Other, ct);
         var root = doc.RootElement;
@@ -118,7 +119,9 @@ public class TrendyolClient(HttpClient http, MarketplaceCredentials credentials)
                     DateTimeOffset.FromUnixTimeMilliseconds(o.TryGetProperty("orderDate", out var d) ? d.GetInt64() : 0).UtcDateTime,
                     Dec(o, "totalPrice", fallback: Dec(o, "grossAmount")),
                     $"{Str(o, "customerFirstName")} {Str(o, "customerLastName")}".Trim(),
-                    lines));
+                    lines,
+                    o.TryGetProperty("lastModifiedDate", out var lm) && lm.ValueKind == JsonValueKind.Number
+                        ? DateTimeOffset.FromUnixTimeMilliseconds(lm.GetInt64()).UtcDateTime : null));
             }
         }
         return new OrderPage(orders, Int(root, "page"), Int(root, "totalPages"));

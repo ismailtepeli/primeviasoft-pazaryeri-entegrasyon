@@ -41,7 +41,8 @@ public record StockPriceItem(string Barcode, int Quantity, decimal SalePrice, de
 /// <summary>Kanalın toplu işlem (batch) kimliği; sonucu sonradan bu kimlikle sorgulanır.</summary>
 public record BatchResult(string BatchId);
 
-public record OrderQuery(DateTime? From = null, DateTime? To = null, string? Status = null, int Page = 0, int Size = 50);
+/// <param name="ModifiedFrom">Verilirse yalnızca bu zamandan sonra değişen paketler (artımlı senkron imleci).</param>
+public record OrderQuery(DateTime? From = null, DateTime? To = null, string? Status = null, int Page = 0, int Size = 50, DateTime? ModifiedFrom = null);
 
 public record MarketplaceOrderLine(string LineId, string Barcode, string Name, int Quantity, decimal Price);
 
@@ -52,7 +53,8 @@ public record MarketplaceOrder(
     DateTime OrderDate,
     decimal TotalPrice,
     string CustomerName,
-    IReadOnlyList<MarketplaceOrderLine> Lines);
+    IReadOnlyList<MarketplaceOrderLine> Lines,
+    DateTime? LastModified = null);
 
 public record OrderPage(IReadOnlyList<MarketplaceOrder> Orders, int Page, int TotalPages);
 

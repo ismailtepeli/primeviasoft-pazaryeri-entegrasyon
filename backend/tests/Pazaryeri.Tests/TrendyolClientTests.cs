@@ -116,12 +116,12 @@ public class TrendyolClientTests
     {
         const string body = """
         {"page":0,"totalPages":3,"content":[{"orderNumber":"7001","shipmentPackageId":9001,"status":"Created",
-         "orderDate":1730000000000,"totalPrice":250.5,"customerFirstName":"Ayşe","customerLastName":"Yılmaz",
+         "orderDate":1730000000000,"lastModifiedDate":1730000600000,"totalPrice":250.5,"customerFirstName":"Ayşe","customerLastName":"Yılmaz",
          "lines":[{"id":55,"barcode":"bc1","productName":"Ürün","quantity":2,"amount":125.25}]}]}
         """;
         var (client, server, _, _) = Build(Creds(), Json(HttpStatusCode.OK, body));
 
-        var page = await client.GetOrdersAsync(new OrderQuery(Status: "Created", Page: 0, Size: 50));
+        var page = await client.GetOrdersAsync(new OrderQuery(Status: "Created", Page: 0, Size: 50, ModifiedFrom: DateTimeOffset.FromUnixTimeMilliseconds(1730000000000).UtcDateTime));
 
         Assert.Equal(3, page.TotalPages);
         var order = Assert.Single(page.Orders);
@@ -133,6 +133,8 @@ public class TrendyolClientTests
         Assert.Equal("55", line.LineId);
         Assert.Equal(2, line.Quantity);
         Assert.Contains("status=Created", server.Requests[0].Url);
+        Assert.Contains("lastModifiedStartDate=1730000000000", server.Requests[0].Url);
+        Assert.Equal(DateTimeOffset.FromUnixTimeMilliseconds(1730000600000).UtcDateTime, order.LastModified);
     }
 
     [Fact]

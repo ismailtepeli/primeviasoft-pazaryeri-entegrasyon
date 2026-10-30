@@ -21,6 +21,10 @@ public class AppDbContext(DbContextOptions<AppDbContext> options, ITenantProvide
     public DbSet<StockMovement> StockMovements => Set<StockMovement>();
     public DbSet<ChannelStockPriceState> ChannelStockPriceStates => Set<ChannelStockPriceState>();
     public DbSet<StockPriceBatch> StockPriceBatches => Set<StockPriceBatch>();
+    public DbSet<Order> Orders => Set<Order>();
+    public DbSet<OrderPackage> OrderPackages => Set<OrderPackage>();
+    public DbSet<OrderLine> OrderLines => Set<OrderLine>();
+    public DbSet<OrderSyncState> OrderSyncStates => Set<OrderSyncState>();
     public DbSet<SentBodyHash> SentBodyHashes => Set<SentBodyHash>();
     public DbSet<StockRule> StockRules => Set<StockRule>();
     public DbSet<StockSettings> StockSettings => Set<StockSettings>();
@@ -178,6 +182,48 @@ public class AppDbContext(DbContextOptions<AppDbContext> options, ITenantProvide
             b.HasIndex(m => new { m.TenantId, m.CreatedAt });
             b.HasOne<Product>().WithMany().HasForeignKey(m => m.ProductId).OnDelete(DeleteBehavior.Cascade);
             b.HasOne<Tenant>().WithMany().HasForeignKey(m => m.TenantId).OnDelete(DeleteBehavior.Restrict);
+        });
+
+        builder.Entity<Order>(b =>
+        {
+            b.Property(o => o.Channel).HasMaxLength(40).IsRequired();
+            b.Property(o => o.OrderNumber).HasMaxLength(100).IsRequired();
+            b.Property(o => o.CustomerName).HasMaxLength(200);
+            b.Property(o => o.Status).HasConversion<string>().HasMaxLength(20);
+            b.Property(o => o.TotalPrice).HasPrecision(18, 2);
+            b.HasIndex(o => new { o.TenantId, o.Channel, o.OrderNumber }).IsUnique();
+            b.HasIndex(o => new { o.TenantId, o.Status, o.OrderDate });
+            b.HasMany(o => o.Packages).WithOne().HasForeignKey(p => p.OrderId).OnDelete(DeleteBehavior.Cascade);
+            b.HasOne<Tenant>().WithMany().HasForeignKey(o => o.TenantId).OnDelete(DeleteBehavior.Restrict);
+        });
+
+        builder.Entity<OrderPackage>(b =>
+        {
+            b.Property(p => p.Channel).HasMaxLength(40).IsRequired();
+            b.Property(p => p.PackageId).HasMaxLength(100).IsRequired();
+            b.Property(p => p.ChannelStatus).HasMaxLength(50);
+            b.Property(p => p.Status).HasConversion<string>().HasMaxLength(20);
+            b.Property(p => p.TotalPrice).HasPrecision(18, 2);
+            b.HasIndex(p => new { p.TenantId, p.Channel, p.PackageId }).IsUnique();
+            b.HasMany(p => p.Lines).WithOne().HasForeignKey(l => l.PackageId).OnDelete(DeleteBehavior.Cascade);
+            b.HasOne<Tenant>().WithMany().HasForeignKey(p => p.TenantId).OnDelete(DeleteBehavior.Restrict);
+        });
+
+        builder.Entity<OrderLine>(b =>
+        {
+            b.Property(l => l.LineId).HasMaxLength(100).IsRequired();
+            b.Property(l => l.Barcode).HasMaxLength(100);
+            b.Property(l => l.Name).HasMaxLength(500);
+            b.Property(l => l.Price).HasPrecision(18, 2);
+            b.HasIndex(l => new { l.PackageId, l.LineId }).IsUnique();
+            b.HasOne<Tenant>().WithMany().HasForeignKey(l => l.TenantId).OnDelete(DeleteBehavior.Restrict);
+        });
+
+        builder.Entity<OrderSyncState>(b =>
+        {
+            b.Property(s => s.Channel).HasMaxLength(40).IsRequired();
+            b.HasIndex(s => new { s.TenantId, s.Channel }).IsUnique();
+            b.HasOne<Tenant>().WithMany().HasForeignKey(s => s.TenantId).OnDelete(DeleteBehavior.Restrict);
         });
 
         builder.Entity<ChannelStockPriceState>(b =>

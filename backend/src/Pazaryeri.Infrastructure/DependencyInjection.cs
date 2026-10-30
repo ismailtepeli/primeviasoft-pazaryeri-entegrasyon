@@ -10,6 +10,7 @@ using Pazaryeri.Application.Jobs;
 using Pazaryeri.Application.Marketplace;
 using Pazaryeri.Application.Products;
 using Pazaryeri.Application.Stock;
+using Pazaryeri.Infrastructure.Orders;
 using Pazaryeri.Infrastructure.Products;
 using Pazaryeri.Infrastructure.Stock;
 using Pazaryeri.Application.Products;
@@ -47,6 +48,8 @@ public static class DependencyInjection
         services.AddScoped<StockPriceDeltaPlanner>();
         services.AddScoped<IStockPoolService, StockPoolService>();
         services.AddScoped<ISyncJobHandler, StockPriceSyncHandler>();
+        services.AddScoped<ISyncJobHandler, OrderSyncHandler>();
+        services.AddScoped<OrderIngestService>();
         services.AddScoped<IProductSendService, ProductSendService>();
         services.AddScoped<IChannelCatalogService, ChannelCatalogService>();
         services.AddScoped<ISyncJobHandler, CatalogSyncHandler>();
@@ -83,6 +86,10 @@ public static class DependencyInjection
             q.ScheduleJob<StockPriceSyncScheduler>(t => t
                 .WithIdentity("stock-price-sync-scheduler")
                 .WithSimpleSchedule(s => s.WithInterval(TimeSpan.FromMinutes(5)).RepeatForever()));
+            // Kanaldan değişen siparişleri çeker (3 dk); webhook (#30) anlık bildirim ekler.
+            q.ScheduleJob<OrderSyncScheduler>(t => t
+                .WithIdentity("order-sync-scheduler")
+                .WithSimpleSchedule(s => s.WithInterval(TimeSpan.FromMinutes(3)).RepeatForever()));
             q.ScheduleJob<StockPriceBatchPoller>(t => t
                 .WithIdentity("stock-price-batch-poller")
                 .WithSimpleSchedule(s => s.WithInterval(TimeSpan.FromMinutes(1)).RepeatForever()));
