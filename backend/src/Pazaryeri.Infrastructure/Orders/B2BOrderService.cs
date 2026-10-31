@@ -27,7 +27,11 @@ public record CartLineView(Guid ProductId, string Name, string Code, string? Cov
 
 public record CartView(IReadOnlyList<CartLineView> Lines, decimal TotalNet, decimal TotalGross, string Currency, bool HasIssues, int ItemCount);
 
-public record CheckoutInput(string? Address, string? Note, bool AllowPartial);
+/// <summary>SaveAddress: bayinin kayıtlı adresi boşsa, siparişte girilen adres kayıtlı adres olur (dolu adres hiç değiştirilmez).</summary>
+public record CheckoutInput(string? Address, string? Note, bool AllowPartial, bool SaveAddress = false);
+
+/// <summary>Sipariş ekranı için bayinin kayıtlı teslimat adresi; boşsa adres siparişte zorunludur.</summary>
+public record CheckoutInfo(string? SavedAddress);
 
 public record B2BOrderRow(Guid Id, string OrderNumber, DateTime OrderDate, string Status, decimal TotalGross, string Currency, int LineCount);
 
@@ -245,6 +249,12 @@ public class B2BOrderService(AppDbContext db, StoreCatalog catalog, DealerPriceS
 
     // ---------- sipariş verme ----------
 
+    public async Task<CheckoutInfo> CheckoutInfoAsync(Guid dealerId, CancellationToken ct)
+    {
+        var address = await db.Dealers.AsNoTracking().Where(d => d.Id == dealerId).Select(d => d.Address).FirstOrDefaultAsync(ct);
+        return new CheckoutInfo(DealerRulesClean(address));
+    }
+
     public async Task<B2BOrderDetail> CheckoutAsync(Guid dealerId, CheckoutInput input, CancellationToken ct)
     {
         var dealer = await db.Dealers.AsNoTracking().FirstOrDefaultAsync(d => d.Id == dealerId, ct) ?? throw new StoreException(404, "Bayi bulunamadı.");
@@ -305,6 +315,9 @@ public class B2BOrderService(AppDbContext db, StoreCatalog catalog, DealerPriceS
             var order = BuildOrder(dealer, number, address, note, deducted);
             db.Orders.Add(order);
             await db.SaveChangesAsync(ct);
+            // Kayıtlı adresi olmayan bayinin girdiği adres, istenirse kayıtlı adres olur; dolu adres koşullu güncellemeyle korunur.
+            if (input.SaveAddress && DealerRulesClean(dealer.Address) is null)
+                await db.Dealers.Where(d => d.Id == dealerId && (d.Address == null || d.Address == "")).ExecuteUpdateAsync(s => s.SetProperty(d => d.Address, address), ct);
             return ToDetail(order);
         }
         catch (DbUpdateException)

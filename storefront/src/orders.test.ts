@@ -44,3 +44,14 @@ describe('sepet sayacı', () => {
     expect(cartSummary([{ quantity: 5, packSize: 1 }])).toBe('5 adet')
   })
 })
+
+describe('teslimat adresi zorunluluğu', () => {
+  it('kayıtlı adresi olmayan bayide adres zorunlu, olanda ve bilinmeyende değil', async () => {
+    const { addressRequired } = await import('./orders')
+    expect(addressRequired(null, '')).toMatch(/adresini girin/)
+    expect(addressRequired(null, '   ')).not.toBeNull()
+    expect(addressRequired(null, 'Kadıköy, İstanbul')).toBeNull()
+    expect(addressRequired('Kayıtlı adres', '')).toBeNull()
+    expect(addressRequired(undefined, '')).toBeNull()
+  })
+})

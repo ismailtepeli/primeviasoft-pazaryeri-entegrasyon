@@ -64,6 +64,10 @@ public class StoreOrdersController(B2BOrderService orders) : ControllerBase
     [HttpDelete("cart")]
     public Task<ActionResult<CartView>> Clear(CancellationToken ct) => Run(() => orders.ClearAsync(DealerId, ct));
 
+    /// <summary>Sipariş ekranı için kayıtlı adres bilgisi; adres yoksa sipariş formunda adres zorunlu gösterilir.</summary>
+    [HttpGet("checkout-info")]
+    public Task<CheckoutInfo> CheckoutInfo(CancellationToken ct) => orders.CheckoutInfoAsync(DealerId, ct);
+
     [HttpPost("orders")]
     public async Task<ActionResult<B2BOrderDetail>> Checkout(CheckoutInput input, CancellationToken ct)
     {

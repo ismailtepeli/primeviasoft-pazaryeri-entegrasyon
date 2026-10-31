@@ -4,7 +4,7 @@ import { Link, useNavigate, useParams } from 'react-router-dom'
 import { StoreApiError, storeApi } from './api'
 import { formatMoney, fromBoxText, quantityLabel, toBoxText } from './catalog'
 import { useCart } from './CartContext'
-import { cartSummary, formatDate, orderStatusText, orderSteps, priceChangeNote, type OrderDetail, type OrderRow } from './orders'
+import { addressRequired, cartSummary, formatDate, orderStatusText, orderSteps, priceChangeNote, type OrderDetail, type OrderRow } from './orders'
 import { useStore } from './StoreContext'
 
 interface IssueBody { details?: { issues?: { kind: string; text: string }[] } }
@@ -15,6 +15,9 @@ export function CartPage() {
   const navigate = useNavigate()
   const [qty, setQty] = useState<Record<string, string>>({})
   const [address, setAddress] = useState('')
+  const [saved, setSaved] = useState<string | null | undefined>(undefined) // undefined: yükleniyor, null: kayıtlı adres yok
+  const [saveAddress, setSaveAddress] = useState(true)
+  const [addressError, setAddressError] = useState<string>()
   const [note, setNote] = useState('')
   const [partial, setPartial] = useState(false)
   const [message, setMessage] = useState<string>()
@@ -22,6 +25,11 @@ export function CartPage() {
   const [busy, setBusy] = useState(false)
 
   useEffect(() => { void refresh() }, [refresh])
+  useEffect(() => {
+    let current = true
+    storeApi<{ savedAddress: string | null }>('/checkout-info', {}, token).then((i) => { if (current) setSaved(i.savedAddress) }).catch(() => { if (current) setSaved(undefined) })
+    return () => { current = false }
+  }, [token])
 
   async function change(productId: string, value: number) {
     setMessage(undefined)
@@ -33,9 +41,12 @@ export function CartPage() {
   }
 
   async function checkout() {
+    const missing = addressRequired(saved, address)
+    setAddressError(missing ?? undefined)
+    if (missing) return
     setBusy(true); setMessage(undefined); setIssues([])
     try {
-      const order = await storeApi<OrderDetail>('/orders', { method: 'POST', body: JSON.stringify({ address, note, allowPartial: partial }) }, token)
+      const order = await storeApi<OrderDetail>('/orders', { method: 'POST', body: JSON.stringify({ address, note, allowPartial: partial, saveAddress: saved === null && saveAddress }) }, token)
       await refresh()
       navigate(`/siparis/${order.id}`, { state: { placed: true } })
     } catch (e) {
@@ -106,9 +117,14 @@ export function CartPage() {
       <section className="ps-card store-panel" style={{ maxWidth: 'none', margin: 0 }} aria-labelledby="checkout-title">
         <h2 id="checkout-title" className="store-h2">Teslimat</h2>
         <label className="field">
-          <span className="field__label">Teslimat adresi</span>
-          <input className="ps-input" value={address} onChange={(e) => setAddress(e.target.value)} placeholder="Boş bırakırsanız kayıtlı adresiniz kullanılır" />
+          <span className="field__label">Teslimat adresi{saved === null && <span aria-hidden> *</span>}</span>
+          <input className="ps-input" value={address} aria-required={saved === null} aria-invalid={!!addressError} onChange={(e) => { setAddress(e.target.value); setAddressError(undefined) }}
+            placeholder={saved === null ? 'İl, ilçe, mahalle, sokak ve numara' : 'Boş bırakırsanız kayıtlı adresiniz kullanılır'} />
+          {addressError ? <span className="field__error">{addressError}</span> : saved ? <span className="field__hint">Kayıtlı adresiniz: {saved}</span> : null}
         </label>
+        {saved === null && (
+          <label className="store-check"><input type="checkbox" checked={saveAddress} onChange={(e) => setSaveAddress(e.target.checked)} /> Bu adresi kayıtlı adresim olarak sakla</label>
+        )}
         <label className="field">
           <span className="field__label">Sipariş notu</span>
           <input className="ps-input" value={note} onChange={(e) => setNote(e.target.value)} />

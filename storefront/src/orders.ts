@@ -84,3 +84,11 @@ export function priceChangeNote(line: CartLine): string | null {
 export function formatDate(iso: string): string {
   return new Date(iso).toLocaleString('tr-TR', { dateStyle: 'medium', timeStyle: 'short' })
 }
+
+/**
+ * Sipariş formunda adres denetimi: bayinin kayıtlı adresi yoksa (null) adres girilmeden sipariş verilemez.
+ * saved undefined ise (bilgi yüklenemedi) sunucu karar verir.
+ */
+export function addressRequired(saved: string | null | undefined, typed: string): string | null {
+  return saved === null && !typed.trim() ? 'Kayıtlı adresiniz yok; teslimat adresini girin.' : null
+}

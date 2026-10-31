@@ -189,6 +189,42 @@ public class B2BOrderTests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task Kayitli_adres_bilgisi_doner_adresi_olmayan_bayi_adres_girmek_zorundadir_ve_istenirse_kaydedilir()
+    {
+        var w = await SeedAsync("AdresKayit");
+        await using var db = NewDb(w.Tenant);
+        var s = Service(db);
+
+        Assert.Equal("İstanbul, Kadıköy", (await s.CheckoutInfoAsync(w.DealerId, default)).SavedAddress);   // kayıtlı adres var
+        Assert.Null((await s.CheckoutInfoAsync(Guid.NewGuid(), default)).SavedAddress);   // bilinmeyen bayi: adres yok
+
+        await using (var admin = NewDb(w.Tenant)) { (await admin.Dealers.SingleAsync(d => d.Id == w.DealerId)).Address = "  "; await admin.SaveChangesAsync(); }
+        Assert.Null((await s.CheckoutInfoAsync(w.DealerId, default)).SavedAddress);                         // boşluk adres sayılmaz
+
+        // adres yok ve girilmedi: zorunlu
+        await s.AddAsync(w.DealerId, w.Pen, 10, default);
+        Assert.Equal(400, (await FailAsync(() => s.CheckoutAsync(w.DealerId, new CheckoutInput(null, null, false, SaveAddress: true), default))).Status);
+
+        // adres girildi, kaydet seçili değil: siparişte kalır, bayi kaydı boş
+        var first = await s.CheckoutAsync(w.DealerId, new CheckoutInput("Ankara, Çankaya", null, false), default);
+        Assert.Equal("Ankara, Çankaya", first.ShippingAddress);
+        Assert.Null((await s.CheckoutInfoAsync(w.DealerId, default)).SavedAddress);
+
+        // adres girildi ve kaydet seçili: bayinin kayıtlı adresi olur, sonraki sipariş boş adresle verilebilir
+        await s.AddAsync(w.DealerId, w.Pen, 10, default);
+        await s.CheckoutAsync(w.DealerId, new CheckoutInput("İzmir, Konak", null, false, SaveAddress: true), default);
+        Assert.Equal("İzmir, Konak", (await s.CheckoutInfoAsync(w.DealerId, default)).SavedAddress);
+        await s.AddAsync(w.DealerId, w.Pen, 10, default);
+        Assert.Equal("İzmir, Konak", (await s.CheckoutAsync(w.DealerId, new CheckoutInput(null, null, false), default)).ShippingAddress);
+
+        // kayıtlı adres doluyken kaydet seçilse de mevcut adres ezilmez
+        await s.AddAsync(w.DealerId, w.Pen, 10, default);
+        var third = await s.CheckoutAsync(w.DealerId, new CheckoutInput("Bursa, Nilüfer", null, false, SaveAddress: true), default);
+        Assert.Equal("Bursa, Nilüfer", third.ShippingAddress);                                               // bu siparişin adresi girilen
+        Assert.Equal("İzmir, Konak", (await s.CheckoutInfoAsync(w.DealerId, default)).SavedAddress);        // kayıtlı adres korunur
+    }
+
+    [Fact]
     public async Task Stok_yetmezse_siparis_reddedilir_stok_ve_sepet_degismez_kismi_karsilama_secenegi_calisir()
     {
         var w = await SeedAsync("Kismi");
