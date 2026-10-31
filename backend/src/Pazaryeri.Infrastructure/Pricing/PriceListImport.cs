@@ -32,14 +32,14 @@ public class PriceListImportService(AppDbContext db)
 
     /// <summary>
     /// Listedeki fiyatlı ürünleri aynı biçimde dışa aktarır; dosya değiştirilip aynı listeye ya da başka listeye geri yüklenebilir.
-    /// Minimum ve koli, ürünün etkin değerleridir (içe aktarma bunları ürüne yazar). Liste yoksa null.
+    /// Minimum ve koli bu listedeki kalem düzeyinde geçersiz kılmalardır; boş hücre ürünün değerini kullanır. Liste yoksa null.
     /// </summary>
     public async Task<(string Name, byte[] File)?> ExportAsync(Guid listId, CancellationToken ct)
     {
         var list = await db.PriceLists.AsNoTracking().Where(l => l.Id == listId).Select(l => new { l.Name }).FirstOrDefaultAsync(ct);
         if (list is null) return null;
         var rows = await db.PriceListItems.AsNoTracking().Where(i => i.PriceListId == listId)
-            .Join(db.Products.AsNoTracking(), i => i.ProductId, p => p.Id, (i, p) => new { p.Name, p.Barcode, i.Price, p.MinOrderQuantity, p.PackSize })
+            .Join(db.Products.AsNoTracking(), i => i.ProductId, p => p.Id, (i, p) => new { p.Name, p.Barcode, i.Price, i.MinOrderQuantity, i.PackSize })
             .OrderBy(r => r.Name).ThenBy(r => r.Barcode).ToListAsync(ct);
 
         using var book = new XLWorkbook();
@@ -48,11 +48,10 @@ public class PriceListImportService(AppDbContext db)
         var n = 2;
         foreach (var r in rows)
         {
-            var (min, pack) = OrderQuantityRules.Normalize(r.MinOrderQuantity, r.PackSize);
             sheet.Cell(n, 1).SetValue(r.Barcode); // metin: baştaki sıfırlar ve uzun barkodlar bozulmaz
             sheet.Cell(n, 2).SetValue(r.Price);
-            sheet.Cell(n, 3).SetValue(min);
-            sheet.Cell(n, 4).SetValue(pack);
+            if (r.MinOrderQuantity is { } mn) sheet.Cell(n, 3).SetValue(mn); // boş = ürünün değeri
+            if (r.PackSize is { } pk) sheet.Cell(n, 4).SetValue(pk);
             n++;
         }
         sheet.Column(2).Style.NumberFormat.Format = "0.00";
@@ -115,15 +114,15 @@ public class PriceListImportService(AppDbContext db)
                 if (!row.Cell(priceCol.Value).TryGetValue<decimal>(out var price) || price < 0 || price > 100_000_000m)
                 { errors.Add(new(n, $"{barcode}: fiyat geçerli bir sayı olmalı.")); continue; }
 
-                var min = product.MinOrderQuantity; var pack = product.PackSize;
-                if (minCol is { } mc && !row.Cell(mc).IsEmpty() && !row.Cell(mc).TryGetValue(out min)) { errors.Add(new(n, $"{barcode}: minimum adet geçersiz.")); continue; }
-                if (packCol is { } pc && !row.Cell(pc).IsEmpty() && !row.Cell(pc).TryGetValue(out pack)) { errors.Add(new(n, $"{barcode}: koli adedi geçersiz.")); continue; }
-                if (OrderQuantityRules.ValidateSettings(min, pack) is { } qe) { errors.Add(new(n, $"{barcode}: {qe}")); continue; }
+                // Minimum/Koli bu listede kalem düzeyinde geçersiz kılar; boş hücre = ürünün değeri (ürün kaydı değişmez).
+                int? min = null, pack = null;
+                if (minCol is { } mc && !row.Cell(mc).IsEmpty()) { if (!row.Cell(mc).TryGetValue<int>(out var m)) { errors.Add(new(n, $"{barcode}: minimum adet geçersiz.")); continue; } min = m; }
+                if (packCol is { } pc && !row.Cell(pc).IsEmpty()) { if (!row.Cell(pc).TryGetValue<int>(out var k)) { errors.Add(new(n, $"{barcode}: koli adedi geçersiz.")); continue; } pack = k; }
+                if (OrderQuantityRules.ValidateOverrides(min, pack) is { } qe) { errors.Add(new(n, $"{barcode}: {qe}")); continue; }
 
                 price = DealerPricing.Round(price);
-                if (items.TryGetValue(product.Id, out var item)) { item.Price = price; updated++; }
-                else { db.PriceListItems.Add(new PriceListItem { PriceListId = listId, ProductId = product.Id, Price = price }); created++; }
-                product.MinOrderQuantity = min; product.PackSize = pack;
+                if (items.TryGetValue(product.Id, out var item)) { item.Price = price; item.MinOrderQuantity = min; item.PackSize = pack; updated++; }
+                else { db.PriceListItems.Add(new PriceListItem { PriceListId = listId, ProductId = product.Id, Price = price, MinOrderQuantity = min, PackSize = pack }); created++; }
             }
 
             await db.SaveChangesAsync(ct);

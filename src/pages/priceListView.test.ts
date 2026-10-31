@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { PriceListRow } from '../api/types'
-import { emptyPriceListForm, exportFileName, formFromList, formatMoney, listTarget, parseCount, parseDecimal, priceImportSummary, toPriceListInput, validatePriceListForm, validateQuantity } from './priceListView'
+import { emptyPriceListForm, exportFileName, validateQuantityOverride, formFromList, formatMoney, listTarget, parseCount, parseDecimal, priceImportSummary, toPriceListInput, validatePriceListForm, validateQuantity } from './priceListView'
 
 const row: PriceListRow = {
   id: '1', name: 'Altın', currency: 'TRY', groupId: 'g1', groupName: 'Altın grup', dealerId: null, dealerName: null,
@@ -64,5 +64,16 @@ describe('priceListView', () => {
     expect(exportFileName('Gümüş / Özel 2027!')).toBe('fiyat-listesi-gümüş-özel-2027.xlsx')
     expect(exportFileName('  ')).toBe('fiyat-listesi-liste.xlsx')
     expect(exportFileName(undefined)).toBe('fiyat-listesi-liste.xlsx')
+  })
+
+  it('liste kalemi adet geçersiz kılması: boş serbest, dolu alan 1-100000 tam sayı', () => {
+    expect(validateQuantityOverride('', '')).toBeNull()
+    expect(validateQuantityOverride('10', '')).toBeNull()
+    expect(validateQuantityOverride('', '6')).toBeNull()
+    expect(validateQuantityOverride(' 10 ', '5')).toBeNull()
+    expect(validateQuantityOverride('0', '')).toMatch(/Minimum/)
+    expect(validateQuantityOverride('', 'abc')).toMatch(/Koli/)
+    expect(validateQuantityOverride('100001', '')).toMatch(/Minimum/)
+    expect(validateQuantityOverride('2,5', '')).not.toBeNull()
   })
 })

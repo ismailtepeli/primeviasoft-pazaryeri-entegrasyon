@@ -29,4 +29,8 @@ public class PriceListItem : TenantEntity
     public Guid PriceListId { get; set; }
     public Guid ProductId { get; set; }
     public decimal Price { get; set; }
+    /// <summary>Bu listede geçerli minimum sipariş adedi; boşsa ürünün değeri (bayi listesi > grup listesi > ürün).</summary>
+    public int? MinOrderQuantity { get; set; }
+    /// <summary>Bu listede geçerli koli adedi; boşsa ürünün değeri.</summary>
+    public int? PackSize { get; set; }
 }

@@ -28,14 +28,22 @@ public class DealerPriceService(AppDbContext db)
         var listIds = new[] { dealerList?.Id, groupList?.Id }.Where(i => i is not null).Select(i => i!.Value).ToList();
         var items = listIds.Count == 0 ? [] : await db.PriceListItems.AsNoTracking()
             .Where(i => listIds.Contains(i.PriceListId) && productIds.Contains(i.ProductId))
-            .Select(i => new { i.PriceListId, i.ProductId, i.Price }).ToListAsync(ct);
+            .Select(i => new { i.PriceListId, i.ProductId, i.Price, i.MinOrderQuantity, i.PackSize }).ToListAsync(ct);
 
         static PriceListRule? Rule(PriceList? l) => l is null ? null : new PriceListRule(l.DiscountPercent, l.PricesIncludeVat, l.ShowVatIncluded, l.Currency);
         decimal? Item(PriceList? l, Guid productId) => l is null ? null : items.FirstOrDefault(i => i.PriceListId == l.Id && i.ProductId == productId)?.Price;
+        // Adet kuralı alan alan çözülür: bayi listesi kalemi > grup listesi kalemi > ürün; boş alan bir alt düzeye düşer.
+        (int? Min, int? Pack) Qty(PriceList? l, Guid productId)
+        {
+            var i = l is null ? null : items.FirstOrDefault(x => x.PriceListId == l.Id && x.ProductId == productId);
+            return (i?.MinOrderQuantity, i?.PackSize);
+        }
 
         return products.Select(p =>
         {
-            var (min, pack) = OrderQuantityRules.Normalize(p.MinOrderQuantity, p.PackSize);
+            var (dMin, dPack) = Qty(dealerList, p.Id);
+            var (gMin, gPack) = Qty(groupList, p.Id);
+            var (min, pack) = OrderQuantityRules.Normalize(dMin ?? gMin ?? p.MinOrderQuantity, dPack ?? gPack ?? p.PackSize);
             var price = DealerPricing.Resolve(p.Price, p.VatRate, Rule(dealerList), Item(dealerList, p.Id), Rule(groupList), Item(groupList, p.Id), showGeneralWithVat);
             return new DealerProductPrice(p.Id, price, min, pack);
         }).ToList();

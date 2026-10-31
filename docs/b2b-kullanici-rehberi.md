@@ -39,9 +39,14 @@ Bayiye gösterilen fiyat şu sırayla belirlenir:
 
 Liste kalemi **net fiyat** ya da genel fiyat üzerinden **iskonto %** olabilir. Listede fiyatın KDV dahil mi hariç mi olduğunu işaretlersiniz; sipariş toplamları buna göre net ve brüt olarak hesaplanır. Fiyat listesi dışındaki (genel) fiyatın bayi sitesinde KDV dahil mi hariç mi gösterileceğini **Ayarlar > B2B > Fiyat gösterimi** bölümünden seçersiniz (varsayılan: KDV dahil). Bu yalnızca gösterimi değiştirir; sipariş toplamları (KDV hariç, KDV, genel toplam) aynı kalır. Fiyat listeleri kendi gösterim ayarını kullanır.
 
-**Excel ile toplu fiyat:** Fiyat listesi düzenleme ekranında **Şablonu indir** boş bir Excel verir (başlıklar: Barkod, Fiyat, Minimum, Koli). Doldurup **Excel ile yükle** ile yüklersiniz; hatalı satırlar satır numarasıyla gösterilir. **Fiyatları Excel'e aktar** listedeki fiyatlı ürünleri aynı biçimde indirir; dosyayı düzenleyip aynı listeye ya da başka bir listeye geri yükleyebilirsiniz (Minimum ve Koli değerleri ürüne yazılır). Barkodlar metin olarak saklanır, baştaki sıfırlar bozulmaz.
+**Excel ile toplu fiyat:** Fiyat listesi düzenleme ekranında **Şablonu indir** boş bir Excel verir (başlıklar: Barkod, Fiyat, Minimum, Koli). Doldurup **Excel ile yükle** ile yüklersiniz; hatalı satırlar satır numarasıyla gösterilir. **Fiyatları Excel'e aktar** listedeki fiyatlı ürünleri aynı biçimde indirir; dosyayı düzenleyip aynı listeye ya da başka bir listeye geri yükleyebilirsiniz. Minimum ve Koli sütunları bu listedeki kalemi etkiler (aşağıya bakın); boş bırakırsanız ürünün değeri geçerli olur. Barkodlar metin olarak saklanır, baştaki sıfırlar bozulmaz.
 
-Ürün ekranında **minimum sipariş** ve **koli (paket) adedi** tanımlanır; sepet bunlara uymayan miktarı 400 ile reddeder, bayi sitesindeki adet seçici koli adedi kadar artar.
+**Minimum sipariş ve koli adedi** iki düzeyde tanımlanır; sepet bunlara uymayan miktarı reddeder, bayi sitesindeki adet seçici koli sayar (1, 2, 3 koli):
+
+1. **Ürün varsayılanı:** Fiyat listesi düzenleme ekranındaki "Ürün varsayılanı · Min · Koli" sütunu. Listede geçersiz kılma yoksa her yerde geçerlidir.
+2. **Bu listede (kalem düzeyi):** "Bu listede: fiyat · Min · Koli" sütunundaki Min ve Koli alanları yalnızca o listedeki kalemi geçersiz kılar. Boş bırakılan alan ürünün değerini kullanır (yer tutucuda görünür). Geçersiz kılma için kalemin liste fiyatı olmalıdır; fiyat silinirse kalem ve adet ayarı da gider.
+
+Bayiye uygulanan değer alan alan şu sırayla seçilir: **bayiye özel liste kalemi > bayi grubu listesi kalemi > ürün varsayılanı**. Örneğin bayi listesinde yalnızca koli 5 yazılıysa minimum grup listesinden ya da üründen gelir; sonuç her zaman koli katına yuvarlanır.
 
 ## 4. Ürün görünürlüğü ve kategoriler
 

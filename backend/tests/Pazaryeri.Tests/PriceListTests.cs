@@ -241,7 +241,7 @@ public class PriceListTests : IAsyncLifetime
         var tenant = await TenantAsync("Aktar");
         await using var db = NewDb(tenant);
         db.Products.AddRange(
-            new Product { Name = "Kalem", Barcode = "0012345678905", Price = 100m, MinOrderQuantity = 10, PackSize = 5 },   // baştaki sıfır korunmalı
+            new Product { Name = "Kalem", Barcode = "0012345678905", Price = 100m, MinOrderQuantity = 20, PackSize = 10 },  // baştaki sıfır korunmalı; ürün değeri 20/10
             new Product { Name = "Defter", Barcode = "D-1", Price = 60m },
             new Product { Name = "Silgi", Barcode = "S1", Price = 5m });                                                      // listede fiyatı yok
         await db.SaveChangesAsync();
@@ -250,8 +250,8 @@ public class PriceListTests : IAsyncLifetime
         var b = ((PriceListDto)((CreatedResult)(await c.Create(ListInput("B listesi / özel"), default)).Result!).Value!).Id;
         var kalem = await db.Products.SingleAsync(p => p.Name == "Kalem");
         var defter = await db.Products.SingleAsync(p => p.Name == "Defter");
-        await c.SetItem(a, kalem.Id, new PriceListItemInput(79.5m), default);
-        await c.SetItem(a, defter.Id, new PriceListItemInput(45m), default);
+        await c.SetItem(a, kalem.Id, new PriceListItemInput(79.5m, 10, 5), default);   // bu listede 10/5 geçersiz kılar
+        await c.SetItem(a, defter.Id, new PriceListItemInput(45m), default);           // geçersiz kılma yok: ürünün değeri
 
         var import = new PriceListImportService(db);
         var exported = await import.ExportAsync(a, default);
@@ -263,8 +263,8 @@ public class PriceListTests : IAsyncLifetime
         {
             var sheet = book.Worksheets.Single();
             Assert.Equal(3, sheet.RowsUsed().Count());                                   // başlık + 2 fiyatlı ürün
-            var rows = sheet.RowsUsed().Skip(1).Select(r => (r.Cell(1).GetString(), r.Cell(2).GetValue<decimal>(), r.Cell(3).GetValue<int>(), r.Cell(4).GetValue<int>())).ToList();
-            Assert.Equal(new[] { ("D-1", 45m, 1, 1), ("0012345678905", 79.5m, 10, 5) }, rows);  // ada göre sıralı: Defter, Kalem
+            var rows = sheet.RowsUsed().Skip(1).Select(r => (r.Cell(1).GetString(), r.Cell(2).GetValue<decimal>(), r.Cell(3).IsEmpty() ? (int?)null : r.Cell(3).GetValue<int>(), r.Cell(4).IsEmpty() ? (int?)null : r.Cell(4).GetValue<int>())).ToList();
+            Assert.Equal(new (string, decimal, int?, int?)[] { ("D-1", 45m, null, null), ("0012345678905", 79.5m, 10, 5) }, rows);  // ada göre sıralı; boş hücre = ürünün değeri
         }
 
         // aynı listeye geri yükle: hepsi güncellenir, hata yok
@@ -275,8 +275,85 @@ public class PriceListTests : IAsyncLifetime
         Assert.Equal((2, 0, 0), (toB.Created, toB.Updated, toB.Errors.Count));
         var page = (await c.Items(b, null, true, 1, 20, default)).Value!;
         Assert.Equal(new[] { 45m, 79.5m }, page.Items.Select(i => i.ListPrice!.Value).OrderBy(x => x));
-        // adet kuralı bozulmadı
-        Assert.Equal((10, 5), ((await db.Products.AsNoTracking().SingleAsync(p => p.Id == kalem.Id)).MinOrderQuantity, (await db.Products.AsNoTracking().SingleAsync(p => p.Id == kalem.Id)).PackSize));
+        // geçersiz kılmalar B listesine de taşındı; ürün kaydı (20/10) değişmedi
+        var kalemB = page.Items.Single(i => i.Barcode == "0012345678905");
+        Assert.Equal((10, 5, 20, 10), (kalemB.ListMinOrderQuantity, kalemB.ListPackSize, kalemB.MinOrderQuantity, kalemB.PackSize));
+        Assert.Null(page.Items.Single(i => i.Barcode == "D-1").ListMinOrderQuantity);
+        var product = await db.Products.AsNoTracking().SingleAsync(p => p.Id == kalem.Id);
+        Assert.Equal((20, 10), (product.MinOrderQuantity, product.PackSize));
+    }
+
+    // --- kalem düzeyinde minimum/koli ---
+
+    [Fact]
+    public async Task Adet_kurali_bayi_listesi_kalemi_grup_listesi_kalemi_ve_urun_sirasiyla_alan_alan_cozulur()
+    {
+        var tenant = await TenantAsync("AdetKural");
+        await using var db = NewDb(tenant);
+        var group = new DealerGroup { Name = "Gümüş" };
+        db.DealerGroups.Add(group);
+        await db.SaveChangesAsync();
+        var both = new Dealer { Name = "İkisi", TaxNumber = "1000000001", Email = "a@a.com", Status = DealerStatus.Active, GroupId = group.Id };
+        var onlyGroup = new Dealer { Name = "Grup", TaxNumber = "1000000002", Email = "b@b.com", Status = DealerStatus.Active, GroupId = group.Id };
+        var bare = new Dealer { Name = "Yalın", TaxNumber = "1000000003", Email = "c@c.com", Status = DealerStatus.Active };
+        var p = new Product { Name = "P", Barcode = "P", Price = 100m, VatRate = 20, MinOrderQuantity = 6, PackSize = 4 };   // ürün: 6/4 -> 8/4
+        db.AddRange(both, onlyGroup, bare, p);
+        await db.SaveChangesAsync();
+        var groupList = new PriceList { Name = "Grup", GroupId = group.Id };
+        var dealerList = new PriceList { Name = "Özel", DealerId = both.Id };
+        db.PriceLists.AddRange(groupList, dealerList);
+        await db.SaveChangesAsync();
+        db.PriceListItems.AddRange(
+            new PriceListItem { PriceListId = groupList.Id, ProductId = p.Id, Price = 90m, MinOrderQuantity = 20, PackSize = 10 },
+            new PriceListItem { PriceListId = dealerList.Id, ProductId = p.Id, Price = 80m, MinOrderQuantity = null, PackSize = 5 });   // yalnızca koli
+        await db.SaveChangesAsync();
+
+        var svc = new DealerPriceService(db);
+        async Task<(int, int)> Q(Guid dealer) { var r = (await svc.ResolveAsync(dealer, [p.Id], default))!.Single(); return (r.MinOrderQuantity, r.PackSize); }
+        Assert.Equal((20, 5), await Q(both.Id));        // koli bayi listesinden, minimum boş: gruptan (20, 5 in katı)
+        Assert.Equal((20, 10), await Q(onlyGroup.Id));  // grup listesi
+        Assert.Equal((8, 4), await Q(bare.Id));         // listesiz: ürün, koli katına yuvarlanmış
+
+        // bayi listesi pasifse grup listesine düşer
+        (await db.PriceLists.SingleAsync(l => l.Id == dealerList.Id)).IsActive = false;
+        await db.SaveChangesAsync();
+        Assert.Equal((20, 10), await Q(both.Id));
+
+        // kalemde yalnızca minimum geçersiz kılınırsa koli ürününkinden gelir ve minimum koli katına yuvarlanır
+        var item = await db.PriceListItems.SingleAsync(i => i.PriceListId == groupList.Id);
+        item.MinOrderQuantity = 10; item.PackSize = null;
+        await db.SaveChangesAsync();
+        Assert.Equal((12, 4), await Q(onlyGroup.Id));   // 10 -> 4 ün katı 12, koli ürünün 4 ü
+    }
+
+    [Fact]
+    public async Task Kalem_adet_ayari_dogrulanir_fiyatsiz_kaydedilmez_ve_fiyat_silinince_gider()
+    {
+        var tenant = await TenantAsync("KalemAdet");
+        await using var db = NewDb(tenant);
+        var product = new Product { Name = "K", Barcode = "K1", Price = 100m, MinOrderQuantity = 3, PackSize = 3 };
+        db.Products.Add(product);
+        await db.SaveChangesAsync();
+        var c = Controller(db);
+        var id = ((PriceListDto)((CreatedResult)(await c.Create(ListInput(), default)).Result!).Value!).Id;
+
+        Assert.IsType<BadRequestObjectResult>(await c.SetItem(id, product.Id, new PriceListItemInput(10m, 0, null), default));
+        Assert.IsType<BadRequestObjectResult>(await c.SetItem(id, product.Id, new PriceListItemInput(10m, null, 100001), default));
+        Assert.IsType<BadRequestObjectResult>(await c.SetItem(id, product.Id, new PriceListItemInput(null, 5, 5), default));       // fiyatsız adet ayarı
+        Assert.Empty((await c.Items(id, null, true, 1, 20, default)).Value!.Items);
+
+        Assert.IsType<NoContentResult>(await c.SetItem(id, product.Id, new PriceListItemInput(10m, 12, 6), default));
+        var row = (await c.Items(id, null, true, 1, 20, default)).Value!.Items.Single();
+        Assert.Equal((12, 6, 3, 3), (row.ListMinOrderQuantity, row.ListPackSize, row.MinOrderQuantity, row.PackSize)); // ürün değeri yanında geçersiz kılma
+
+        // fiyat yazılırken adet verilmezse geçersiz kılma temizlenir (PUT, kalemi bütünüyle yazar)
+        Assert.IsType<NoContentResult>(await c.SetItem(id, product.Id, new PriceListItemInput(11m), default));
+        var cleared = (await c.Items(id, null, true, 1, 20, default)).Value!.Items.Single();
+        Assert.Equal((null, null, 11m), (cleared.ListMinOrderQuantity, cleared.ListPackSize, cleared.ListPrice));
+
+        await c.SetItem(id, product.Id, new PriceListItemInput(11m, 6, null), default);
+        Assert.IsType<NoContentResult>(await c.SetItem(id, product.Id, new PriceListItemInput(null), default));                      // fiyat silinir: kalem ve ayarı gider
+        Assert.Empty(await db.PriceListItems.ToListAsync());
     }
 
     [Fact]
@@ -429,13 +506,16 @@ public class PriceListTests : IAsyncLifetime
         await using var check = NewDb(tenant);
         var item = await check.PriceListItems.SingleAsync();
         Assert.Equal(7.56m, item.Price);
+        Assert.Equal((10, 5), (item.MinOrderQuantity, item.PackSize));             // listede geçersiz kılma olarak saklanır
         var a = await check.Products.SingleAsync(p => p.Barcode == "A1");
-        Assert.Equal((10, 5), (a.MinOrderQuantity, a.PackSize));
+        Assert.Equal((1, 1), (a.MinOrderQuantity, a.PackSize));                    // ürünün varsayılanı değişmez
 
         // İkinci yüklemede mevcut kalem güncellenir.
         using var again = Workbook(ws => { ws.Cell(1, 1).Value = "Barkod"; ws.Cell(1, 2).Value = "Fiyat"; ws.Cell(2, 1).Value = "A1"; ws.Cell(2, 2).Value = 9; });
         var second = (await c.Import(id, new FormFile(again, 0, again.Length, "file", "f.xlsx"), default)).Value!;
         Assert.Equal((0, 1), (second.Created, second.Updated));
+        var cleared = await check.PriceListItems.AsNoTracking().SingleAsync();
+        Assert.Equal((9m, null, null), (cleared.Price, cleared.MinOrderQuantity, cleared.PackSize));   // Minimum/Koli sütunu yoksa geçersiz kılma temizlenir
     }
 
     [Fact]

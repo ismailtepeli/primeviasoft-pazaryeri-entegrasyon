@@ -75,6 +75,10 @@ public static class OrderQuantityRules
         return new QuantityCheck(true, quantity, null);
     }
 
+    /// <summary>Kalem düzeyindeki geçersiz kılma değerleri: verilen (boş olmayan) alan en az 1, en çok 100000 olmalı.</summary>
+    public static string? ValidateOverrides(int? minOrder, int? packSize) =>
+        minOrder is < 1 or > 100000 || packSize is < 1 or > 100000 ? "Minimum ve koli adedi 1 ile 100000 arasında olmalı." : null;
+
     public static string? ValidateSettings(int minOrder, int packSize) =>
         minOrder < 1 || packSize < 1 ? "Minimum sipariş ve koli adedi en az 1 olmalı."
         : minOrder > 100000 || packSize > 100000 ? "Adetler 100000'i aşamaz." : null;

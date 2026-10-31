@@ -468,8 +468,12 @@ export interface PriceListItemRow {
   barcode: string
   generalPrice: number
   listPrice: number | null
+  /** Ürünün etkin minimum/koli değerleri (listede geçersiz kılma yoksa bayiye bunlar uygulanır). */
   minOrderQuantity: number
   packSize: number
+  /** Bu listede kalem düzeyinde geçersiz kılınanlar; null = ürünün değeri. */
+  listMinOrderQuantity: number | null
+  listPackSize: number | null
 }
 
 export interface PriceListItemPage {

@@ -88,6 +88,16 @@ export function validateQuantity(min: string, pack: string): string | null {
   return null
 }
 
+/** Liste kaleminde geçersiz kılma: boş alan "ürünün değeri" demektir; dolu alan 1–100000 arası tam sayı olmalı. */
+export function validateQuantityOverride(min: string, pack: string): string | null {
+  for (const [label, text] of [['Minimum', min], ['Koli', pack]] as const) {
+    if (text.trim() === '') continue
+    const n = parseCount(text)
+    if (n == null || n < 1 || n > 100000) return `${label} boş (ürünün değeri) ya da 1 ile 100000 arasında bir tam sayı olmalı.`
+  }
+  return null
+}
+
 export function priceImportSummary(r: { created: number; updated: number; skipped: number }): string {
   const parts = [`${r.created} yeni`, `${r.updated} güncellendi`]
   if (r.skipped > 0) parts.push(`${r.skipped} satır atlandı`)

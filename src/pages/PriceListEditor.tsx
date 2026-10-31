@@ -3,7 +3,7 @@ import { api, download } from '../api/client'
 import type { DealerGroup, PriceImportResult, PriceListItemPage, PriceListItemRow, PriceListRow } from '../api/types'
 import { Button, DataTable, Select, TextInput, type Column } from '../components'
 import {
-  PRICE_PAGE_SIZE, currencies, exportFileName, emptyPriceListForm, formFromList, formatMoney, parseCount, parseDecimal, priceImportSummary,
+  PRICE_PAGE_SIZE, currencies, exportFileName, validateQuantityOverride, emptyPriceListForm, formFromList, formatMoney, parseCount, parseDecimal, priceImportSummary,
   toPriceListInput, validatePriceListForm, validateQuantity, type PriceListForm,
 } from './priceListView'
 import './PriceLists.css'
@@ -27,34 +27,63 @@ interface RowProps {
   onError: (message: string) => void
 }
 
-/** Tablo satırı: liste fiyatı, minimum ve koli adedi satır içinde düzenlenir. */
+/**
+ * Tablo satırı: liste fiyatı ve bu listeye özel minimum/koli adedi satır içinde düzenlenir.
+ * Minimum/koli boş bırakılırsa ürünün değeri (yer tutucuda görünür) geçerlidir; fiyat boşsa kalem de yoktur.
+ */
 function ItemFields({ row, currency, listId, onSaved, onError }: RowProps) {
   const [price, setPrice] = useState(row.listPrice == null ? '' : String(row.listPrice).replace('.', ','))
-  const [min, setMin] = useState(String(row.minOrderQuantity))
-  const [pack, setPack] = useState(String(row.packSize))
+  const [min, setMin] = useState(row.listMinOrderQuantity == null ? '' : String(row.listMinOrderQuantity))
+  const [pack, setPack] = useState(row.listPackSize == null ? '' : String(row.listPackSize))
   const [busy, setBusy] = useState(false)
 
   async function save() {
     const priceValue = parseDecimal(price)
     if (price.trim() !== '' && priceValue == null) { onError(`${row.name}: fiyat geçerli bir sayı olmalı.`); return }
-    const qtyError = validateQuantity(min, pack)
+    const qtyError = validateQuantityOverride(min, pack)
     if (qtyError) { onError(`${row.name}: ${qtyError}`); return }
+    if (priceValue == null && (min.trim() !== '' || pack.trim() !== '')) { onError(`${row.name}: adet ayarı için önce liste fiyatı girin.`); return }
     setBusy(true)
     try {
-      if (priceValue !== row.listPrice) await api(`/price-lists/${listId}/items/${row.productId}`, { method: 'PUT', body: JSON.stringify({ price: priceValue }) })
-      if (parseCount(min) !== row.minOrderQuantity || parseCount(pack) !== row.packSize)
-        await api(`/price-lists/products/${row.productId}/quantity`, { method: 'PUT', body: JSON.stringify({ minOrderQuantity: parseCount(min), packSize: parseCount(pack) }) })
+      await api(`/price-lists/${listId}/items/${row.productId}`, { method: 'PUT', body: JSON.stringify({ price: priceValue, minOrderQuantity: parseCount(min), packSize: parseCount(pack) }) })
       onSaved()
     } catch (e) { onError((e as Error).message) }
     finally { setBusy(false) }
   }
 
-  const dirty = (parseDecimal(price) ?? null) !== row.listPrice || parseCount(min) !== row.minOrderQuantity || parseCount(pack) !== row.packSize
+  const dirty = (parseDecimal(price) ?? null) !== row.listPrice || parseCount(min) !== row.listMinOrderQuantity || parseCount(pack) !== row.listPackSize
   return (
     <span className="price-fields">
       <input className="ps-input price-fields__input" inputMode="decimal" aria-label={`${row.name} liste fiyatı (${currency})`} placeholder="—" value={price} onChange={(e) => setPrice(e.target.value)} />
-      <input className="ps-input price-fields__qty" inputMode="numeric" aria-label={`${row.name} minimum adet`} value={min} onChange={(e) => setMin(e.target.value)} />
-      <input className="ps-input price-fields__qty" inputMode="numeric" aria-label={`${row.name} koli adedi`} value={pack} onChange={(e) => setPack(e.target.value)} />
+      <input className="ps-input price-fields__qty" inputMode="numeric" aria-label={`${row.name} bu listede minimum adet`} placeholder={String(row.minOrderQuantity)} value={min} onChange={(e) => setMin(e.target.value)} />
+      <input className="ps-input price-fields__qty" inputMode="numeric" aria-label={`${row.name} bu listede koli adedi`} placeholder={String(row.packSize)} value={pack} onChange={(e) => setPack(e.target.value)} />
+      <Button onClick={save} disabled={busy || !dirty}>Kaydet</Button>
+    </span>
+  )
+}
+
+/** Ürünün varsayılan minimum/koli adedi: listede geçersiz kılma olmayan her yerde (tüm listeler ve genel fiyat) geçerlidir. */
+function ProductQuantity({ row, onSaved, onError }: { row: PriceListItemRow; onSaved: () => void; onError: (message: string) => void }) {
+  const [min, setMin] = useState(String(row.minOrderQuantity))
+  const [pack, setPack] = useState(String(row.packSize))
+  const [busy, setBusy] = useState(false)
+
+  async function save() {
+    const qtyError = validateQuantity(min, pack)
+    if (qtyError) { onError(`${row.name}: ${qtyError}`); return }
+    setBusy(true)
+    try {
+      await api(`/price-lists/products/${row.productId}/quantity`, { method: 'PUT', body: JSON.stringify({ minOrderQuantity: parseCount(min), packSize: parseCount(pack) }) })
+      onSaved()
+    } catch (e) { onError((e as Error).message) }
+    finally { setBusy(false) }
+  }
+
+  const dirty = parseCount(min) !== row.minOrderQuantity || parseCount(pack) !== row.packSize
+  return (
+    <span className="price-fields">
+      <input className="ps-input price-fields__qty" inputMode="numeric" aria-label={`${row.name} ürün varsayılanı minimum adet`} value={min} onChange={(e) => setMin(e.target.value)} />
+      <input className="ps-input price-fields__qty" inputMode="numeric" aria-label={`${row.name} ürün varsayılanı koli adedi`} value={pack} onChange={(e) => setPack(e.target.value)} />
       <Button onClick={save} disabled={busy || !dirty}>Kaydet</Button>
     </span>
   )
@@ -132,8 +161,13 @@ export default function PriceListEditor({ list, groups, dealers, onClose, onChan
     { key: 'name', header: 'Ürün', render: (r) => <div className="price-cell"><strong>{r.name}</strong><span className="price-cell__meta">{r.barcode}</span></div> },
     { key: 'general', header: 'Genel fiyat', render: (r) => formatMoney(r.generalPrice) },
     {
-      key: 'edit', header: `Liste fiyatı · Min · Koli`,
-      render: (r) => listId && <ItemFields key={`${r.productId}-${r.listPrice}-${r.minOrderQuantity}-${r.packSize}`} row={r} currency={currency} listId={listId}
+      key: 'product-qty', header: 'Ürün varsayılanı · Min · Koli',
+      render: (r) => <ProductQuantity key={`${r.productId}-${r.minOrderQuantity}-${r.packSize}`} row={r}
+        onSaved={() => { setMessage(undefined); reload(); onChanged() }} onError={(text) => setMessage({ ok: false, text })} />,
+    },
+    {
+      key: 'edit', header: 'Bu listede: fiyat · Min · Koli',
+      render: (r) => listId && <ItemFields key={`${r.productId}-${r.listPrice}-${r.listMinOrderQuantity}-${r.listPackSize}`} row={r} currency={currency} listId={listId}
         onSaved={() => { setMessage(undefined); reload(); onChanged() }} onError={(text) => setMessage({ ok: false, text })} />,
     },
   ], [listId, currency, reload, onChanged])
@@ -189,7 +223,7 @@ export default function PriceListEditor({ list, groups, dealers, onClose, onChan
             <Button onClick={upload}>Excel ile yükle</Button>
             <Button onClick={() => void download('/price-lists/template', 'fiyat-listesi-sablon.xlsx').catch((e: Error) => setMessage({ ok: false, text: e.message }))}>Şablonu indir</Button>
             <Button onClick={() => void download(`/price-lists/${listId}/export`, exportFileName(saved?.name)).catch((e: Error) => setMessage({ ok: false, text: e.message }))}>Fiyatları Excel'e aktar</Button>
-            <span className="price-cell__meta">Başlıklar: Barkod, Fiyat; isteğe bağlı Minimum, Koli.</span>
+            <span className="price-cell__meta">Başlıklar: Barkod, Fiyat; isteğe bağlı Minimum, Koli (bu listede ürünün değerini geçersiz kılar, boşsa ürünün değeri).</span>
           </div>
           {importResult && (
             <>

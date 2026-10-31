@@ -1343,6 +1343,12 @@ namespace Pazaryeri.Infrastructure.Persistence.Migrations
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("datetime2");
 
+                    b.Property<int?>("MinOrderQuantity")
+                        .HasColumnType("int");
+
+                    b.Property<int?>("PackSize")
+                        .HasColumnType("int");
+
                     b.Property<decimal>("Price")
                         .HasPrecision(18, 2)
                         .HasColumnType("decimal(18,2)");

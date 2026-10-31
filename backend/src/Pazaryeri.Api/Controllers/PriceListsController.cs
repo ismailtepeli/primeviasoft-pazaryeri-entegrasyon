@@ -16,11 +16,13 @@ public record PriceListDto(Guid Id, string Name, string Currency, Guid? GroupId,
 public record PriceListInput(string? Name, string? Currency, Guid? GroupId, Guid? DealerId, decimal? DiscountPercent,
     bool PricesIncludeVat, bool ShowVatIncluded, bool IsActive);
 
-public record PriceListItemRow(Guid ProductId, string Name, string Barcode, decimal GeneralPrice, decimal? ListPrice, int MinOrderQuantity, int PackSize);
+/// <summary>MinOrderQuantity/PackSize ürünün etkin değerleridir; ListMinOrderQuantity/ListPackSize bu listede kalem düzeyinde geçersiz kılınanlardır (boşsa ürünün değeri).</summary>
+public record PriceListItemRow(Guid ProductId, string Name, string Barcode, decimal GeneralPrice, decimal? ListPrice, int MinOrderQuantity, int PackSize,
+    int? ListMinOrderQuantity = null, int? ListPackSize = null);
 
 public record PriceListItemPage(IReadOnlyList<PriceListItemRow> Items, int Total);
 
-public record PriceListItemInput(decimal? Price);
+public record PriceListItemInput(decimal? Price, int? MinOrderQuantity = null, int? PackSize = null);
 
 public record QuantityRuleInput(int MinOrderQuantity, int PackSize);
 
@@ -92,13 +94,18 @@ public class PriceListsController(AppDbContext db, DealerPriceService prices, Pr
         var rows = await query.OrderBy(p => p.Name).ThenBy(p => p.Id).Skip((page - 1) * pageSize).Take(pageSize)
             .Select(p => new PriceListItemRow(p.Id, p.Name, p.Barcode, p.Price,
                 db.PriceListItems.Where(i => i.PriceListId == id && i.ProductId == p.Id).Select(i => (decimal?)i.Price).FirstOrDefault(),
-                p.MinOrderQuantity, p.PackSize)).ToListAsync(ct);
+                p.MinOrderQuantity, p.PackSize,
+                db.PriceListItems.Where(i => i.PriceListId == id && i.ProductId == p.Id).Select(i => i.MinOrderQuantity).FirstOrDefault(),
+                db.PriceListItems.Where(i => i.PriceListId == id && i.ProductId == p.Id).Select(i => i.PackSize).FirstOrDefault())).ToListAsync(ct);
         // Eski ya da elle girilmiş geçersiz değerler ekranda etkin değerleriyle görünür.
         rows = rows.Select(r => { var (min, pack) = OrderQuantityRules.Normalize(r.MinOrderQuantity, r.PackSize); return r with { MinOrderQuantity = min, PackSize = pack }; }).ToList();
         return new PriceListItemPage(rows, total);
     }
 
-    /// <summary>Ürüne liste fiyatı yazar; fiyat boş gönderilirse kalem silinir (iskonto/genel fiyata dönülür).</summary>
+    /// <summary>
+    /// Ürüne liste fiyatı yazar; fiyat boş gönderilirse kalem silinir (iskonto/genel fiyata dönülür, kalemin adet ayarı da gider).
+    /// İsteğe bağlı minimum/koli bu listede ürünün değerini geçersiz kılar; boş bırakılırsa ürünün değeri kullanılır.
+    /// </summary>
     [HttpPut("{id:guid}/items/{productId:guid}")]
     public async Task<IActionResult> SetItem(Guid id, Guid productId, PriceListItemInput input, CancellationToken ct)
     {
@@ -107,20 +114,22 @@ public class PriceListsController(AppDbContext db, DealerPriceService prices, Pr
         var item = await db.PriceListItems.FirstOrDefaultAsync(i => i.PriceListId == id && i.ProductId == productId, ct);
         if (input.Price is null)
         {
+            if (input.MinOrderQuantity is not null || input.PackSize is not null) return BadRequest(new { error = "Adet ayarı için önce liste fiyatı girin." });
             if (item is not null) db.PriceListItems.Remove(item);
         }
         else
         {
             if (input.Price < 0 || input.Price > 100_000_000m) return BadRequest(new { error = "Fiyat 0 ile 100.000.000 arasında olmalı." });
+            if (OrderQuantityRules.ValidateOverrides(input.MinOrderQuantity, input.PackSize) is { } qe) return BadRequest(new { error = qe });
             var price = DealerPricing.Round(input.Price.Value);
-            if (item is null) db.PriceListItems.Add(new PriceListItem { PriceListId = id, ProductId = productId, Price = price });
-            else item.Price = price;
+            if (item is null) db.PriceListItems.Add(new PriceListItem { PriceListId = id, ProductId = productId, Price = price, MinOrderQuantity = input.MinOrderQuantity, PackSize = input.PackSize });
+            else { item.Price = price; item.MinOrderQuantity = input.MinOrderQuantity; item.PackSize = input.PackSize; }
         }
         await db.SaveChangesAsync(ct);
         return NoContent();
     }
 
-    /// <summary>Ürünün minimum sipariş ve koli adedi (tüm listeler ve genel fiyat için ortaktır).</summary>
+    /// <summary>Ürünün varsayılan minimum sipariş ve koli adedi; listede kalemi geçersiz kılmıyorsa tüm listeler ve genel fiyat için geçerlidir.</summary>
     [HttpPut("products/{productId:guid}/quantity")]
     public async Task<IActionResult> SetQuantity(Guid productId, QuantityRuleInput input, CancellationToken ct)
     {
