@@ -222,6 +222,99 @@ public class PriceListTests : IAsyncLifetime
         Assert.Equal((10, 5), (saved.MinOrderQuantity, saved.PackSize));
     }
 
+    // --- Excel şablonu ve dışa aktarma ---
+
+    [Fact]
+    public void Sablon_icerige_aktarmayla_ayni_basliklari_tasir_ve_bos_gelir()
+    {
+        using var ms = new MemoryStream(PriceListImportService.Template());
+        using var book = new ClosedXML.Excel.XLWorkbook(ms);
+        var sheet = book.Worksheets.Single();
+        Assert.Equal(new[] { "Barkod", "Fiyat", "Minimum", "Koli" }, sheet.Row(1).Cells(1, 4).Select(c => c.GetString()));
+        Assert.Equal(1, sheet.RowsUsed().Count());   // yalnızca başlık: örnek satır yok, yanlışlıkla içe aktarılmaz
+        Assert.True(sheet.Cell(1, 1).Style.Font.Bold);
+    }
+
+    [Fact]
+    public async Task Disa_aktarilan_dosya_ayni_listeye_ve_baska_listeye_hatasiz_geri_yuklenir()
+    {
+        var tenant = await TenantAsync("Aktar");
+        await using var db = NewDb(tenant);
+        db.Products.AddRange(
+            new Product { Name = "Kalem", Barcode = "0012345678905", Price = 100m, MinOrderQuantity = 10, PackSize = 5 },   // baştaki sıfır korunmalı
+            new Product { Name = "Defter", Barcode = "D-1", Price = 60m },
+            new Product { Name = "Silgi", Barcode = "S1", Price = 5m });                                                      // listede fiyatı yok
+        await db.SaveChangesAsync();
+        var c = Controller(db);
+        var a = ((PriceListDto)((CreatedResult)(await c.Create(ListInput("A"), default)).Result!).Value!).Id;
+        var b = ((PriceListDto)((CreatedResult)(await c.Create(ListInput("B listesi / özel"), default)).Result!).Value!).Id;
+        var kalem = await db.Products.SingleAsync(p => p.Name == "Kalem");
+        var defter = await db.Products.SingleAsync(p => p.Name == "Defter");
+        await c.SetItem(a, kalem.Id, new PriceListItemInput(79.5m), default);
+        await c.SetItem(a, defter.Id, new PriceListItemInput(45m), default);
+
+        var import = new PriceListImportService(db);
+        var exported = await import.ExportAsync(a, default);
+        Assert.NotNull(exported);
+        Assert.Equal("A", exported!.Value.Name);
+
+        using (var ms = new MemoryStream(exported.Value.File))
+        using (var book = new ClosedXML.Excel.XLWorkbook(ms))
+        {
+            var sheet = book.Worksheets.Single();
+            Assert.Equal(3, sheet.RowsUsed().Count());                                   // başlık + 2 fiyatlı ürün
+            var rows = sheet.RowsUsed().Skip(1).Select(r => (r.Cell(1).GetString(), r.Cell(2).GetValue<decimal>(), r.Cell(3).GetValue<int>(), r.Cell(4).GetValue<int>())).ToList();
+            Assert.Equal(new[] { ("D-1", 45m, 1, 1), ("0012345678905", 79.5m, 10, 5) }, rows);  // ada göre sıralı: Defter, Kalem
+        }
+
+        // aynı listeye geri yükle: hepsi güncellenir, hata yok
+        var again = await import.ImportAsync(a, new MemoryStream(exported.Value.File), default);
+        Assert.Equal((0, 2, 0), (again.Created, again.Updated, again.Errors.Count));
+        // başka listeye yükle: hepsi yeni kalem
+        var toB = await import.ImportAsync(b, new MemoryStream(exported.Value.File), default);
+        Assert.Equal((2, 0, 0), (toB.Created, toB.Updated, toB.Errors.Count));
+        var page = (await c.Items(b, null, true, 1, 20, default)).Value!;
+        Assert.Equal(new[] { 45m, 79.5m }, page.Items.Select(i => i.ListPrice!.Value).OrderBy(x => x));
+        // adet kuralı bozulmadı
+        Assert.Equal((10, 5), ((await db.Products.AsNoTracking().SingleAsync(p => p.Id == kalem.Id)).MinOrderQuantity, (await db.Products.AsNoTracking().SingleAsync(p => p.Id == kalem.Id)).PackSize));
+    }
+
+    [Fact]
+    public async Task Bos_ya_da_olmayan_liste_disa_aktarimi_ve_diger_kiracinin_listesi()
+    {
+        var t1 = await TenantAsync("Aktar1");
+        var t2 = await TenantAsync("Aktar2");
+        Guid listId;
+        await using (var db = NewDb(t1))
+        {
+            var c = Controller(db);
+            listId = ((PriceListDto)((CreatedResult)(await c.Create(ListInput("Boş"), default)).Result!).Value!).Id;
+            var empty = await new PriceListImportService(db).ExportAsync(listId, default);
+            using var ms = new MemoryStream(empty!.Value.File);
+            using var book = new ClosedXML.Excel.XLWorkbook(ms);
+            Assert.Equal(1, book.Worksheets.Single().RowsUsed().Count());              // yalnızca başlık
+            Assert.Null(await new PriceListImportService(db).ExportAsync(Guid.NewGuid(), default));
+            var notFound = await c.Export(Guid.NewGuid(), default);
+            Assert.IsType<NotFoundObjectResult>(notFound);
+        }
+        await using var other = NewDb(t2);
+        Assert.Null(await new PriceListImportService(other).ExportAsync(listId, default)); // başka kiracının listesi görünmez
+    }
+
+    [Fact]
+    public async Task Disa_aktarma_ucu_xlsx_dosyasi_ve_guvenli_ad_doner()
+    {
+        var tenant = await TenantAsync("Uc");
+        await using var db = NewDb(tenant);
+        var c = Controller(db);
+        var id = ((PriceListDto)((CreatedResult)(await c.Create(ListInput("Altın / Özel 2027!"), default)).Result!).Value!).Id;
+        var file = Assert.IsType<FileContentResult>(await c.Export(id, default));
+        Assert.Equal("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", file.ContentType);
+        Assert.Matches(@"^fiyat-listesi-[a-z0-9ığüşöç-]+\.xlsx$", file.FileDownloadName.ToLowerInvariant());
+        Assert.DoesNotContain("/", file.FileDownloadName);
+        Assert.Equal("fiyat-listesi-sablon.xlsx", c.Template().FileDownloadName);
+    }
+
     [Fact]
     public async Task Bayi_icin_fiyat_cozumlenir_pasif_liste_yok_sayilir_ve_onizleme_ayni_kurali_kullanir()
     {

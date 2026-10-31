@@ -39,6 +39,8 @@ Bayiye gösterilen fiyat şu sırayla belirlenir:
 
 Liste kalemi **net fiyat** ya da genel fiyat üzerinden **iskonto %** olabilir. Listede fiyatın KDV dahil mi hariç mi olduğunu işaretlersiniz; sipariş toplamları buna göre net ve brüt olarak hesaplanır. Fiyat listesi dışındaki (genel) fiyatın bayi sitesinde KDV dahil mi hariç mi gösterileceğini **Ayarlar > B2B > Fiyat gösterimi** bölümünden seçersiniz (varsayılan: KDV dahil). Bu yalnızca gösterimi değiştirir; sipariş toplamları (KDV hariç, KDV, genel toplam) aynı kalır. Fiyat listeleri kendi gösterim ayarını kullanır.
 
+**Excel ile toplu fiyat:** Fiyat listesi düzenleme ekranında **Şablonu indir** boş bir Excel verir (başlıklar: Barkod, Fiyat, Minimum, Koli). Doldurup **Excel ile yükle** ile yüklersiniz; hatalı satırlar satır numarasıyla gösterilir. **Fiyatları Excel'e aktar** listedeki fiyatlı ürünleri aynı biçimde indirir; dosyayı düzenleyip aynı listeye ya da başka bir listeye geri yükleyebilirsiniz (Minimum ve Koli değerleri ürüne yazılır). Barkodlar metin olarak saklanır, baştaki sıfırlar bozulmaz.
+
 Ürün ekranında **minimum sipariş** ve **koli (paket) adedi** tanımlanır; sepet bunlara uymayan miktarı 400 ile reddeder, bayi sitesindeki adet seçici koli adedi kadar artar.
 
 ## 4. Ürün görünürlüğü ve kategoriler

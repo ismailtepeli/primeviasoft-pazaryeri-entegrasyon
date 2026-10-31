@@ -19,6 +19,63 @@ public class PriceImportException(string message) : Exception(message);
 public class PriceListImportService(AppDbContext db)
 {
     public const int MaxRows = 5000;
+    public static readonly string[] Headers = ["Barkod", "Fiyat", "Minimum", "Koli"];
+
+    /// <summary>İçe aktarmayla aynı başlıkları taşıyan boş Excel şablonu (Barkod, Fiyat, Minimum, Koli).</summary>
+    public static byte[] Template()
+    {
+        using var book = new XLWorkbook();
+        var sheet = book.Worksheets.Add("Fiyat listesi");
+        WriteHeader(sheet);
+        return Save(book);
+    }
+
+    /// <summary>
+    /// Listedeki fiyatlı ürünleri aynı biçimde dışa aktarır; dosya değiştirilip aynı listeye ya da başka listeye geri yüklenebilir.
+    /// Minimum ve koli, ürünün etkin değerleridir (içe aktarma bunları ürüne yazar). Liste yoksa null.
+    /// </summary>
+    public async Task<(string Name, byte[] File)?> ExportAsync(Guid listId, CancellationToken ct)
+    {
+        var list = await db.PriceLists.AsNoTracking().Where(l => l.Id == listId).Select(l => new { l.Name }).FirstOrDefaultAsync(ct);
+        if (list is null) return null;
+        var rows = await db.PriceListItems.AsNoTracking().Where(i => i.PriceListId == listId)
+            .Join(db.Products.AsNoTracking(), i => i.ProductId, p => p.Id, (i, p) => new { p.Name, p.Barcode, i.Price, p.MinOrderQuantity, p.PackSize })
+            .OrderBy(r => r.Name).ThenBy(r => r.Barcode).ToListAsync(ct);
+
+        using var book = new XLWorkbook();
+        var sheet = book.Worksheets.Add("Fiyat listesi");
+        WriteHeader(sheet);
+        var n = 2;
+        foreach (var r in rows)
+        {
+            var (min, pack) = OrderQuantityRules.Normalize(r.MinOrderQuantity, r.PackSize);
+            sheet.Cell(n, 1).SetValue(r.Barcode); // metin: baştaki sıfırlar ve uzun barkodlar bozulmaz
+            sheet.Cell(n, 2).SetValue(r.Price);
+            sheet.Cell(n, 3).SetValue(min);
+            sheet.Cell(n, 4).SetValue(pack);
+            n++;
+        }
+        sheet.Column(2).Style.NumberFormat.Format = "0.00";
+        return (list.Name, Save(book));
+    }
+
+    private static void WriteHeader(IXLWorksheet sheet)
+    {
+        for (var c = 0; c < Headers.Length; c++) sheet.Cell(1, c + 1).SetValue(Headers[c]);
+        var head = sheet.Range(1, 1, 1, Headers.Length);
+        head.Style.Font.Bold = true;
+        sheet.Column(1).Style.NumberFormat.Format = "@"; // barkod sütunu metin
+        sheet.Column(1).Width = 24;
+        for (var c = 2; c <= Headers.Length; c++) sheet.Column(c).Width = 14;
+        sheet.SheetView.FreezeRows(1);
+    }
+
+    private static byte[] Save(XLWorkbook book)
+    {
+        using var ms = new MemoryStream();
+        book.SaveAs(ms);
+        return ms.ToArray();
+    }
 
     public async Task<PriceImportResult> ImportAsync(Guid listId, Stream file, CancellationToken ct)
     {

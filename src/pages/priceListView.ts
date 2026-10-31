@@ -93,3 +93,9 @@ export function priceImportSummary(r: { created: number; updated: number; skippe
   if (r.skipped > 0) parts.push(`${r.skipped} satır atlandı`)
   return parts.join(', ') + '.'
 }
+
+/** Dışa aktarılan Excel'in dosya adı: liste adından güvenli, küçük harfli bir ad (sunucudakiyle aynı kural). */
+export function exportFileName(name?: string): string {
+  const safe = (name ?? '').toLowerCase().replace(/[^a-z0-9ığüşöç]+/g, '-').replace(/^-+|-+$/g, '')
+  return `fiyat-listesi-${safe || 'liste'}.xlsx`
+}

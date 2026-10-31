@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { PriceListRow } from '../api/types'
-import { emptyPriceListForm, formFromList, formatMoney, listTarget, parseCount, parseDecimal, priceImportSummary, toPriceListInput, validatePriceListForm, validateQuantity } from './priceListView'
+import { emptyPriceListForm, exportFileName, formFromList, formatMoney, listTarget, parseCount, parseDecimal, priceImportSummary, toPriceListInput, validatePriceListForm, validateQuantity } from './priceListView'
 
 const row: PriceListRow = {
   id: '1', name: 'Altın', currency: 'TRY', groupId: 'g1', groupName: 'Altın grup', dealerId: null, dealerName: null,
@@ -57,5 +57,12 @@ describe('priceListView', () => {
   it('priceImportSummary atlananı yalnızca varsa yazar', () => {
     expect(priceImportSummary({ created: 2, updated: 1, skipped: 0 })).toBe('2 yeni, 1 güncellendi.')
     expect(priceImportSummary({ created: 0, updated: 0, skipped: 3 })).toBe('0 yeni, 0 güncellendi, 3 satır atlandı.')
+  })
+
+  it('dışa aktarılan dosyanın adı liste adından güvenli üretilir', () => {
+    expect(exportFileName('Altın Liste')).toBe('fiyat-listesi-altın-liste.xlsx')
+    expect(exportFileName('Gümüş / Özel 2027!')).toBe('fiyat-listesi-gümüş-özel-2027.xlsx')
+    expect(exportFileName('  ')).toBe('fiyat-listesi-liste.xlsx')
+    expect(exportFileName(undefined)).toBe('fiyat-listesi-liste.xlsx')
   })
 })

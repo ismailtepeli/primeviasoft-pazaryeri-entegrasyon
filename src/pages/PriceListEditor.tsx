@@ -1,9 +1,9 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type ChangeEvent } from 'react'
-import { api } from '../api/client'
+import { api, download } from '../api/client'
 import type { DealerGroup, PriceImportResult, PriceListItemPage, PriceListItemRow, PriceListRow } from '../api/types'
 import { Button, DataTable, Select, TextInput, type Column } from '../components'
 import {
-  PRICE_PAGE_SIZE, currencies, emptyPriceListForm, formFromList, formatMoney, parseCount, parseDecimal, priceImportSummary,
+  PRICE_PAGE_SIZE, currencies, exportFileName, emptyPriceListForm, formFromList, formatMoney, parseCount, parseDecimal, priceImportSummary,
   toPriceListInput, validatePriceListForm, validateQuantity, type PriceListForm,
 } from './priceListView'
 import './PriceLists.css'
@@ -187,6 +187,8 @@ export default function PriceListEditor({ list, groups, dealers, onClose, onChan
           <div className="price-import">
             <input ref={file} type="file" accept=".xlsx" aria-label="Excel dosyası seç" onChange={() => setImportResult(undefined)} />
             <Button onClick={upload}>Excel ile yükle</Button>
+            <Button onClick={() => void download('/price-lists/template', 'fiyat-listesi-sablon.xlsx').catch((e: Error) => setMessage({ ok: false, text: e.message }))}>Şablonu indir</Button>
+            <Button onClick={() => void download(`/price-lists/${listId}/export`, exportFileName(saved?.name)).catch((e: Error) => setMessage({ ok: false, text: e.message }))}>Fiyatları Excel'e aktar</Button>
             <span className="price-cell__meta">Başlıklar: Barkod, Fiyat; isteğe bağlı Minimum, Koli.</span>
           </div>
           {importResult && (

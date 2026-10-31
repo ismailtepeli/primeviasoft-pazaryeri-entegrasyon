@@ -147,6 +147,22 @@ public class PriceListsController(AppDbContext db, DealerPriceService prices, Pr
         catch (PriceImportException e) { return e.Message.Contains("bulunamadı") ? NotFound(new { error = e.Message }) : BadRequest(new { error = e.Message }); }
     }
 
+    private const string XlsxType = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
+
+    /// <summary>Boş içe aktarma şablonu (Barkod, Fiyat, Minimum, Koli başlıklı .xlsx).</summary>
+    [HttpGet("template")]
+    public FileContentResult Template() => File(PriceListImportService.Template(), XlsxType, "fiyat-listesi-sablon.xlsx");
+
+    /// <summary>Listenin fiyatlı ürünlerini içe aktarmayla aynı biçimde Excel'e aktarır.</summary>
+    [HttpGet("{id:guid}/export")]
+    public async Task<IActionResult> Export(Guid id, CancellationToken ct)
+    {
+        var result = await import.ExportAsync(id, ct);
+        if (result is null) return NotFound(new { error = "Fiyat listesi bulunamadı." });
+        var safe = new string(result.Value.Name.Select(c => char.IsLetterOrDigit(c) ? char.ToLowerInvariant(c) : '-').ToArray()).Trim('-');
+        return File(result.Value.File, XlsxType, $"fiyat-listesi-{(safe.Length == 0 ? "liste" : safe)}.xlsx");
+    }
+
     /// <summary>Bir bayinin göreceği fiyatların önizlemesi; bayi sitesiyle aynı çözümleme kuralını kullanır.</summary>
     [HttpGet("preview")]
     public async Task<ActionResult<List<PricePreviewDto>>> Preview([FromQuery] Guid dealerId, [FromQuery] string? q, CancellationToken ct)
