@@ -53,8 +53,10 @@ function QuantityStepper({ product, value, onChange, compact = false }: { produc
       <div className="store-qty__row">
         <div className="store-stepper" role="group" aria-label={`${product.name} adet`}>
           <button type="button" aria-label="Azalt" disabled={out} onClick={() => onChange(String(stepQuantity(value, -1, product.minOrderQuantity, product.packSize)))}><Minus size={14} aria-hidden /></button>
-          <input inputMode="numeric" aria-label={`${product.name} ${boxed ? 'koli' : 'adet'}`} aria-invalid={!check.valid} value={toBoxText(value, product.packSize)} disabled={out} onChange={(e) => onChange(fromBoxText(e.target.value, product.packSize))} />
-          <span className="store-stepper__unit" aria-hidden>{boxed ? 'koli' : 'adet'}</span>
+          <span className="store-stepper__value">
+            <input inputMode="numeric" aria-label={`${product.name} ${boxed ? 'koli' : 'adet'}`} aria-invalid={!check.valid} value={toBoxText(value, product.packSize)} disabled={out} onChange={(e) => onChange(fromBoxText(e.target.value, product.packSize))} />
+            <span className="store-stepper__unit" aria-hidden>{boxed ? 'koli' : 'adet'}</span>
+          </span>
           <button type="button" aria-label="Arttır" disabled={out} onClick={() => onChange(String(stepQuantity(value, 1, product.minOrderQuantity, product.packSize)))}><Plus size={14} aria-hidden /></button>
         </div>
         <button type="button" className="ps-btn store-add" disabled={!check.valid || out || busy} onClick={addToCart}>
