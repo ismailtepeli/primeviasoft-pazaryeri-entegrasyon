@@ -37,6 +37,8 @@ public class AppDbContext(DbContextOptions<AppDbContext> options, ITenantProvide
     public DbSet<OrderPackage> OrderPackages => Set<OrderPackage>();
     public DbSet<OrderLine> OrderLines => Set<OrderLine>();
     public DbSet<OrderSyncState> OrderSyncStates => Set<OrderSyncState>();
+    public DbSet<WebhookEndpoint> WebhookEndpoints => Set<WebhookEndpoint>();
+    public DbSet<WebhookEvent> WebhookEvents => Set<WebhookEvent>();
     public DbSet<SentBodyHash> SentBodyHashes => Set<SentBodyHash>();
     public DbSet<StockRule> StockRules => Set<StockRule>();
     public DbSet<StockSettings> StockSettings => Set<StockSettings>();
@@ -356,6 +358,26 @@ public class AppDbContext(DbContextOptions<AppDbContext> options, ITenantProvide
             b.Property(l => l.Price).HasPrecision(18, 2);
             b.HasIndex(l => new { l.PackageId, l.LineId }).IsUnique();
             b.HasOne<Tenant>().WithMany().HasForeignKey(l => l.TenantId).OnDelete(DeleteBehavior.Restrict);
+        });
+
+        builder.Entity<WebhookEndpoint>(b =>
+        {
+            b.Property(w => w.Channel).HasMaxLength(40).IsRequired();
+            b.Property(w => w.SecretHash).HasMaxLength(64).IsRequired();
+            b.Property(w => w.ExternalId).HasMaxLength(100);
+            b.HasIndex(w => new { w.TenantId, w.Channel }).IsUnique();
+            b.HasOne<Tenant>().WithMany().HasForeignKey(w => w.TenantId).OnDelete(DeleteBehavior.Restrict);
+        });
+
+        builder.Entity<WebhookEvent>(b =>
+        {
+            b.Property(w => w.Channel).HasMaxLength(40).IsRequired();
+            b.Property(w => w.EventKey).HasMaxLength(220).IsRequired();
+            b.Property(w => w.PackageId).HasMaxLength(100);
+            b.Property(w => w.Status).HasMaxLength(100);
+            b.HasIndex(w => new { w.TenantId, w.Channel, w.EventKey }).IsUnique();
+            b.HasIndex(w => w.ReceivedAt);
+            b.HasOne<Tenant>().WithMany().HasForeignKey(w => w.TenantId).OnDelete(DeleteBehavior.Restrict);
         });
 
         builder.Entity<OrderSyncState>(b =>

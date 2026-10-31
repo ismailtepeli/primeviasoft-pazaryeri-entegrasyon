@@ -43,3 +43,13 @@ Bayi e-postaları `IEmailSender` arayüzüyle gönderilir. Şimdilik `LoggingEma
 ```
 
 Tanımsızsa geliştirme adresleri (`http://localhost:5174/t/{slug}/...`) kullanılır. Geliştirmede sıfırlama bağlantısını API günlüğünde "E-posta (gönderilmedi)" satırında bulursunuz.
+
+## Pazaryeri webhook alıcısı (Trendyol)
+
+- **Uç nokta:** `POST /webhooks/trendyol/{tenantId}` (kimliksiz; gizli anahtarla doğrulanır). Kanalın çağrısına hemen 200 döner; asıl sipariş verisi gövdeden değil, zaten idempotent olan **sipariş senkronundan** (`OrderSync`) okunur. Alıcı yalnızca doğrular, olayı kaydeder ve senkronu kuyruğa alır.
+- **Doğrulama:** Gizli anahtar `Authorization: Basic` parolası, `Bearer` belirteci ya da `x-api-key` ile gelebilir. Veritabanında yalnızca SHA-256 özeti saklanır (`WebhookEndpoint`); karşılaştırma sabit zamanlıdır. Bilinmeyen kiracı, kayıtsız kanal ve yanlış anahtar aynı 401'i alır.
+- **İdempotentlik:** (kanal, paket kimliği, durum) çifti başına tek kayıt (`WebhookEvent`, benzersiz dizin). Kanalın tekrar denemesi `Duplicate` (yine 200) döner ve yeni iş açmaz. Gövde okunamazsa olay kaydedilmez ama senkron yine tetiklenir. Başlamamış bir `OrderSync` varsa yenisi açılmaz; çalışan varsa yenisi açılır.
+- **Sınırlar:** Gövde en fazla 64 KB (aşılırsa 413); IP başına dakikada 600 istek. `Siparişler` modülü kapalı kiracıda bildirim yok sayılır (200, iş açılmaz).
+- **Kayıt:** `POST /api/webhooks/Trendyol` yeni bir gizli anahtar üretir, kanala kaydeder (`createWebhook`) ve özetini saklar; yeniden kayıt anahtarı değiştirir, kanal reddederse eski anahtar geçerli kalır. `GET /api/webhooks/Trendyol` durumu verir. Kayıt için herkese açık adres gerekir: `Webhooks:PublicBaseUrl` (ör. `https://api.firma.com`); yerelde boştur ve kayıt 409 döner.
+- **Doğrulanmadı:** Trendyol'daki `createWebhook` uç noktası ve gövdesi belgeye göre yazıldı, gerçek satıcı hesabıyla denenmedi. Gerçek hesapla ilk kayıtta uç nokta, kimlik doğrulama türü ve durum adları kontrol edilmelidir.
+

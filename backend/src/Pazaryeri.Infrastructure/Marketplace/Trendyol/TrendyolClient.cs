@@ -139,6 +139,24 @@ public class TrendyolClient(HttpClient http, MarketplaceCredentials credentials)
         using var _ = await SendAsync(HttpMethod.Put, $"/integration/order/sellers/{Seller}/shipment-packages/{packageId}", body, TrendyolServiceGroup.Other, ct);
     }
 
+    /// <summary>
+    /// Webhook kaydı. Uç nokta ve gövde Trendyol belgesine göre yazıldı; gerçek API ile henüz doğrulanmadı
+    /// (gerçek satıcı hesabı gerekir), sahte HTTP işleyicisiyle test edilir.
+    /// </summary>
+    public async Task<WebhookRegistrationResult> CreateWebhookAsync(WebhookRegistration registration, CancellationToken ct = default)
+    {
+        var body = new
+        {
+            url = registration.Url,
+            authenticationType = "BASIC_AUTHENTICATION",
+            username = registration.Username,
+            password = registration.Password,
+            subscribedStatuses = registration.Statuses,
+        };
+        using var doc = await SendAsync(HttpMethod.Post, $"/integration/webhook/sellers/{Seller}/webhooks", body, TrendyolServiceGroup.Other, ct);
+        return new WebhookRegistrationResult(doc.RootElement.ValueKind == JsonValueKind.Object ? Str(doc.RootElement, "id").NullIfEmpty() : null);
+    }
+
     private async Task<JsonDocument> SendAsync(HttpMethod method, string path, object? body, TrendyolServiceGroup group, CancellationToken ct)
     {
         using var request = new HttpRequestMessage(method, BaseUrl + path);
@@ -247,4 +265,9 @@ public class TrendyolClient(HttpClient http, MarketplaceCredentials credentials)
 
     private static decimal Dec(JsonElement e, string name, decimal fallback = 0) =>
         e.TryGetProperty(name, out var v) && v.ValueKind == JsonValueKind.Number ? v.GetDecimal() : fallback;
+}
+
+internal static class TrendyolStringExtensions
+{
+    public static string? NullIfEmpty(this string value) => string.IsNullOrWhiteSpace(value) ? null : value;
 }

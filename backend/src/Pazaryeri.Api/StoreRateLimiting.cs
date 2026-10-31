@@ -11,6 +11,8 @@ public static class StoreRateLimiting
 {
     public const string AuthPolicy = "store-auth";
     public const string InfoPolicy = "store-info";
+    public const string WebhookPolicy = "webhook";
+    public const int WebhookPermits = 600;
     public const int AuthPermits = 10;
     public const int InfoPermits = 60;
 
@@ -19,6 +21,7 @@ public static class StoreRateLimiting
         options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
         options.AddPolicy(AuthPolicy, http => Window(http, AuthPermits));
         options.AddPolicy(InfoPolicy, http => Window(http, InfoPermits));
+        options.AddPolicy(WebhookPolicy, http => Window(http, WebhookPermits));
         options.OnRejected = async (ctx, ct) =>
         {
             ctx.HttpContext.Response.Headers.RetryAfter = "60";

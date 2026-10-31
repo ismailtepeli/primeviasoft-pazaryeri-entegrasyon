@@ -74,6 +74,9 @@ public interface IMarketplaceClient
     Task<BatchStatus> GetBatchResultAsync(string batchId, CancellationToken ct = default);
     Task<OrderPage> GetOrdersAsync(OrderQuery query, CancellationToken ct = default);
     Task UpdateOrderStatusAsync(OrderStatusUpdate update, CancellationToken ct = default);
+    /// <summary>Kanalda webhook kaydı oluşturur; desteklemeyen kanal NotSupportedException fırlatır.</summary>
+    Task<WebhookRegistrationResult> CreateWebhookAsync(WebhookRegistration registration, CancellationToken ct = default) =>
+        throw new NotSupportedException($"{Channel} webhook kaydını desteklemiyor.");
 }
 
 public interface IMarketplaceClientFactory

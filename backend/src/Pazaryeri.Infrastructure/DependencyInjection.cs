@@ -71,6 +71,9 @@ public static class DependencyInjection
         services.AddScoped<IModuleService, ModuleService>();
         services.AddScoped<ISyncJobHandler, OrderSyncHandler>();
         services.AddScoped<OrderIngestService>();
+        services.AddScoped<WebhookReceiver>();
+        services.AddScoped<WebhookRegistrationService>();
+        services.AddSingleton(new WebhookOptions(config["Webhooks:PublicBaseUrl"]));
         services.AddScoped<IProductSendService, ProductSendService>();
         services.AddScoped<IChannelCatalogService, ChannelCatalogService>();
         services.AddScoped<ISyncJobHandler, CatalogSyncHandler>();
