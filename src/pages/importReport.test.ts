@@ -11,5 +11,7 @@ describe('importReport', () => {
   it('özet cümlesi yalnızca anlamlı parçaları içerir', () => {
     expect(importSummary({ created: 2, updated: 1, groups: 3, errors: [] })).toBe('2 yeni ürün eklendi, 1 ürün güncellendi.')
     expect(importSummary({ created: 4, updated: 0, groups: 2, errors: [1] })).toBe('4 yeni ürün eklendi, 0 ürün güncellendi, 2 ürün grubunda toplandı, 1 satır hatalı.')
+    expect(importSummary({ created: 0, updated: 2, groups: 1, errors: [] }))
+      .toBe('Yeni ürün eklenmedi: dosyadaki 2 ürünün barkodu zaten kayıtlıydı, bu ürünler güncellendi. Yeni ürün eklemek için farklı barkodlar kullanın.')
   })
 })
