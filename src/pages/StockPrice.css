@@ -1,4 +1,10 @@
-.stock-price { display: flex; flex-direction: column; gap: var(--space-5); max-width: 860px; }
+/* Geniş ekranda iki sütun: solda stok kuralı ve ürün dağıtımı, sağda senkron durumu ve fiyat kuralı; dar ekranda tek sütun (sekme, ana, yan, hareketler sırasıyla). */
+.stock-price { container-type: inline-size; display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--space-5); align-items: start; max-width: 1400px; }
+.stock-price__main, .stock-price__side, .stock-price__wide, .stock-price__tabs { min-width: 0; display: flex; flex-direction: column; gap: var(--space-5); }
+@container (min-width: 1000px) {
+  .stock-price { grid-template-columns: minmax(0, 1.45fr) minmax(0, 1fr); }
+  .stock-price__tabs, .stock-price__wide { grid-column: 1 / -1; }
+}
 .pricing { display: flex; flex-direction: column; gap: var(--space-4); max-width: none; }
 .pricing h2 { margin: 0; font: 700 21px var(--font-display); letter-spacing: -0.01em; }
 .pricing__formula { margin: 0; color: var(--ink-muted); font-size: 14.5px; }

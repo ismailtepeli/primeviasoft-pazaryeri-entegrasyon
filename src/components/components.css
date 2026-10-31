@@ -82,8 +82,8 @@
 .secret__toggle { position: absolute; right: 8px; top: 50%; transform: translateY(-50%); background: none; border: 0; color: var(--accent); font: 600 14px var(--font-sans); cursor: pointer; padding: 6px 10px; border-radius: var(--radius-pill); }
 
 /* Tabs */
-.tabs { display: flex; gap: var(--space-1); border-bottom: 1px solid var(--line); overflow-x: auto; }
-.tabs__tab { background: none; border: 0; border-bottom: 3px solid transparent; margin-bottom: -1px; padding: var(--space-3) var(--space-4); font: 500 15px var(--font-sans); color: var(--ink-muted); cursor: pointer; white-space: nowrap; display: inline-flex; gap: var(--space-2); align-items: center; }
+.tabs { display: flex; gap: var(--space-1); border-bottom: 1px solid var(--line); overflow-x: auto; overflow-y: hidden; scrollbar-width: thin; } /* overflow-y: aktif sekmenin -1px kayması dikey kaydırma çubuğu çıkarmasın */
+.tabs__tab { background: none; border: 0; border-bottom: 3px solid transparent; padding: var(--space-3) var(--space-4); font: 500 15px var(--font-sans); color: var(--ink-muted); cursor: pointer; white-space: nowrap; display: inline-flex; gap: var(--space-2); align-items: center; }
 .tabs__tab:hover { color: var(--ink); }
 .tabs__tab[aria-selected="true"] { color: var(--ink); font-weight: 600; border-bottom-color: var(--highlight); }
 .tabs__count { font-size: 12.5px; padding: 1px 8px; border-radius: var(--radius-pill); background: var(--surface-alt); color: var(--ink-soft); }

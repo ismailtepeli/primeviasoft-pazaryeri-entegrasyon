@@ -17,11 +17,15 @@ export default function StockPrice() {
   const [channel, setChannel] = useState('Trendyol')
   return (
     <div className="stock-price">
-      <Tabs items={CHANNEL_TABS} value={channel} onChange={setChannel} />
-      <SyncStatusCard key={`sync-${channel}`} channel={channel} />
-      <StockSection key={`stock-${channel}`} channel={channel} />
-      <PricingSection key={channel} channel={channel} />
-      <StockMovementsSection />
+      <div className="stock-price__tabs"><Tabs items={CHANNEL_TABS} value={channel} onChange={setChannel} /></div>
+      <div className="stock-price__main">
+        <StockSection key={`stock-${channel}`} channel={channel} />
+      </div>
+      <div className="stock-price__side">
+        <SyncStatusCard key={`sync-${channel}`} channel={channel} />
+        <PricingSection key={channel} channel={channel} />
+      </div>
+      <div className="stock-price__wide"><StockMovementsSection /></div>
     </div>
   )
 }

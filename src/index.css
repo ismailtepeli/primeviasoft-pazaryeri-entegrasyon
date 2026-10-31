@@ -1,4 +1,7 @@
 @import 'primeviasoft-brand/brand.css';
 
+/* Marka ölçeğinde space-5 yok (4 = 16px, 6 = 24px); birkaç ekran 20px'lik ara boşluk bekliyor. Tanımsız kalırsa boşluk sıfır olur. */
+:root { --space-5: 20px; }
+
 *, *::before, *::after { box-sizing: border-box; }
 body { margin: 0; font-family: var(--font-sans); font-size: 17px; line-height: 1.6; color: var(--ink); background: var(--surface-alt); }
