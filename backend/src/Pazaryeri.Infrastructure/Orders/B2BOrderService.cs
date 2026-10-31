@@ -1,5 +1,6 @@
 using System.Text.Json.Serialization;
 using Microsoft.EntityFrameworkCore;
+using Pazaryeri.Application.Orders;
 using Pazaryeri.Application.Pricing;
 using Pazaryeri.Application.Stock;
 using Pazaryeri.Domain;
@@ -39,6 +40,9 @@ public record B2BOrderDetail(Guid Id, string OrderNumber, DateTime OrderDate, st
     DateTime? ShippedAt = null, string? StatusNote = null);
 
 public record ReorderResult(int Added, IReadOnlyList<string> Skipped);
+
+/// <summary>Hızlı sipariş sonucu: sepete eklenen farklı ürün sayısı, satır numaralı hatalar ve güncel sepet.</summary>
+public record QuickOrderResult(int Added, IReadOnlyList<QuickOrderRowError> Errors, CartView Cart);
 
 /// <summary>
 /// Bayi sitesi sepeti ve siparişi. Sipariş "B2B" kanalında bir <see cref="Order"/> olur; stok ortak havuzdan
@@ -111,6 +115,62 @@ public class B2BOrderService(AppDbContext db, StoreCatalog catalog, DealerPriceS
         catch (DbUpdateConcurrencyException) { throw new StoreException(409, "Sepet aynı anda başka bir işlemde değişti; tekrar deneyin."); }
         db.ChangeTracker.Clear();
         return await GetCartAsync(dealerId, ct);
+    }
+
+    /// <summary>
+    /// Kod/adet satırlarını sepete ekler. Geçerli satırlar eklenir, geçersizler satır numarasıyla raporlanır (kısmi başarı).
+    /// Aynı kod birden çok satırda geçerse adetler toplanır; mevcut sepet adedine eklenir. Bayiye görünmeyen ürün "bulunamadı" sayılır.
+    /// </summary>
+    public async Task<QuickOrderResult> QuickAddAsync(Guid dealerId, IReadOnlyList<QuickOrderRow> rows, IReadOnlyList<QuickOrderRowError> parseErrors, CancellationToken ct)
+    {
+        var errors = parseErrors.ToList();
+        if (rows.Count == 0)
+        {
+            if (errors.Count == 0) throw new StoreException(400, "Eklenecek satır yok.");
+            return new QuickOrderResult(0, errors.OrderBy(e => e.Row).ToList(), await GetCartAsync(dealerId, ct));
+        }
+
+        // kodlar: büyük/küçük harf duyarsız tekilleştir, adetleri topla, hata ilk satıra yazılsın
+        var groups = rows.GroupBy(r => r.Code.Trim().ToUpperInvariant()).Select(g => (First: g.First(), Qty: g.Sum(r => (long)r.Quantity), Dups: g.Count())).ToList();
+        var group = await db.Dealers.AsNoTracking().Where(d => d.Id == dealerId).Select(d => d.GroupId).FirstOrDefaultAsync(ct);
+        var codes = groups.Select(g => g.First.Code.Trim()).Distinct().ToList();
+        var visible = await catalog.VisibleProductsAsync(group, ct);
+        var found = await visible.Where(p => codes.Contains(p.Barcode)).Select(p => new { p.Id, p.Barcode }).ToListAsync(ct);
+        var byCode = found.GroupBy(f => f.Barcode.ToUpperInvariant()).ToDictionary(g => g.Key, g => g.First().Id);
+        var info = await ResolveAsync(dealerId, byCode.Values.ToList(), ct);
+
+        var cart = await GetOrCreateCartAsync(dealerId, ct);
+        var added = 0;
+        foreach (var g in groups)
+        {
+            var row = g.First;
+            if (!byCode.TryGetValue(g.First.Code.Trim().ToUpperInvariant(), out var productId) || !info.TryGetValue(productId, out var line))
+            { errors.Add(new(row.Row, row.Code, "Ürün bulunamadı.")); continue; }
+            var item = cart.Items.FirstOrDefault(i => i.ProductId == productId);
+            var total = (item?.Quantity ?? 0) + g.Qty;
+            if (total > MaxQuantity) { errors.Add(new(row.Row, row.Code, $"Toplam adet {MaxQuantity} sınırını aşıyor.")); continue; }
+            var qty = (int)total;
+            var check = OrderQuantityRules.Check(qty, line.MinOrder, line.Pack);
+            if (!check.Valid) { errors.Add(new(row.Row, row.Code, check.Error!)); continue; }
+            if (qty > line.Available) { errors.Add(new(row.Row, row.Code, line.Available <= 0 ? "Bu ürün tükendi." : $"Stokta yalnızca {line.Available} adet var.")); continue; }
+            if (item is null)
+            {
+                if (cart.Items.Count >= MaxLines) { errors.Add(new(row.Row, row.Code, $"Sepette en fazla {MaxLines} farklı ürün olabilir.")); continue; }
+                var created = new CartItem { CartId = cart.Id, ProductId = productId, Quantity = qty, PriceAtAdd = line.Price.Price.Display };
+                cart.Items.Add(created);
+                db.CartItems.Add(created);
+            }
+            else { item.Quantity = qty; item.PriceAtAdd = line.Price.Price.Display; }
+            added++;
+        }
+        if (added > 0)
+        {
+            cart.UpdatedAt = Now();
+            try { await db.SaveChangesAsync(ct); }
+            catch (DbUpdateConcurrencyException) { throw new StoreException(409, "Sepet aynı anda başka bir işlemde değişti; tekrar deneyin."); }
+            db.ChangeTracker.Clear();
+        }
+        return new QuickOrderResult(added, errors.OrderBy(e => e.Row).ToList(), await GetCartAsync(dealerId, ct));
     }
 
     private async Task<Cart> GetOrCreateCartAsync(Guid dealerId, CancellationToken ct)

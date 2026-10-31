@@ -57,6 +57,15 @@ Sipariş akışı: **Onay bekliyor → Onayla → Hazırlanıyor → Sevk et →
 - Sipariş verilince stok ortak havuzdan düşer. Pazaryeri ve B2B aynı stoğu kullanır; toplam stok aşılamaz.
 - Genel Bakış'ta "B2B onay bekleyen" kartı bekleyen sipariş sayısını gösterir.
 
+### Hızlı sipariş (bayi sitesi)
+
+Bayi, üst çubuktaki **Hızlı sipariş** sayfasında ürün kodu (barkod) ve adet listesini yapıştırarak ya da Excel/CSV yükleyerek sepeti doldurur.
+
+- Satır biçimi: `KOD;adet`, sekmeyle ayrılmış (Excel'den kopyalama), `KOD,adet`, `KOD 12` ya da `KOD x 12`. Adet yazılmazsa 1 sayılır; ilk satırdaki "Kod/Barkod" başlığı atlanır.
+- Dosyada ilk sütun kod, ikinci sütun adettir (.xlsx, .csv; en fazla 2 MB ve 1000 satır).
+- Geçerli satırlar sepete eklenir, sorunlu satırlar **satır numarasıyla** listelenir (bilinmeyen kod, koli/minimum uyumsuzluğu, stok yetersiz, geçersiz adet). Aynı kod birden çok satırda geçerse adetler toplanır; sepette zaten varsa üstüne eklenir.
+- Bayiye görünmeyen ürünün kodu "Ürün bulunamadı" döner; ürünün var olduğu sızmaz.
+
 ## 6. Cari hesap
 
 Bayi düzenleme panelindeki Cari hesap bölümünde: toplam sipariş, ödemeler, bakiye (pozitif = bayi borçlu), vadesi geçen tutar. Ödemeleri elle girersiniz; en eski siparişten başlayarak kapatılır. Vade günü (0–365) bayi bazında verilir.

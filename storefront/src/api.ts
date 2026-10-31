@@ -22,7 +22,7 @@ export const tokenStore = {
 export async function storeApi<T>(path: string, init: RequestInit = {}, token?: string | null): Promise<T> {
   const res = await fetch(`/api/store${path}`, {
     ...init,
-    headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}), ...init.headers },
+    headers: { ...(init.body instanceof FormData ? {} : { 'Content-Type': 'application/json' }), ...(token ? { Authorization: `Bearer ${token}` } : {}), ...init.headers },
   })
   if (!res.ok) {
     const body = await res.json().catch(() => null)

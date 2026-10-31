@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Pazaryeri.Api.Modules;
 using Pazaryeri.Application.Modules;
+using Pazaryeri.Application.Orders;
 using Pazaryeri.Infrastructure.Auth;
 using Pazaryeri.Infrastructure.Orders;
 
@@ -11,6 +12,8 @@ namespace Pazaryeri.Api.Controllers;
 public record CartAddInput(Guid ProductId, int Quantity);
 
 public record CartSetInput(int Quantity);
+
+public record QuickOrderInput(string? Text);
 
 /// <summary>Bayi sitesi sepeti ve siparişleri (api/store). Yalnızca bayi token'ı girebilir; bayi yalnızca kendi firmasının verisini görür.</summary>
 [ApiController]
@@ -29,6 +32,34 @@ public class StoreOrdersController(B2BOrderService orders) : ControllerBase
 
     [HttpPut("cart/items/{productId:guid}")]
     public Task<ActionResult<CartView>> SetItem(Guid productId, CartSetInput input, CancellationToken ct) => Run(() => orders.SetAsync(DealerId, productId, input.Quantity, ct));
+
+    /// <summary>Yapıştırılan "kod;adet" satırlarını sepete ekler; hatalı satırlar satır numarasıyla döner.</summary>
+    [HttpPost("cart/quick")]
+    public Task<ActionResult<QuickOrderResult>> Quick(QuickOrderInput input, CancellationToken ct)
+    {
+        var parsed = QuickOrderParser.Parse(input.Text);
+        return Run(() => orders.QuickAddAsync(DealerId, parsed.Rows, parsed.Errors, ct));
+    }
+
+    /// <summary>Excel (.xlsx) ya da .csv dosyasından sepete ekler (A: kod, B: adet).</summary>
+    [HttpPost("cart/quick/upload")]
+    [RequestSizeLimit(2_000_000)]
+    public Task<ActionResult<QuickOrderResult>> QuickUpload(IFormFile? file, CancellationToken ct)
+    {
+        if (file is null || file.Length == 0) return Task.FromResult<ActionResult<QuickOrderResult>>(BadRequest(new { error = "Bir dosya seçin." }));
+        return Run(async () =>
+        {
+            await using var stream = file.OpenReadStream();
+            QuickOrderParse parsed;
+            if (file.FileName.EndsWith(".csv", StringComparison.OrdinalIgnoreCase) || file.FileName.EndsWith(".txt", StringComparison.OrdinalIgnoreCase))
+            {
+                using var reader = new StreamReader(stream);
+                parsed = QuickOrderParser.Parse(await reader.ReadToEndAsync(ct));
+            }
+            else parsed = QuickOrderFile.ReadXlsx(stream);
+            return await orders.QuickAddAsync(DealerId, parsed.Rows, parsed.Errors, ct);
+        });
+    }
 
     [HttpDelete("cart")]
     public Task<ActionResult<CartView>> Clear(CancellationToken ct) => Run(() => orders.ClearAsync(DealerId, ct));

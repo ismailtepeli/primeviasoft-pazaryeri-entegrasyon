@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, type FormEvent } from 'react'
 import { Link, NavLink, Outlet, useNavigate } from 'react-router-dom'
-import { ClipboardList, LayoutGrid, LogOut, Menu, Monitor, Moon, Search, ShoppingCart, Sun, User, X } from 'lucide-react'
+import { ClipboardList, LayoutGrid, Zap, LogOut, Menu, Monitor, Moon, Search, ShoppingCart, Sun, User, X } from 'lucide-react'
 import { storeApi } from './api'
 import { categoryHref, childrenOf, type StoreCategory } from './catalog'
 import { useCart } from './CartContext'
@@ -128,6 +128,7 @@ export default function Layout() {
         <nav className="store-account" aria-label="Hesap">
           {token ? (
             <>
+              <Link to="/hizli-siparis" className="store-action"><Zap size={20} aria-hidden /><span>Hızlı sipariş</span></Link>
               <Link to="/siparislerim" className="store-action"><ClipboardList size={20} aria-hidden /><span>Siparişlerim</span></Link>
               <Link to="/sepet" className="store-action" aria-label={`Sepet, ${cart.itemCount} adet`}>
                 <span className="store-action__icon"><ShoppingCart size={20} aria-hidden />{cart.itemCount > 0 && <span className="store-badge">{cart.itemCount > 99 ? '99+' : cart.itemCount}</span>}</span>

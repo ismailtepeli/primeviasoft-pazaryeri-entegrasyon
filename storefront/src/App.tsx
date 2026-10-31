@@ -2,6 +2,7 @@ import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom'
 import { ProductDetailPage, ProductsPage } from './catalogPages'
 import { CartProvider } from './CartContext'
 import { CartPage, OrderDetailPage, OrdersPage } from './orderPages'
+import QuickOrderPage from './quickOrderPages'
 import Layout from './Layout'
 import { AccountPage, ApplyPage, ForgotPasswordPage, LoginPage, RequireLogin, ResetPasswordPage, StatusPage } from './pages'
 import { StoreProvider } from './StoreContext'
@@ -34,6 +35,7 @@ export default function App() {
             <Route path="sifremi-unuttum" element={<ForgotPasswordPage />} />
             <Route path="sifre-sifirla" element={<ResetPasswordPage />} />
             <Route path="hesap" element={<RequireLogin><AccountPage /></RequireLogin>} />
+            <Route path="hizli-siparis" element={<RequireLogin><QuickOrderPage /></RequireLogin>} />
             <Route path="sepet" element={<RequireLogin><CartPage /></RequireLogin>} />
             <Route path="siparislerim" element={<RequireLogin><OrdersPage /></RequireLogin>} />
             <Route path="siparis/:id" element={<RequireLogin><OrderDetailPage /></RequireLogin>} />
