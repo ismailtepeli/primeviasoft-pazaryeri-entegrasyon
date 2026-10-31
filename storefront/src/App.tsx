@@ -3,7 +3,7 @@ import { ProductDetailPage, ProductsPage } from './catalogPages'
 import { CartProvider } from './CartContext'
 import { CartPage, OrderDetailPage, OrdersPage } from './orderPages'
 import Layout from './Layout'
-import { ApplyPage, LoginPage, RequireLogin, StatusPage } from './pages'
+import { AccountPage, ApplyPage, ForgotPasswordPage, LoginPage, RequireLogin, ResetPasswordPage, StatusPage } from './pages'
 import { StoreProvider } from './StoreContext'
 import { resolveTenant } from './tenant'
 
@@ -31,6 +31,9 @@ export default function App() {
             <Route path="urun/:id" element={<RequireLogin><ProductDetailPage /></RequireLogin>} />
             <Route path="giris" element={<LoginPage />} />
             <Route path="basvuru" element={<ApplyPage />} />
+            <Route path="sifremi-unuttum" element={<ForgotPasswordPage />} />
+            <Route path="sifre-sifirla" element={<ResetPasswordPage />} />
+            <Route path="hesap" element={<RequireLogin><AccountPage /></RequireLogin>} />
             <Route path="sepet" element={<RequireLogin><CartPage /></RequireLogin>} />
             <Route path="siparislerim" element={<RequireLogin><OrdersPage /></RequireLogin>} />
             <Route path="siparis/:id" element={<RequireLogin><OrderDetailPage /></RequireLogin>} />

@@ -60,6 +60,51 @@ public class StoreAuthController(IDealerAuthService auth) : ControllerBase
         };
     }
 
+    /// <summary>Oturum açmış bayi kullanıcısı parolasını değiştirir.</summary>
+    [Authorize(Policy = AuthPolicies.Dealer)]
+    [EnableRateLimiting(StoreRateLimiting.AuthPolicy)]
+    [HttpPost("change-password")]
+    public async Task<IActionResult> ChangePassword(DealerPasswordChange change, CancellationToken ct)
+    {
+        var result = await auth.ChangePasswordAsync(Guid.Parse(User.FindFirstValue(JwtRegisteredClaimNames.Sub)!), change, ct);
+        return result.Result switch
+        {
+            DealerAuthResult.Ok => Ok(new { message = "Parolanız değiştirildi." }),
+            DealerAuthResult.InvalidInput => BadRequest(new { error = result.Error }),
+            _ => BadRequest(new { error = result.Error ?? "Mevcut parola hatalı." }),
+        };
+    }
+
+    /// <summary>Parola sıfırlama bağlantısı ister. E-posta kayıtlı olsun olmasın aynı yanıtı döner.</summary>
+    [AllowAnonymous]
+    [EnableRateLimiting(StoreRateLimiting.AuthPolicy)]
+    [HttpPost("forgot-password")]
+    public async Task<IActionResult> ForgotPassword(DealerPasswordResetRequest request, CancellationToken ct)
+    {
+        var result = await auth.RequestPasswordResetAsync(request, ct);
+        return result.Result switch
+        {
+            DealerAuthResult.InvalidInput => BadRequest(new { error = result.Error }),
+            DealerAuthResult.UnknownTenant => NotFound(new { error = "Bayi sitesi bulunamadı." }),
+            _ => Ok(new { message = "E-posta kayıtlıysa parola sıfırlama bağlantısı gönderildi." }),
+        };
+    }
+
+    /// <summary>E-postadaki token ile yeni parola belirler.</summary>
+    [AllowAnonymous]
+    [EnableRateLimiting(StoreRateLimiting.AuthPolicy)]
+    [HttpPost("reset-password")]
+    public async Task<IActionResult> ResetPassword(DealerPasswordResetConfirm confirm, CancellationToken ct)
+    {
+        var result = await auth.ResetPasswordAsync(confirm, ct);
+        return result.Result switch
+        {
+            DealerAuthResult.Ok => Ok(new { message = "Parolanız güncellendi. Yeni parolanızla giriş yapabilirsiniz." }),
+            DealerAuthResult.InvalidInput => BadRequest(new { error = result.Error }),
+            _ => BadRequest(new { error = result.Error, code = "invalid_token" }),
+        };
+    }
+
     [Authorize(Policy = AuthPolicies.Dealer)]
     [HttpGet("me")]
     public IActionResult Me() => Ok(new

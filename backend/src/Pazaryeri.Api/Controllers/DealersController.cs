@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Pazaryeri.Api.Modules;
+using Pazaryeri.Application.Abstractions;
 using Pazaryeri.Application.Dealers;
 using Pazaryeri.Application.Modules;
 using Pazaryeri.Domain;
@@ -36,7 +37,7 @@ public record DealerGroupInput(string? Name, string? Description);
 [ApiController]
 [Route("api/dealers")]
 [RequiresModule(ModuleIds.Dealers)]
-public class DealersController(AppDbContext db) : ControllerBase
+public class DealersController(AppDbContext db, IEmailSender? email = null, StoreLinkOptions? links = null) : ControllerBase
 {
     public const int MaxPageSize = 100;
     private readonly PasswordHasher<DealerUser> _hasher = new();
@@ -124,10 +125,28 @@ public class DealersController(AppDbContext db) : ControllerBase
         var dealer = await db.Dealers.Include(d => d.Users).FirstOrDefaultAsync(d => d.Id == id, ct);
         if (dealer is null) return NotFound(new { error = "Bayi bulunamadı." });
         if (!allowedFrom.Contains(dealer.Status)) return Conflict(new { error = deniedMessage });
+        var was = dealer.Status;
         dealer.Status = to;
         if (to == DealerStatus.Active) dealer.ApprovedAt ??= DateTime.UtcNow;
         await db.SaveChangesAsync(ct);
+        if (was == DealerStatus.Pending) await NotifyApplicationResultAsync(dealer, approved: to == DealerStatus.Active, ct);
         return Detail(dealer);
+    }
+
+    /// <summary>Başvuru sonucunu firma yetkilisine e-postayla bildirir. Gönderim hatası onay/ret işlemini bozmaz.</summary>
+    private async Task NotifyApplicationResultAsync(Dealer dealer, bool approved, CancellationToken ct)
+    {
+        if (email is null) return;
+        try
+        {
+            var slug = await db.Tenants.Where(t => t.Id == dealer.TenantId).Select(t => t.Slug).FirstOrDefaultAsync(ct);
+            var owner = dealer.Users.OrderBy(u => u.CreatedAt).Select(u => u.Email).FirstOrDefault() ?? dealer.Email;
+            var (subject, body) = approved
+                ? ("Bayi başvurunuz onaylandı", $"Merhaba {dealer.ContactName ?? dealer.Name},\n\n{dealer.Name} için bayi başvurunuz onaylandı. Giriş yapabilirsiniz:\n{(links ?? StoreLinkOptions.Default).Login(slug)}")
+                : ("Bayi başvurunuz hakkında", $"Merhaba {dealer.ContactName ?? dealer.Name},\n\n{dealer.Name} için bayi başvurunuz bu aşamada onaylanamadı. Ayrıntı için firmayla iletişime geçebilirsiniz.");
+            await email.SendAsync(owner, subject, body, ct);
+        }
+        catch (Exception) when (!ct.IsCancellationRequested) { /* bildirim en iyi çabayla gider */ }
     }
 
     // --- kullanıcılar ---

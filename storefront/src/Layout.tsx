@@ -133,7 +133,7 @@ export default function Layout() {
                 <span className="store-action__icon"><ShoppingCart size={20} aria-hidden />{cart.itemCount > 0 && <span className="store-badge">{cart.itemCount > 99 ? '99+' : cart.itemCount}</span>}</span>
                 <span>Sepet</span>
               </Link>
-              <span className="store-action store-action--static" title={user?.email}><User size={20} aria-hidden /><span className="store-user">{user?.fullName || user?.email}</span></span>
+              <Link to="/hesap" className="store-action" title={user?.email}><User size={20} aria-hidden /><span className="store-user">{user?.fullName || user?.email}</span></Link>
               <button type="button" className="store-action store-action--btn" onClick={logout}><LogOut size={20} aria-hidden /><span>Çıkış</span></button>
             </>
           ) : (

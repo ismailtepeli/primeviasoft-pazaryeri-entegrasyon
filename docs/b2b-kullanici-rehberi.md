@@ -22,6 +22,13 @@ Yalnızca B2B kullanacaksanız `marketplace`, `stock-price` ve `invoices` modül
 - Siz onaylayınca bayi giriş yapabilir. Onay sırasında **bayi grubunu** atayın; fiyat ve görünürlük kuralları gruba göre çalışır.
 - Modül kapalıysa site "hizmet dışı" sayfası gösterir.
 
+### Parola işlemleri ve e-postalar
+
+- Bayi **Parolamı unuttum** ile e-postasına tek kullanımlık, 60 dakika geçerli bir sıfırlama bağlantısı alır. E-posta kayıtlı olmasa da ekranda aynı mesaj çıkar (hesap bilgisi sızmaz); aynı adrese bir dakikada bir bağlantı gider.
+- Giriş yapmış bayi **Hesabım** sayfasından mevcut parolasını doğrulayarak parolasını değiştirir. Parola değişince açık sıfırlama bağlantıları geçersiz olur.
+- Başvuru **onaylanınca** ya da **reddedilince** firma yetkilisine e-posta gider; e-posta gönderilemese bile onay/ret işlemi kaydedilir.
+- Gerçek e-posta sağlayıcısı bağlanana kadar e-postalar yalnızca sunucu günlüğüne yazılır, gönderilmez.
+
 ## 3. Fiyat listeleri
 
 Bayiye gösterilen fiyat şu sırayla belirlenir:
@@ -56,4 +63,4 @@ Bayi düzenleme panelindeki Cari hesap bölümünde: toplam sipariş, ödemeler,
 
 ## Bilinen sınırlar
 
-Online ödeme, kredi limiti, e-posta bildirimleri ve sevk sonrası iade henüz yok (bkz. açık görevler #73–#79).
+Online ödeme, kredi limiti, sipariş durumu e-postaları ve sevk sonrası iade henüz yok; e-postalar gerçek sağlayıcı bağlanana kadar yalnızca günlüğe yazılır (bkz. açık görevler #73–#79).

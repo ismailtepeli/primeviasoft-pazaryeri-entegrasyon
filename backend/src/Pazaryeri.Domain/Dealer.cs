@@ -66,3 +66,12 @@ public class DealerUser : TenantEntity
     public bool IsActive { get; set; } = true;
     public DateTime? LastLoginAt { get; set; }
 }
+
+/// <summary>Bayi parola sıfırlama bağlantısı: tek kullanımlık, süreli. Token'ın kendisi saklanmaz, yalnızca özeti (SHA-256) tutulur.</summary>
+public class DealerPasswordReset : TenantEntity
+{
+    public Guid DealerUserId { get; set; }
+    public string TokenHash { get; set; } = string.Empty;
+    public DateTime ExpiresAt { get; set; }
+    public DateTime? UsedAt { get; set; }
+}

@@ -1,3 +1,5 @@
+using System.Security.Cryptography;
+using System.Text;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Pazaryeri.Application.Abstractions;
@@ -13,9 +15,15 @@ namespace Pazaryeri.Infrastructure.Dealers;
 /// Bayi sitesi kimlik doğrulaması: yönetici girişinden ayrıdır (ayrı kullanıcı tablosu, ayrı token hedef kitlesi ve "dealer" kimliği).
 /// Giriş öncesi kiracı bilinmediği için kiracı slug'ı ile bulunur ve işlem boyunca ortam kiracısı olarak kullanılır.
 /// </summary>
-public class DealerAuthService(AppDbContext db, ITokenService tokens, IModuleService modules, TimeProvider time) : IDealerAuthService
+public class DealerAuthService(AppDbContext db, ITokenService tokens, IModuleService modules, TimeProvider time,
+    IEmailSender? email = null, StoreLinkOptions? links = null) : IDealerAuthService
 {
+    public static readonly TimeSpan ResetLifetime = TimeSpan.FromMinutes(60);
+    public static readonly TimeSpan ResetCooldown = TimeSpan.FromMinutes(1);
+    private const string InvalidLink = "Bağlantı geçersiz ya da süresi dolmuş.";
+
     private readonly PasswordHasher<DealerUser> _hasher = new();
+    private readonly StoreLinkOptions _links = links ?? StoreLinkOptions.Default;
 
     public async Task<DealerAuthOutcome<Guid>> ApplyAsync(DealerApplication a, CancellationToken ct)
     {
@@ -72,6 +80,86 @@ public class DealerAuthService(AppDbContext db, ITokenService tokens, IModuleSer
         return new(DealerAuthResult.Ok, new DealerLoginResponse(token, expires,
             new DealerInfo(user.Id, dealer.Id, tenantId.Value, user.Email, user.FullName, dealer.Name, user.Role.ToString())));
     }
+
+    public async Task<DealerAuthOutcome<bool>> ChangePasswordAsync(Guid userId, DealerPasswordChange change, CancellationToken ct)
+    {
+        if (string.IsNullOrEmpty(change.CurrentPassword)) return new(DealerAuthResult.InvalidInput, Error: "Mevcut parola zorunlu.");
+        var error = DealerRules.ValidatePassword(change.NewPassword);
+        if (error is not null) return new(DealerAuthResult.InvalidInput, Error: error);
+        if (change.NewPassword == change.CurrentPassword) return new(DealerAuthResult.InvalidInput, Error: "Yeni parola mevcut parolayla aynı olamaz.");
+
+        var user = await db.DealerUsers.FirstOrDefaultAsync(u => u.Id == userId && u.IsActive, ct);
+        if (user is null || _hasher.VerifyHashedPassword(user, user.PasswordHash, change.CurrentPassword) == PasswordVerificationResult.Failed)
+            return new(DealerAuthResult.InvalidCredentials, Error: "Mevcut parola hatalı.");
+        user.PasswordHash = _hasher.HashPassword(user, change.NewPassword!);
+        await RevokeResetsAsync(user.Id, ct);
+        await db.SaveChangesAsync(ct);
+        return new(DealerAuthResult.Ok, true);
+    }
+
+    public async Task<DealerAuthOutcome<bool>> RequestPasswordResetAsync(DealerPasswordResetRequest request, CancellationToken ct)
+    {
+        var invalid = DealerRules.ValidateEmail(request.Email);
+        if (invalid is not null) return new(DealerAuthResult.InvalidInput, Error: invalid);
+        var tenantId = await ResolveTenantAsync(request.TenantSlug, ct);
+        if (tenantId is null) return new(DealerAuthResult.UnknownTenant);
+
+        using var _ = AmbientTenant.Use(tenantId.Value);
+        var address = DealerRules.NormalizeEmail(request.Email!);
+        var user = await db.DealerUsers.FirstOrDefaultAsync(u => u.Email == address && u.IsActive, ct);
+        var now = time.GetUtcNow().UtcDateTime;
+        // Kayıtsız e-posta, aktif olmayan bayi ve sık tekrar aynı sonucu verir; yalnızca uygun durumda e-posta gider.
+        if (user is null || email is null) return new(DealerAuthResult.Ok, true);
+        var dealer = await db.Dealers.FirstAsync(d => d.Id == user.DealerId, ct);
+        if (dealer.Status != DealerStatus.Active) return new(DealerAuthResult.Ok, true);
+        if (await db.DealerPasswordResets.AnyAsync(r => r.DealerUserId == user.Id && r.CreatedAt > now - ResetCooldown, ct)) return new(DealerAuthResult.Ok, true);
+
+        var token = Convert.ToBase64String(RandomNumberGenerator.GetBytes(32)).TrimEnd('=').Replace('+', '-').Replace('/', '_');
+        db.DealerPasswordResets.Add(new DealerPasswordReset
+        {
+            TenantId = tenantId.Value, DealerUserId = user.Id, TokenHash = Hash(token), ExpiresAt = now + ResetLifetime,
+        });
+        await db.SaveChangesAsync(ct);
+        var slug = request.TenantSlug!.Trim().ToLowerInvariant();
+        await email.SendAsync(user.Email, "Parola sıfırlama",
+            $"Merhaba {user.FullName},\n\nParolanızı sıfırlamak için bağlantıya tıklayın (60 dakika geçerli, tek kullanımlık):\n{_links.Reset(slug, token)}\n\nBu isteği siz yapmadıysanız bu iletiyi yok sayabilirsiniz.", ct);
+        return new(DealerAuthResult.Ok, true);
+    }
+
+    public async Task<DealerAuthOutcome<bool>> ResetPasswordAsync(DealerPasswordResetConfirm confirm, CancellationToken ct)
+    {
+        if (string.IsNullOrWhiteSpace(confirm.Token)) return new(DealerAuthResult.InvalidToken, Error: InvalidLink);
+        var error = DealerRules.ValidatePassword(confirm.NewPassword);
+        if (error is not null) return new(DealerAuthResult.InvalidInput, Error: error);
+        var tenantId = await ResolveTenantAsync(confirm.TenantSlug, ct);
+        if (tenantId is null) return new(DealerAuthResult.InvalidToken, Error: InvalidLink);
+
+        using var _ = AmbientTenant.Use(tenantId.Value);
+        var now = time.GetUtcNow().UtcDateTime;
+        var hash = Hash(confirm.Token.Trim());
+        // Tek kullanım koşullu güncellemeyle sahiplenilir; eşzamanlı ikinci istek reddedilir.
+        var claimed = await db.DealerPasswordResets
+            .Where(r => r.TokenHash == hash && r.UsedAt == null && r.ExpiresAt > now)
+            .ExecuteUpdateAsync(s => s.SetProperty(r => r.UsedAt, now), ct);
+        if (claimed == 0) return new(DealerAuthResult.InvalidToken, Error: InvalidLink);
+
+        var reset = await db.DealerPasswordResets.AsNoTracking().FirstAsync(r => r.TokenHash == hash, ct);
+        var user = await db.DealerUsers.FirstOrDefaultAsync(u => u.Id == reset.DealerUserId && u.IsActive, ct);
+        if (user is null) return new(DealerAuthResult.InvalidToken, Error: InvalidLink);
+        user.PasswordHash = _hasher.HashPassword(user, confirm.NewPassword!);
+        await RevokeResetsAsync(user.Id, ct);
+        await db.SaveChangesAsync(ct);
+        return new(DealerAuthResult.Ok, true);
+    }
+
+    /// <summary>Kullanılmamış sıfırlama bağlantılarını geçersiz kılar.</summary>
+    private async Task RevokeResetsAsync(Guid userId, CancellationToken ct)
+    {
+        var now = time.GetUtcNow().UtcDateTime;
+        await db.DealerPasswordResets.Where(r => r.DealerUserId == userId && r.UsedAt == null).ExecuteUpdateAsync(s => s.SetProperty(r => r.UsedAt, now), ct);
+    }
+
+    private static string Hash(string token) => Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(token))).ToLowerInvariant();
 
     public async Task<StoreInfo?> InfoAsync(string? slug, CancellationToken ct)
     {

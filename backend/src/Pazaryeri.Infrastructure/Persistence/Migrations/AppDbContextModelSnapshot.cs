@@ -862,6 +862,46 @@ namespace Pazaryeri.Infrastructure.Persistence.Migrations
                     b.ToTable("DealerGroups");
                 });
 
+            modelBuilder.Entity("Pazaryeri.Domain.DealerPasswordReset", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<Guid>("DealerUserId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime>("ExpiresAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("TokenHash")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("nvarchar(64)");
+
+                    b.Property<DateTime?>("UsedAt")
+                        .HasColumnType("datetime2");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("DealerUserId");
+
+                    b.HasIndex("TenantId");
+
+                    b.HasIndex("TokenHash")
+                        .IsUnique();
+
+                    b.HasIndex("TenantId", "DealerUserId");
+
+                    b.ToTable("DealerPasswordResets");
+                });
+
             modelBuilder.Entity("Pazaryeri.Domain.DealerPayment", b =>
                 {
                     b.Property<Guid>("Id")
@@ -2142,6 +2182,21 @@ namespace Pazaryeri.Infrastructure.Persistence.Migrations
 
             modelBuilder.Entity("Pazaryeri.Domain.DealerGroup", b =>
                 {
+                    b.HasOne("Pazaryeri.Domain.Tenant", null)
+                        .WithMany()
+                        .HasForeignKey("TenantId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("Pazaryeri.Domain.DealerPasswordReset", b =>
+                {
+                    b.HasOne("Pazaryeri.Domain.DealerUser", null)
+                        .WithMany()
+                        .HasForeignKey("DealerUserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
                     b.HasOne("Pazaryeri.Domain.Tenant", null)
                         .WithMany()
                         .HasForeignKey("TenantId")

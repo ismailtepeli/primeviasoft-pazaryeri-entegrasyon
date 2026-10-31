@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Pazaryeri.Application.Abstractions;
 using Pazaryeri.Application.Amazon;
 using Pazaryeri.Application.Auth;
 using Pazaryeri.Application.Catalog;
@@ -47,6 +48,12 @@ public static class DependencyInjection
         services.AddSingleton<ITokenService, JwtTokenService>();
         services.AddScoped<IAuthService, AuthService>();
         services.AddScoped<IDealerAuthService, DealerAuthService>();
+        services.AddSingleton<IEmailSender, LoggingEmailSender>();
+        services.AddSingleton(StoreLinkOptions.Default with
+        {
+            LoginUrl = config["Store:LoginUrl"] ?? StoreLinkOptions.Default.LoginUrl,
+            ResetUrl = config["Store:ResetUrl"] ?? StoreLinkOptions.Default.ResetUrl,
+        });
         services.AddScoped<Pricing.DealerPriceService>();
         services.AddScoped<Pricing.StoreCatalog>();
         services.AddScoped<Pricing.StoreCatalogService>();

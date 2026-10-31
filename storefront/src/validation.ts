@@ -31,3 +31,26 @@ export function validateApply(f: ApplyForm): Record<string, string> {
   if (f.password.length < 8) errors.password = 'Parola en az 8 karakter olmalı.'
   return errors
 }
+
+export const MIN_PASSWORD = 8
+
+/** Parola sıfırlama isteği: yalnızca e-posta. */
+export function validateForgot(email: string): Record<string, string> {
+  return EMAIL.test(email.trim()) ? {} : { email: 'Geçerli bir e-posta girin.' }
+}
+
+/** Yeni parola + tekrarı; sıfırlama ve değiştirme ekranları ortak kullanır. */
+export function validateNewPassword(password: string, confirm: string): Record<string, string> {
+  const errors: Record<string, string> = {}
+  if (password.length < MIN_PASSWORD) errors.password = `Parola en az ${MIN_PASSWORD} karakter olmalı.`
+  else if (password.length > 100) errors.password = 'Parola en fazla 100 karakter olabilir.'
+  if (confirm !== password) errors.confirm = 'Parolalar eşleşmiyor.'
+  return errors
+}
+
+export function validatePasswordChange(current: string, password: string, confirm: string): Record<string, string> {
+  const errors = validateNewPassword(password, confirm)
+  if (!current) errors.current = 'Mevcut parola zorunlu.'
+  else if (!errors.password && password === current) errors.password = 'Yeni parola mevcut parolayla aynı olamaz.'
+  return errors
+}

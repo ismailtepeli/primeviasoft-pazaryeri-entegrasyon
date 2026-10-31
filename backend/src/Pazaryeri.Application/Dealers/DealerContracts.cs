@@ -15,7 +15,13 @@ public record DealerLoginResponse(string AccessToken, DateTime ExpiresAt, Dealer
 /// <summary>Bayi sitesinin herkese açık bilgisi. Available: Bayi yönetimi ve B2B bayi sitesi modülleri açık.</summary>
 public record StoreInfo(string Name, bool Available);
 
-public enum DealerAuthResult { Ok, InvalidInput, UnknownTenant, Duplicate, InvalidCredentials, Pending, Passive }
+public record DealerPasswordChange(string? CurrentPassword, string? NewPassword);
+
+public record DealerPasswordResetRequest(string? TenantSlug, string? Email);
+
+public record DealerPasswordResetConfirm(string? TenantSlug, string? Token, string? NewPassword);
+
+public enum DealerAuthResult { Ok, InvalidInput, UnknownTenant, Duplicate, InvalidCredentials, Pending, Passive, InvalidToken }
 
 public record DealerAuthOutcome<T>(DealerAuthResult Result, T? Value = default, string? Error = null);
 
@@ -25,6 +31,15 @@ public interface IDealerAuthService
     Task<DealerAuthOutcome<Guid>> ApplyAsync(DealerApplication application, CancellationToken ct);
 
     Task<DealerAuthOutcome<DealerLoginResponse>> LoginAsync(DealerLogin login, CancellationToken ct);
+
+    /// <summary>Oturum açmış bayi kullanıcısı parolasını değiştirir; mevcut parola doğrulanır.</summary>
+    Task<DealerAuthOutcome<bool>> ChangePasswordAsync(Guid userId, DealerPasswordChange change, CancellationToken ct);
+
+    /// <summary>Sıfırlama bağlantısı gönderir. E-posta kayıtlı olsun olmasın aynı sonucu döner (hesap sızdırmaz).</summary>
+    Task<DealerAuthOutcome<bool>> RequestPasswordResetAsync(DealerPasswordResetRequest request, CancellationToken ct);
+
+    /// <summary>Bağlantıdaki token ile yeni parola belirler. Token tek kullanımlık ve süreli.</summary>
+    Task<DealerAuthOutcome<bool>> ResetPasswordAsync(DealerPasswordResetConfirm confirm, CancellationToken ct);
 
     /// <summary>Slug'a ait site bilgisi; slug bilinmiyorsa ya da kiracı pasifse null.</summary>
     Task<StoreInfo?> InfoAsync(string? slug, CancellationToken ct);

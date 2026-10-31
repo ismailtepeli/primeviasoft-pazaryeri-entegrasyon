@@ -1,8 +1,8 @@
 import { useState, type ChangeEvent, type FormEvent, type InputHTMLAttributes, type ReactNode } from 'react'
-import { Link, Navigate, useLocation, useNavigate } from 'react-router-dom'
+import { Link, Navigate, useLocation, useNavigate, useSearchParams } from 'react-router-dom'
 import { StoreApiError, storeApi } from './api'
 import { useStore } from './StoreContext'
-import { emptyApplyForm, validateApply, validateLogin, type ApplyForm } from './validation'
+import { emptyApplyForm, validateApply, validateForgot, validateLogin, validateNewPassword, validatePasswordChange, type ApplyForm } from './validation'
 
 function Field({ label, error, hint, ...rest }: { label: string; error?: string; hint?: string } & InputHTMLAttributes<HTMLInputElement>) {
   return (
@@ -68,6 +68,7 @@ export function LoginPage() {
         {message && <p role="alert" className="store-error">{message}</p>}
         <button type="submit" className="ps-btn ps-btn--primary" disabled={busy}>{busy ? 'Giriş yapılıyor…' : 'Giriş yap'}</button>
       </form>
+      <p className="store-note"><Link to="/sifremi-unuttum">Parolamı unuttum</Link></p>
       <p className="store-note">Henüz bayimiz değil misiniz? <Link to="/basvuru">Bayi olmak için başvurun</Link>.</p>
     </Panel>
   )
@@ -118,6 +119,141 @@ export function ApplyPage() {
         </div>
       </form>
       <p className="store-note">Başvurunuz onaylandığında e-posta ve parolanızla giriş yapabilirsiniz. <Link to="/giris">Giriş yap</Link></p>
+    </Panel>
+  )
+}
+
+export function ForgotPasswordPage() {
+  const { tenant } = useStore()
+  const [email, setEmail] = useState('')
+  const [errors, setErrors] = useState<Record<string, string>>({})
+  const [message, setMessage] = useState<{ ok: boolean; text: string }>()
+  const [busy, setBusy] = useState(false)
+
+  async function submit(e: FormEvent) {
+    e.preventDefault()
+    const found = validateForgot(email)
+    setErrors(found)
+    if (Object.keys(found).length > 0) return
+    setBusy(true)
+    setMessage(undefined)
+    try {
+      const r = await storeApi<{ message: string }>('/auth/forgot-password', { method: 'POST', body: JSON.stringify({ tenantSlug: tenant.slug, email: email.trim() }) })
+      setMessage({ ok: true, text: r.message })
+    } catch (err) {
+      setMessage({ ok: false, text: err instanceof StoreApiError ? err.message : 'İstek gönderilemedi.' })
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  return (
+    <Panel title="Parolamı unuttum">
+      <form className="store-form" onSubmit={submit} noValidate>
+        <Field label="E-posta" type="email" autoComplete="username" hint="Kayıtlı e-postanıza parola sıfırlama bağlantısı göndeririz." value={email} onChange={(e: ChangeEvent<HTMLInputElement>) => setEmail(e.target.value)} error={errors.email} />
+        {message && <p role={message.ok ? 'status' : 'alert'} className={message.ok ? 'store-ok' : 'store-error'}>{message.text}</p>}
+        <button type="submit" className="ps-btn ps-btn--primary" disabled={busy}>{busy ? 'Gönderiliyor…' : 'Bağlantı gönder'}</button>
+      </form>
+      <p className="store-note"><Link to="/giris">Girişe dön</Link></p>
+    </Panel>
+  )
+}
+
+export function ResetPasswordPage() {
+  const { tenant } = useStore()
+  const token = useSearchParams()[0].get('token') ?? ''
+  const [password, setPassword] = useState('')
+  const [confirm, setConfirm] = useState('')
+  const [errors, setErrors] = useState<Record<string, string>>({})
+  const [message, setMessage] = useState<{ ok: boolean; text: string }>()
+  const [busy, setBusy] = useState(false)
+
+  if (!token) {
+    return (
+      <Panel title="Parola sıfırlama">
+        <p role="alert" className="store-error">Bağlantı geçersiz. E-postadaki bağlantıyı kullanın ya da yeni bir bağlantı isteyin.</p>
+        <p className="store-note"><Link to="/sifremi-unuttum">Yeni bağlantı iste</Link></p>
+      </Panel>
+    )
+  }
+
+  async function submit(e: FormEvent) {
+    e.preventDefault()
+    const found = validateNewPassword(password, confirm)
+    setErrors(found)
+    if (Object.keys(found).length > 0) return
+    setBusy(true)
+    setMessage(undefined)
+    try {
+      const r = await storeApi<{ message: string }>('/auth/reset-password', { method: 'POST', body: JSON.stringify({ tenantSlug: tenant.slug, token, newPassword: password }) })
+      setMessage({ ok: true, text: r.message })
+      setPassword('')
+      setConfirm('')
+    } catch (err) {
+      setMessage({ ok: false, text: err instanceof StoreApiError ? err.message : 'Parola güncellenemedi.' })
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  const done = message?.ok === true
+  return (
+    <Panel title="Yeni parola belirle">
+      {!done && (
+        <form className="store-form" onSubmit={submit} noValidate>
+          <Field label="Yeni parola" type="password" autoComplete="new-password" hint="En az 8 karakter" value={password} onChange={(e: ChangeEvent<HTMLInputElement>) => setPassword(e.target.value)} error={errors.password} />
+          <Field label="Yeni parola (tekrar)" type="password" autoComplete="new-password" value={confirm} onChange={(e: ChangeEvent<HTMLInputElement>) => setConfirm(e.target.value)} error={errors.confirm} />
+          {message && <p role="alert" className="store-error">{message.text}</p>}
+          <button type="submit" className="ps-btn ps-btn--primary" disabled={busy}>{busy ? 'Kaydediliyor…' : 'Parolayı kaydet'}</button>
+        </form>
+      )}
+      {done && <p role="status" className="store-ok">{message.text}</p>}
+      <p className="store-note">{done ? <Link to="/giris">Giriş yap</Link> : <Link to="/sifremi-unuttum">Bağlantının süresi dolduysa yenisini isteyin</Link>}</p>
+    </Panel>
+  )
+}
+
+/** Hesap sayfası: oturum bilgisi ve parola değiştirme. */
+export function AccountPage() {
+  const { user, token, info } = useStore()
+  const [current, setCurrent] = useState('')
+  const [password, setPassword] = useState('')
+  const [confirm, setConfirm] = useState('')
+  const [errors, setErrors] = useState<Record<string, string>>({})
+  const [message, setMessage] = useState<{ ok: boolean; text: string }>()
+  const [busy, setBusy] = useState(false)
+
+  async function submit(e: FormEvent) {
+    e.preventDefault()
+    const found = validatePasswordChange(current, password, confirm)
+    setErrors(found)
+    if (Object.keys(found).length > 0) return
+    setBusy(true)
+    setMessage(undefined)
+    try {
+      const r = await storeApi<{ message: string }>('/auth/change-password', { method: 'POST', body: JSON.stringify({ currentPassword: current, newPassword: password }) }, token)
+      setMessage({ ok: true, text: r.message })
+      setCurrent('')
+      setPassword('')
+      setConfirm('')
+    } catch (err) {
+      setMessage({ ok: false, text: err instanceof StoreApiError ? err.message : 'Parola değiştirilemedi.' })
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  return (
+    <Panel title="Hesabım">
+      <p className="store-note">{user?.fullName} · {user?.email} · {info.name}</p>
+      <form className="store-form" onSubmit={submit} noValidate>
+        <h2>Parola değiştir</h2>
+        <Field label="Mevcut parola" type="password" autoComplete="current-password" value={current} onChange={(e: ChangeEvent<HTMLInputElement>) => setCurrent(e.target.value)} error={errors.current} />
+        <Field label="Yeni parola" type="password" autoComplete="new-password" hint="En az 8 karakter" value={password} onChange={(e: ChangeEvent<HTMLInputElement>) => setPassword(e.target.value)} error={errors.password} />
+        <Field label="Yeni parola (tekrar)" type="password" autoComplete="new-password" value={confirm} onChange={(e: ChangeEvent<HTMLInputElement>) => setConfirm(e.target.value)} error={errors.confirm} />
+        {message && <p role={message.ok ? 'status' : 'alert'} className={message.ok ? 'store-ok' : 'store-error'}>{message.text}</p>}
+        <button type="submit" className="ps-btn ps-btn--primary" disabled={busy}>{busy ? 'Kaydediliyor…' : 'Parolayı değiştir'}</button>
+      </form>
     </Panel>
   )
 }

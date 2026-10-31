@@ -28,6 +28,7 @@ public class AppDbContext(DbContextOptions<AppDbContext> options, ITenantProvide
     public DbSet<B2BSettings> B2BSettings => Set<B2BSettings>();
     public DbSet<GroupVisibilityRule> GroupVisibilityRules => Set<GroupVisibilityRule>();
     public DbSet<DealerPayment> DealerPayments => Set<DealerPayment>();
+    public DbSet<DealerPasswordReset> DealerPasswordResets => Set<DealerPasswordReset>();
     public DbSet<Cart> Carts => Set<Cart>();
     public DbSet<CartItem> CartItems => Set<CartItem>();
     public DbSet<PriceList> PriceLists => Set<PriceList>();
@@ -232,6 +233,15 @@ public class AppDbContext(DbContextOptions<AppDbContext> options, ITenantProvide
             b.Property(u => u.Role).HasConversion<string>().HasMaxLength(20);
             b.HasIndex(u => new { u.TenantId, u.Email }).IsUnique();
             b.HasOne<Tenant>().WithMany().HasForeignKey(u => u.TenantId).OnDelete(DeleteBehavior.Restrict);
+        });
+
+        builder.Entity<DealerPasswordReset>(b =>
+        {
+            b.Property(r => r.TokenHash).HasMaxLength(64).IsRequired();
+            b.HasIndex(r => r.TokenHash).IsUnique();
+            b.HasIndex(r => new { r.TenantId, r.DealerUserId });
+            b.HasOne<DealerUser>().WithMany().HasForeignKey(r => r.DealerUserId).OnDelete(DeleteBehavior.Cascade);
+            b.HasOne<Tenant>().WithMany().HasForeignKey(r => r.TenantId).OnDelete(DeleteBehavior.Restrict);
         });
 
         builder.Entity<B2BSettings>(b =>

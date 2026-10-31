@@ -30,3 +30,16 @@ cd storefront && npm run dev     # bayi sitesi :5174 (/api -> 5284)
 Derleme/test öncesi çalışan API'yi durdur (DLL kilidi). Kontroller: `dotnet test tests/Pazaryeri.Tests` (backend), `npx tsc -b` ve `npm test` (kökte ve `storefront/` içinde).
 
 Bayi sitesi ortam değişkeni: `VITE_STORE_BASE_DOMAIN` (alt alan adıyla kiracı çözümü); tanımsızsa `/t/<slug>` yolu kullanılır.
+
+## E-posta ve bağlantı ayarları
+
+Bayi e-postaları `IEmailSender` arayüzüyle gönderilir. Şimdilik `LoggingEmailSender` iletiyi günlüğe yazar; gerçek sağlayıcı (SMTP vb.) için aynı arayüzü uygulayıp `DependencyInjection` içinde değiştirin. E-postalardaki bağlantı şablonları yapılandırmadan gelir (`{slug}` ve `{token}` yer tutucuları):
+
+```json
+"Store": {
+  "LoginUrl": "https://{slug}.b2b.site/giris",
+  "ResetUrl": "https://{slug}.b2b.site/sifre-sifirla?token={token}"
+}
+```
+
+Tanımsızsa geliştirme adresleri (`http://localhost:5174/t/{slug}/...`) kullanılır. Geliştirmede sıfırlama bağlantısını API günlüğünde "E-posta (gönderilmedi)" satırında bulursunuz.
