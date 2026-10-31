@@ -32,6 +32,7 @@ h1, h2 { font-family: var(--font-display); letter-spacing: -0.02em; }
 
 /* ---------- sayfa iskeleti ---------- */
 /* Başlık, kategori çubuğu ve alt bilgi arka planı tam genişlikte kalır; içerikleri .store-content ile aynı ortalanmış sütuna (1360px) oturur. */
+:root { --space-5: 20px; /* marka ölçeğinde 4 (16px) ile 6 (24px) arası boşluk */ }
 :root { --page-gutter: max(var(--space-6), calc((100% - 1360px) / 2 + var(--space-6))); }
 .store { min-height: 100vh; display: flex; flex-direction: column; }
 .store-header { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-3) var(--space-6); padding: var(--space-3) var(--page-gutter); background: var(--surface); border-bottom: 1px solid var(--line); }
@@ -62,10 +63,11 @@ a.store-action:hover, button.store-action:hover { color: var(--ink); background:
 .mega__roots { list-style: none; margin: 0; padding: var(--space-3); border-right: 1px solid var(--line); background: var(--surface-alt); }
 .mega__root { display: flex; justify-content: space-between; gap: var(--space-3); padding: 10px 14px; border-radius: 12px; color: var(--ink); text-decoration: none; font-weight: 500; }
 .mega__root:hover, .mega__root--active { background: var(--surface); color: var(--accent); }
-.mega__panel { padding: var(--space-5); }
-.mega__title { display: inline-block; margin-bottom: var(--space-4); font: 700 17px var(--font-display); color: var(--ink); }
-.mega__cols { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: var(--space-4); }
-.mega__cols ul { list-style: none; margin: var(--space-1) 0 0; padding: 0; }
+.mega__panel { padding: var(--space-6); min-height: 220px; }
+.mega__title { display: inline-flex; align-items: center; gap: var(--space-2); margin-bottom: var(--space-5); padding-bottom: var(--space-3); width: 100%; border-bottom: 1px solid var(--line); font: 700 18px var(--font-display); color: var(--ink); text-decoration: none; }
+.mega__title:hover { color: var(--accent); }
+.mega__cols { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: var(--space-5) var(--space-6); align-items: start; }
+.mega__cols ul { list-style: none; margin: var(--space-2) 0 0; padding: 0; }
 .mega__sub { font-weight: 600; color: var(--ink); text-decoration: none; }
 .mega__sub:hover, .mega__leaf:hover { color: var(--accent); }
 .mega__leaf { display: block; padding: 3px 0; color: var(--ink-muted); text-decoration: none; font-size: 14.5px; }
