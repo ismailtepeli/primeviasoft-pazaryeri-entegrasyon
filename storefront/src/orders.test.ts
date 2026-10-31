@@ -32,3 +32,15 @@ describe('orders', () => {
     expect(priceChangeNote(line({ priceAtAdd: 10, issue: { kind: 'unavailable', text: 'x' } }))).toBeNull()
   })
 })
+
+describe('sepet sayacı', () => {
+  it('koli adedi olan ürünler koli, diğerleri adet sayılır', async () => {
+    const { cartUnits, cartSummary } = await import('./orders')
+    expect(cartUnits([{ quantity: 24, packSize: 12 }])).toBe(2)
+    expect(cartUnits([{ quantity: 24, packSize: 12 }, { quantity: 5, packSize: 1 }])).toBe(7)
+    expect(cartUnits([{ quantity: 13, packSize: 12 }])).toBe(13) // koli katı değilse adet
+    expect(cartUnits([])).toBe(0)
+    expect(cartSummary([{ quantity: 24, packSize: 12 }, { quantity: 5, packSize: 1 }])).toBe('2 koli · 29 adet')
+    expect(cartSummary([{ quantity: 5, packSize: 1 }])).toBe('5 adet')
+  })
+})

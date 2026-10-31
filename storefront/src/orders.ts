@@ -42,6 +42,18 @@ export interface OrderDetail {
   statusNote: string | null
 }
 
+/** Sepet sayacı: koli adedi olan ürünler koli, diğerleri adet sayılır (ürün kartındaki adet kutusuyla aynı birim). */
+export function cartUnits(lines: Pick<CartLine, 'quantity' | 'packSize'>[]): number {
+  return lines.reduce((sum, l) => sum + (l.packSize > 1 && l.quantity % l.packSize === 0 ? l.quantity / l.packSize : l.quantity), 0)
+}
+
+/** "2 koli · 24 adet" ya da yalnızca koli yoksa "5 adet". */
+export function cartSummary(lines: Pick<CartLine, 'quantity' | 'packSize'>[]): string {
+  const pieces = lines.reduce((s, l) => s + l.quantity, 0)
+  const boxes = lines.reduce((s, l) => s + (l.packSize > 1 && l.quantity % l.packSize === 0 ? l.quantity / l.packSize : 0), 0)
+  return boxes > 0 ? `${boxes} koli · ${pieces} adet` : `${pieces} adet`
+}
+
 export const emptyCart: Cart = { lines: [], totalNet: 0, totalGross: 0, currency: 'TRY', hasIssues: false, itemCount: 0 }
 
 const statusText: Record<string, string> = {

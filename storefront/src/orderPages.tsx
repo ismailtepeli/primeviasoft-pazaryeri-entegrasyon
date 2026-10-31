@@ -4,7 +4,7 @@ import { Link, useNavigate, useParams } from 'react-router-dom'
 import { StoreApiError, storeApi } from './api'
 import { formatMoney, fromBoxText, quantityLabel, toBoxText } from './catalog'
 import { useCart } from './CartContext'
-import { formatDate, orderStatusText, orderSteps, priceChangeNote, type OrderDetail, type OrderRow } from './orders'
+import { cartSummary, formatDate, orderStatusText, orderSteps, priceChangeNote, type OrderDetail, type OrderRow } from './orders'
 import { useStore } from './StoreContext'
 
 interface IssueBody { details?: { issues?: { kind: string; text: string }[] } }
@@ -58,7 +58,7 @@ export function CartPage() {
 
   return (
     <div className="store-catalog">
-      <h1>Sepet <span className="store-note">({cart.itemCount} adet)</span></h1>
+      <h1>Sepet <span className="store-note">({cartSummary(cart.lines)})</span></h1>
       <div className="store-tablewrap">
         <table className="store-table">
           <thead><tr><th>Ürün</th><th>Birim fiyat</th><th>Adet</th><th>Tutar</th><th /></tr></thead>

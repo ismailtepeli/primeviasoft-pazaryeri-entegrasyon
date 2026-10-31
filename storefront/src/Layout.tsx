@@ -4,6 +4,7 @@ import { ClipboardList, LayoutGrid, Zap, LogOut, Menu, Monitor, Moon, Search, Sh
 import { storeApi } from './api'
 import { categoryHref, childrenOf, type StoreCategory } from './catalog'
 import { useCart } from './CartContext'
+import { cartSummary, cartUnits } from './orders'
 import { useStore } from './StoreContext'
 import { applyTheme, readPreference, savePreference, themeOptions, type ThemePreference } from './theme'
 
@@ -79,6 +80,7 @@ function CategoryMenu({ categories, onClose }: { categories: StoreCategory[]; on
 export default function Layout() {
   const { info, user, token, logout } = useStore()
   const { cart } = useCart()
+  const units = cartUnits(cart.lines)
   const navigate = useNavigate()
   const [q, setQ] = useState('')
   const [categories, setCategories] = useState<StoreCategory[]>([])
@@ -130,8 +132,8 @@ export default function Layout() {
             <>
               <Link to="/hizli-siparis" className="store-action"><Zap size={20} aria-hidden /><span>Hızlı sipariş</span></Link>
               <Link to="/siparislerim" className="store-action"><ClipboardList size={20} aria-hidden /><span>Siparişlerim</span></Link>
-              <Link to="/sepet" className="store-action" aria-label={`Sepet, ${cart.itemCount} adet`}>
-                <span className="store-action__icon"><ShoppingCart size={20} aria-hidden />{cart.itemCount > 0 && <span className="store-badge">{cart.itemCount > 99 ? '99+' : cart.itemCount}</span>}</span>
+              <Link to="/sepet" className="store-action" aria-label={`Sepet, ${cartSummary(cart.lines)}`}>
+                <span className="store-action__icon"><ShoppingCart size={20} aria-hidden />{units > 0 && <span className="store-badge">{units > 99 ? '99+' : units}</span>}</span>
                 <span>Sepet</span>
               </Link>
               <Link to="/hesap" className="store-action" title={user?.email}><User size={20} aria-hidden /><span className="store-user">{user?.fullName || user?.email}</span></Link>
