@@ -17,7 +17,7 @@ interface StoreValue {
   info: StoreInfo
   user: DealerUserInfo | null
   token: string | null
-  login: (email: string, password: string) => Promise<void>
+  login: (email: string, password: string, remember?: boolean) => Promise<void>
   logout: () => void
 }
 
@@ -67,9 +67,9 @@ export function StoreProvider({ tenant, children, renderState }: Props) {
     return () => { current = false }
   }, [token, tenant.slug])
 
-  const login = useCallback(async (email: string, password: string) => {
+  const login = useCallback(async (email: string, password: string, remember = false) => {
     const r = await storeApi<LoginResponse>('/auth/login', { method: 'POST', body: JSON.stringify({ tenantSlug: tenant.slug, email, password }) })
-    tokenStore.set(tenant.slug, r.accessToken)
+    tokenStore.set(tenant.slug, r.accessToken, remember)
     setUser(r.user)
     setToken(r.accessToken)
   }, [tenant.slug])

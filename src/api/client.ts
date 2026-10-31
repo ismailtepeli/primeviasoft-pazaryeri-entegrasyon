@@ -1,9 +1,22 @@
 const TOKEN_KEY = 'pz.token'
 
+/** Depolama kapalıysa (gizli pencere, engelli site verisi) hata fırlatmaz; oturum yalnızca bellekte kalmaz, giriş tekrar istenir. */
+function safe<T>(fn: () => T, fallback: T): T {
+  try { return fn() } catch { return fallback }
+}
+
+/**
+ * Oturum anahtarı: "Beni hatırla" işaretliyse localStorage (tarayıcı kapansa da sürer),
+ * değilse sessionStorage (sekme/pencere kapanınca biter). Okurken ikisine de bakılır.
+ */
 export const tokenStore = {
-  get: () => localStorage.getItem(TOKEN_KEY),
-  set: (token: string) => localStorage.setItem(TOKEN_KEY, token),
-  clear: () => localStorage.removeItem(TOKEN_KEY),
+  get: () => safe(() => sessionStorage.getItem(TOKEN_KEY) ?? localStorage.getItem(TOKEN_KEY), null),
+  set: (token: string, remember = true) => safe(() => {
+    sessionStorage.removeItem(TOKEN_KEY)
+    localStorage.removeItem(TOKEN_KEY)
+    ;(remember ? localStorage : sessionStorage).setItem(TOKEN_KEY, token)
+  }, undefined),
+  clear: () => safe(() => { sessionStorage.removeItem(TOKEN_KEY); localStorage.removeItem(TOKEN_KEY) }, undefined),
 }
 
 export class ApiError extends Error {

@@ -8,6 +8,7 @@ export default function Login() {
   const { authenticated, login } = useAuth()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
+  const [remember, setRemember] = useState(false)
   const [error, setError] = useState<string>()
   const [busy, setBusy] = useState(false)
 
@@ -18,7 +19,7 @@ export default function Login() {
     setBusy(true)
     setError(undefined)
     try {
-      await login(email, password)
+      await login(email, password, remember)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Giriş yapılamadı.')
     } finally {
@@ -32,6 +33,10 @@ export default function Login() {
         <h1>Giriş yap</h1>
         <TextInput label="E-posta" type="email" autoComplete="username" value={email} onChange={(e) => setEmail(e.target.value)} required />
         <SecretInput label="Parola" autoComplete="current-password" value={password} onChange={(e) => setPassword(e.target.value)} required error={error} />
+        <label className="login__remember">
+          <input type="checkbox" checked={remember} onChange={(e) => setRemember(e.target.checked)} />
+          <span>Beni hatırla</span>
+        </label>
         <Button variant="primary" type="submit" disabled={busy}>{busy ? 'Giriş yapılıyor…' : 'Giriş yap'}</Button>
       </form>
     </div>

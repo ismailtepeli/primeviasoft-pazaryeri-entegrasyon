@@ -37,6 +37,7 @@ export function LoginPage() {
   const from = (useLocation().state as { from?: string } | null)?.from ?? '/'
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
+  const [remember, setRemember] = useState(false)
   const [errors, setErrors] = useState<Record<string, string>>({})
   const [message, setMessage] = useState<string>()
   const [busy, setBusy] = useState(false)
@@ -51,7 +52,7 @@ export function LoginPage() {
     setBusy(true)
     setMessage(undefined)
     try {
-      await login(email.trim(), password)
+      await login(email.trim(), password, remember)
       navigate(from, { replace: true })
     } catch (err) {
       setMessage(err instanceof StoreApiError ? err.message : 'Giriş yapılamadı.')
@@ -65,6 +66,10 @@ export function LoginPage() {
       <form className="store-form" onSubmit={submit} noValidate>
         <Field label="E-posta" type="email" autoComplete="username" value={email} onChange={(e: ChangeEvent<HTMLInputElement>) => setEmail(e.target.value)} error={errors.email} />
         <Field label="Parola" type="password" autoComplete="current-password" value={password} onChange={(e: ChangeEvent<HTMLInputElement>) => setPassword(e.target.value)} error={errors.password} />
+        <label className="store-remember">
+          <input type="checkbox" checked={remember} onChange={(e) => setRemember(e.target.checked)} />
+          <span>Beni hatırla</span>
+        </label>
         {message && <p role="alert" className="store-error">{message}</p>}
         <button type="submit" className="ps-btn ps-btn--primary" disabled={busy}>{busy ? 'Giriş yapılıyor…' : 'Giriş yap'}</button>
       </form>

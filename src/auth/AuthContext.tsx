@@ -4,7 +4,7 @@ import type { LoginResponse } from '../api/types'
 
 interface AuthValue {
   authenticated: boolean
-  login: (email: string, password: string) => Promise<void>
+  login: (email: string, password: string, remember?: boolean) => Promise<void>
   logout: () => void
 }
 
@@ -20,9 +20,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => setUnauthorizedHandler(logout), [logout])
 
-  const login = useCallback(async (email: string, password: string) => {
+  const login = useCallback(async (email: string, password: string, remember = false) => {
     const res = await api<LoginResponse>('/auth/login', { method: 'POST', body: JSON.stringify({ email, password }) })
-    tokenStore.set(res.accessToken)
+    tokenStore.set(res.accessToken, remember)
     setAuthenticated(true)
   }, [])
 

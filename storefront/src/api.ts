@@ -12,10 +12,20 @@ export class StoreApiError extends Error {
 
 const tokenKey = (slug: string) => `store.token.${slug}`
 
+/**
+ * Oturum anahtarı: "Beni hatırla" işaretliyse localStorage (tarayıcı kapansa da sürer),
+ * değilse sessionStorage (sekme/pencere kapanınca biter). Okurken ikisine de bakılır.
+ */
 export const tokenStore = {
-  get: (slug: string) => { try { return localStorage.getItem(tokenKey(slug)) } catch { return null } },
-  set: (slug: string, token: string) => { try { localStorage.setItem(tokenKey(slug), token) } catch { /* depolama kapalı olabilir */ } },
-  clear: (slug: string) => { try { localStorage.removeItem(tokenKey(slug)) } catch { /* depolama kapalı olabilir */ } },
+  get: (slug: string) => { try { return sessionStorage.getItem(tokenKey(slug)) ?? localStorage.getItem(tokenKey(slug)) } catch { return null } },
+  set: (slug: string, token: string, remember = true) => {
+    try {
+      sessionStorage.removeItem(tokenKey(slug))
+      localStorage.removeItem(tokenKey(slug))
+      ;(remember ? localStorage : sessionStorage).setItem(tokenKey(slug), token)
+    } catch { /* depolama kapalı olabilir */ }
+  },
+  clear: (slug: string) => { try { sessionStorage.removeItem(tokenKey(slug)); localStorage.removeItem(tokenKey(slug)) } catch { /* depolama kapalı olabilir */ } },
 }
 
 /** Bayi sitesi API'si (api/store); bayi token'ı varsa gönderilir. */
