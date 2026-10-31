@@ -272,6 +272,14 @@ a.store-action:hover, button.store-action:hover { color: var(--ink); background:
 .store-remember { display: flex; align-items: center; gap: var(--space-2); font-size: 14px; cursor: pointer; }
 .store-remember input { width: 18px; height: 18px; accent-color: var(--accent); cursor: pointer; }
 
+/* Kategori/süzgeç değişirken liste yerinde kalır (göz kırpma yok); soluklaşır ve üstte ince ilerleme çubuğu akar. */
+.store-results { position: relative; }
+.store-results--busy .store-grid, .store-results--busy .store-tablewrap, .store-results--busy .store-empty { opacity: .45; pointer-events: none; transition: opacity .15s; }
+.store-progress { position: absolute; top: 0; left: 0; right: 0; height: 3px; border-radius: 999px; overflow: hidden; background: var(--line); z-index: 5; }
+.store-progress::after { content: ''; position: absolute; inset: 0 auto 0 0; width: 35%; border-radius: 999px; background: var(--accent); animation: store-progress 1s ease-in-out infinite; }
+@keyframes store-progress { from { transform: translateX(-100%); } to { transform: translateX(300%); } }
+@media (prefers-reduced-motion: reduce) { .store-progress::after { animation: none; width: 100%; opacity: .5; } }
+
 /* Hızlı sipariş */
 .store-quick { max-width: 960px; margin: var(--space-6) auto; padding: 0 var(--space-4); display: flex; flex-direction: column; gap: var(--space-4); }
 .store-quick__grid { display: grid; grid-template-columns: 2fr 1fr; gap: var(--space-4); align-items: start; }

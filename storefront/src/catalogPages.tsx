@@ -196,6 +196,7 @@ export function ProductsPage() {
   const [view, setView] = useState<ViewMode>(initialView)
   const [data, setData] = useState<StoreProductPage>({ items: [], total: 0, facets: null })
   const [loading, setLoading] = useState(true)
+  const [loadedOnce, setLoadedOnce] = useState(false) // ilk yüklemeden sonra liste yerinde kalır, yalnızca soluklaşır
   const [error, setError] = useState<string>()
   const [qty, setQty] = useState<Record<string, string>>({})
   const [drawer, setDrawer] = useState(false)
@@ -208,7 +209,7 @@ export function ProductsPage() {
     let current = true
     setLoading(true)
     storeApi<StoreProductPage>(`/catalog/products?${query}`, {}, token)
-      .then((d) => { if (current) { setData(d); setError(undefined) } })
+      .then((d) => { if (current) { setData(d); setError(undefined); setLoadedOnce(true) } })
       .catch((e: Error) => { if (current) setError(e.message) })
       .finally(() => { if (current) setLoading(false) })
     return () => { current = false }
@@ -252,14 +253,15 @@ export function ProductsPage() {
         {filterPanel}
       </aside>
 
-      <div className="store-results">
+      <div className={`store-results${loading && loadedOnce ? ' store-results--busy' : ''}`} aria-busy={loading}>
+        {loading && loadedOnce && <div className="store-progress" role="progressbar" aria-label="Ürünler yükleniyor" />}
         <nav className="store-crumbs" aria-label="Yol">
           <Link to="/">Tüm ürünler</Link>
           {trail.map((c, i) => <span key={c.id}><ChevronRight size={14} aria-hidden /> {i === trail.length - 1 ? <strong>{c.name}</strong> : <Link to={categoryHref(c.slugPath)}>{c.name}</Link>}</span>)}
         </nav>
 
         <div className="store-results__head">
-          <h1>{title} <span className="store-note">{loading ? '' : `${data.total} ürün`}</span></h1>
+          <h1>{title} <span className="store-note">{loading ? 'yükleniyor…' : `${data.total} ürün`}</span></h1>
           <div className="store-toolbar">
             <button type="button" className="ps-btn store-filter-btn" onClick={() => setDrawer(true)}><SlidersHorizontal size={16} aria-hidden /> Süzgeçler{filters > 0 ? ` (${filters})` : ''}</button>
             <label className="store-toolbar__item"><span>Sırala</span>
@@ -295,7 +297,7 @@ export function ProductsPage() {
         )}
 
         {error && <p role="alert" className="store-error">{error}</p>}
-        {loading || waiting ? <Skeleton view={view} /> : data.items.length === 0 && !error ? (
+        {waiting || (loading && !loadedOnce) ? <Skeleton view={view} /> : data.items.length === 0 && !error ? (
           <div className="store-empty">
             <Package size={40} aria-hidden /><h2>Aramanıza uyan ürün bulunamadı</h2>
             <p className="store-note">Süzgeçleri gevşetmeyi ya da başka bir kategoriye bakmayı deneyin.</p>
