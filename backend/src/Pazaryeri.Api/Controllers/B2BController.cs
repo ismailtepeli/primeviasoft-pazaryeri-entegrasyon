@@ -7,7 +7,7 @@ using Pazaryeri.Infrastructure.Persistence;
 
 namespace Pazaryeri.Api.Controllers;
 
-public record B2BSettingsDto(string StockDisplay, int LowStockThreshold);
+public record B2BSettingsDto(string StockDisplay, int LowStockThreshold, bool ShowVatIncluded = true);
 
 public record ProductVisibilityInput(List<Guid>? ProductIds, bool Visible);
 
@@ -31,7 +31,7 @@ public class B2BController(AppDbContext db) : ControllerBase
     public async Task<B2BSettingsDto> GetSettings(CancellationToken ct)
     {
         var s = await db.B2BSettings.AsNoTracking().FirstOrDefaultAsync(ct) ?? new B2BSettings();
-        return new B2BSettingsDto(s.StockDisplay.ToString(), s.LowStockThreshold);
+        return new B2BSettingsDto(s.StockDisplay.ToString(), s.LowStockThreshold, s.ShowVatIncluded);
     }
 
     [HttpPut("settings")]
@@ -43,8 +43,9 @@ public class B2BController(AppDbContext db) : ControllerBase
         if (s is null) db.B2BSettings.Add(s = new B2BSettings());
         s.StockDisplay = mode;
         s.LowStockThreshold = input.LowStockThreshold;
+        s.ShowVatIncluded = input.ShowVatIncluded;
         await db.SaveChangesAsync(ct);
-        return new B2BSettingsDto(s.StockDisplay.ToString(), s.LowStockThreshold);
+        return new B2BSettingsDto(s.StockDisplay.ToString(), s.LowStockThreshold, s.ShowVatIncluded);
     }
 
     /// <summary>Seçili ürünlerde "B2B sitesinde göster" bayrağını toplu açar/kapatır; bulunamayan kimlikler sayılmaz.</summary>

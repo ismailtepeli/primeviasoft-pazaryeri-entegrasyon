@@ -21,6 +21,8 @@ public class DealerPriceService(AppDbContext db)
             ? await db.PriceLists.AsNoTracking().Where(l => l.IsActive && l.GroupId == gid).OrderByDescending(l => l.CreatedAt).FirstOrDefaultAsync(ct)
             : null;
 
+        var showGeneralWithVat = (await db.B2BSettings.AsNoTracking().Select(s => (bool?)s.ShowVatIncluded).FirstOrDefaultAsync(ct)) ?? true;
+
         var products = await db.Products.AsNoTracking().Where(p => productIds.Contains(p.Id))
             .Select(p => new { p.Id, p.Price, p.VatRate, p.MinOrderQuantity, p.PackSize }).ToListAsync(ct);
         var listIds = new[] { dealerList?.Id, groupList?.Id }.Where(i => i is not null).Select(i => i!.Value).ToList();
@@ -34,7 +36,7 @@ public class DealerPriceService(AppDbContext db)
         return products.Select(p =>
         {
             var (min, pack) = OrderQuantityRules.Normalize(p.MinOrderQuantity, p.PackSize);
-            var price = DealerPricing.Resolve(p.Price, p.VatRate, Rule(dealerList), Item(dealerList, p.Id), Rule(groupList), Item(groupList, p.Id));
+            var price = DealerPricing.Resolve(p.Price, p.VatRate, Rule(dealerList), Item(dealerList, p.Id), Rule(groupList), Item(groupList, p.Id), showGeneralWithVat);
             return new DealerProductPrice(p.Id, price, min, pack);
         }).ToList();
     }

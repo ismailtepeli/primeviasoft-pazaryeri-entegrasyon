@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { parseCount, stockDisplayOptions } from './b2bView'
+import { parseCount, stockDisplayOptions, vatDisplayOptions } from './b2bView'
 
 describe('b2bView', () => {
   it('parseCount yalnızca rakam kabul eder', () => {
@@ -12,5 +12,10 @@ describe('b2bView', () => {
 
   it('stok gösterim seçenekleri sunucu kipleriyle aynıdır', () => {
     expect(stockDisplayOptions.map((o) => o.value).sort()).toEqual(['Exact', 'Hidden', 'Level'])
+  })
+
+  it('genel fiyat gösterimi dahil/hariç seçenekleri', () => {
+    expect(vatDisplayOptions.map((o) => o.value)).toEqual(['true', 'false'])
+    expect(vatDisplayOptions.map((o) => o.label)).toEqual(['KDV dahil', 'KDV hariç'])
   })
 })

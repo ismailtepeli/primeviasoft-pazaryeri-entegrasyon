@@ -172,6 +172,9 @@ namespace Pazaryeri.Infrastructure.Persistence.Migrations
                     b.Property<int>("LowStockThreshold")
                         .HasColumnType("int");
 
+                    b.Property<bool>("ShowVatIncluded")
+                        .HasColumnType("bit");
+
                     b.Property<string>("StockDisplay")
                         .IsRequired()
                         .HasMaxLength(20)

@@ -502,6 +502,8 @@ export type StockDisplayKind = 'Exact' | 'Level' | 'Hidden'
 export interface B2BSettings {
   stockDisplay: StockDisplayKind
   lowStockThreshold: number
+  /** Fiyat listesi dışı (genel) fiyatın bayiye KDV dahil gösterilmesi. */
+  showVatIncluded: boolean
 }
 
 export interface B2BCategory {

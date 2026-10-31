@@ -185,6 +185,13 @@ public class B2BVisibilityTests : IAsyncLifetime
         Assert.IsType<BadRequestObjectResult>((await c.SaveSettings(new B2BSettingsDto("Level", -1), default)).Result);
         Assert.Equal("Exact", (await c.GetSettings(default)).StockDisplay);
 
+        Assert.True((await c.GetSettings(default)).ShowVatIncluded);                                   // varsayılan: dahil
+        var noVat = (await c.SaveSettings(new B2BSettingsDto("Exact", 10, ShowVatIncluded: false), default)).Value!;
+        Assert.False(noVat.ShowVatIncluded);
+        Assert.False((await c.GetSettings(default)).ShowVatIncluded);
+        var oldClient = System.Text.Json.JsonSerializer.Deserialize<B2BSettingsDto>("{\"stockDisplay\":\"Exact\",\"lowStockThreshold\":10}", new System.Text.Json.JsonSerializerOptions(System.Text.Json.JsonSerializerDefaults.Web))!;
+        Assert.True(oldClient.ShowVatIncluded);                                                      // alanı göndermeyen eski istemci varsayılana düşer
+
         Assert.IsType<BadRequestObjectResult>((await c.AddRestriction(new RestrictionInput(group.Id, null, null), default)).Result);
         Assert.IsType<BadRequestObjectResult>((await c.AddRestriction(new RestrictionInput(group.Id, prod.Id, cat.Id), default)).Result);
         Assert.IsType<BadRequestObjectResult>((await c.AddRestriction(new RestrictionInput(null, prod.Id, null), default)).Result);

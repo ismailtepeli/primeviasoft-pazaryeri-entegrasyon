@@ -10,7 +10,7 @@ public record ResolvedPrice(decimal Net, decimal Gross, decimal Display, bool Di
 /// <summary>
 /// Bayiye uygulanacak fiyatın tek çözümleme noktası. Öncelik: bayiye özel liste > bayi grubu listesi > genel satış fiyatı.
 /// Her listede önce kalem fiyatı, yoksa liste iskontosu uygulanır; ikisi de yoksa bir alt düzeye inilir.
-/// Genel satış fiyatı (Product.Price) KDV dahil kabul edilir (pazaryeri satış fiyatı).
+/// Genel satış fiyatı (Product.Price) KDV dahil kabul edilir (pazaryeri satış fiyatı); gösterimi kiracı ayarına (generalShowVatIncluded) bağlıdır.
 /// </summary>
 public static class DealerPricing
 {
@@ -19,11 +19,11 @@ public static class DealerPricing
     public static decimal Round(decimal value) => Math.Round(value, 2, MidpointRounding.AwayFromZero);
 
     public static ResolvedPrice Resolve(decimal generalPrice, int vatRate,
-        PriceListRule? dealerList, decimal? dealerItemPrice, PriceListRule? groupList, decimal? groupItemPrice)
+        PriceListRule? dealerList, decimal? dealerItemPrice, PriceListRule? groupList, decimal? groupItemPrice, bool generalShowVatIncluded = true)
     {
         if (TryList(generalPrice, vatRate, dealerList, dealerItemPrice, PriceSource.DealerList) is { } d) return d;
         if (TryList(generalPrice, vatRate, groupList, groupItemPrice, PriceSource.GroupList) is { } g) return g;
-        return Build(generalPrice, includesVat: true, vatRate, show: true, BaseCurrency, PriceSource.General);
+        return Build(generalPrice, includesVat: true, vatRate, show: generalShowVatIncluded, BaseCurrency, PriceSource.General);
     }
 
     private static ResolvedPrice? TryList(decimal generalPrice, int vatRate, PriceListRule? list, decimal? itemPrice, PriceSource source)

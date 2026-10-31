@@ -61,6 +61,24 @@ public class PriceListTests : IAsyncLifetime
     }
 
     [Fact]
+    public void Genel_fiyat_KDV_hariç_gösterim_ayarına_uyar_net_brut_degismez()
+    {
+        var shown = DealerPricing.Resolve(120m, 20, null, null, null, null, generalShowVatIncluded: true);
+        var hidden = DealerPricing.Resolve(120m, 20, null, null, null, null, generalShowVatIncluded: false);
+        Assert.Equal((120m, true), (shown.Display, shown.DisplayIncludesVat));
+        Assert.Equal((100m, false), (hidden.Display, hidden.DisplayIncludesVat));
+        Assert.Equal((hidden.Net, hidden.Gross), (shown.Net, shown.Gross)); // sipariş toplamları etkilenmez
+
+        // liste fiyatı kendi gösterim ayarını korur; genel ayar yalnızca liste dışı fiyatı etkiler
+        var list = new PriceListRule(null, false, true, "TRY");
+        var fromList = DealerPricing.Resolve(120m, 20, list, 100m, null, null, generalShowVatIncluded: false);
+        Assert.Equal((PriceSource.DealerList, 120m, true), (fromList.Source, fromList.Display, fromList.DisplayIncludesVat));
+        // listede kalemi olmayan ürün genel fiyata düşer ve genel ayara uyar
+        var fallback = DealerPricing.Resolve(120m, 20, list, null, null, null, generalShowVatIncluded: false);
+        Assert.Equal((PriceSource.General, 100m, false), (fallback.Source, fallback.Display, fallback.DisplayIncludesVat));
+    }
+
+    [Fact]
     public void Oncelik_bayiye_ozel_sonra_grup_sonra_genel()
     {
         var dealer = Plain; var group = Plain;

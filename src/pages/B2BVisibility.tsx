@@ -2,12 +2,12 @@ import { useCallback, useEffect, useState } from 'react'
 import { api } from '../api/client'
 import type { B2BCategory, B2BRestriction, B2BSettings, DealerGroup, ProductPage, StockDisplayKind } from '../api/types'
 import { Button, Select, TextInput } from '../components'
-import { parseCount, stockDisplayOptions } from './b2bView'
+import { parseCount, stockDisplayOptions, vatDisplayOptions } from './b2bView'
 import './PriceLists.css'
 
 /** Ayarlar > B2B görünürlük: stok gösterimi, kategori gizleme ve bayi grubuna özel kısıtlar. Ürün bayrağı Ürünler ekranından açılır. */
 export default function B2BVisibility() {
-  const [settings, setSettings] = useState<B2BSettings>({ stockDisplay: 'Level', lowStockThreshold: 5 })
+  const [settings, setSettings] = useState<B2BSettings>({ stockDisplay: 'Level', lowStockThreshold: 5, showVatIncluded: true })
   const [threshold, setThreshold] = useState('5')
   const [categories, setCategories] = useState<B2BCategory[]>([])
   const [restrictions, setRestrictions] = useState<B2BRestriction[]>([])
@@ -44,8 +44,8 @@ export default function B2BVisibility() {
     const n = parseCount(threshold)
     if (n == null || n > 100000) { setMessage({ ok: false, text: 'Az kaldı eşiği 0 ile 100000 arasında bir tam sayı olmalı.' }); return }
     try {
-      await api('/b2b/settings', { method: 'PUT', body: JSON.stringify({ stockDisplay: settings.stockDisplay, lowStockThreshold: n }) })
-      setMessage({ ok: true, text: 'Stok gösterimi kaydedildi.' })
+      await api('/b2b/settings', { method: 'PUT', body: JSON.stringify({ stockDisplay: settings.stockDisplay, lowStockThreshold: n, showVatIncluded: settings.showVatIncluded }) })
+      setMessage({ ok: true, text: 'Ayarlar kaydedildi.' })
     } catch (e) { fail(e) }
   }
 
@@ -81,6 +81,17 @@ export default function B2BVisibility() {
             {stockDisplayOptions.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
           </Select>
           <TextInput label="Az kaldı eşiği" hint="Bu adet ve altı 'Az kaldı' görünür" inputMode="numeric" value={threshold} onChange={(e) => setThreshold(e.target.value)} />
+        </div>
+        <div className="price-editor__actions"><Button onClick={saveSettings}>Kaydet</Button></div>
+      </section>
+
+      <section className="ps-card price-editor" aria-labelledby="b2b-vat-title">
+        <h2 id="b2b-vat-title" style={{ margin: 0, fontSize: 18 }}>Fiyat gösterimi</h2>
+        <p className="price-cell__meta" style={{ margin: 0 }}>Fiyat listesi dışındaki (genel) fiyatın bayi sitesinde KDV dahil ya da hariç gösterilmesi. Fiyat listeleri kendi ayarını kullanır; sipariş toplamları (KDV hariç, KDV, genel toplam) bu ayardan etkilenmez.</p>
+        <div className="price-form">
+          <Select label="Genel fiyat" value={String(settings.showVatIncluded)} onChange={(e) => setSettings({ ...settings, showVatIncluded: e.target.value === 'true' })}>
+            {vatDisplayOptions.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
+          </Select>
         </div>
         <div className="price-editor__actions"><Button onClick={saveSettings}>Kaydet</Button></div>
       </section>

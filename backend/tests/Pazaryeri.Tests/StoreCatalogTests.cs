@@ -180,6 +180,25 @@ public class StoreCatalogTests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task Genel_fiyat_KDV_gosterimi_kiraci_ayarina_gore_degisir()
+    {
+        var w = await SeedAsync();
+        await using var db = NewDb(w.Tenant);
+        var before = (await Service(db).ListAsync(w.GoldDealerId, new StoreQuery("D1", null, null, 1, 5), default)).Items.Single();
+        Assert.True(before.Price.IncludesVat); // grupsuz bayi genel fiyat görür; ayar kaydı yokken KDV dahil
+
+        db.B2BSettings.Add(new B2BSettings { ShowVatIncluded = false });
+        await db.SaveChangesAsync();
+        var list = (await Service(db).ListAsync(w.GoldDealerId, new StoreQuery("D1", null, null, 1, 5), default)).Items.Single();
+        var detail = await Service(db).DetailAsync(w.GoldDealerId, list.Id, default);
+        Assert.False(list.Price.IncludesVat);
+        Assert.False(detail!.Price.IncludesVat);
+        Assert.True(list.Price.Amount < before.Price.Amount); // KDV hariç tutar daha düşük
+        var silver = (await Service(db).ListAsync(w.DealerId, new StoreQuery("D1", null, null, 1, 5), default)).Items.Single();
+        Assert.True(silver.Price.IncludesVat); // grup listesi kendi ayarını (dahil) korur
+    }
+
+    [Fact]
     public async Task Kategori_agaci_yalnizca_gorunur_urunu_olanlari_ust_kategori_toplamiyla_doner()
     {
         var w = await SeedAsync();

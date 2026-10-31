@@ -37,7 +37,7 @@ Bayiye gösterilen fiyat şu sırayla belirlenir:
 2. Bayinin grubuna atanmış fiyat listesi
 3. Ürünün genel fiyatı (KDV dahil)
 
-Liste kalemi **net fiyat** ya da genel fiyat üzerinden **iskonto %** olabilir. Listede fiyatın KDV dahil mi hariç mi olduğunu işaretlersiniz; sipariş toplamları buna göre net ve brüt olarak hesaplanır. Bayi sitesinde fiyatın KDV dahil/hariç gösterimi B2B ayarlarından seçilir.
+Liste kalemi **net fiyat** ya da genel fiyat üzerinden **iskonto %** olabilir. Listede fiyatın KDV dahil mi hariç mi olduğunu işaretlersiniz; sipariş toplamları buna göre net ve brüt olarak hesaplanır. Fiyat listesi dışındaki (genel) fiyatın bayi sitesinde KDV dahil mi hariç mi gösterileceğini **Ayarlar > B2B > Fiyat gösterimi** bölümünden seçersiniz (varsayılan: KDV dahil). Bu yalnızca gösterimi değiştirir; sipariş toplamları (KDV hariç, KDV, genel toplam) aynı kalır. Fiyat listeleri kendi gösterim ayarını kullanır.
 
 Ürün ekranında **minimum sipariş** ve **koli (paket) adedi** tanımlanır; sepet bunlara uymayan miktarı 400 ile reddeder, bayi sitesindeki adet seçici koli adedi kadar artar.
 
