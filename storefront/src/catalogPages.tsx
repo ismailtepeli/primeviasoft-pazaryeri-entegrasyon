@@ -39,6 +39,7 @@ function QuantityStepper({ product, value, onChange, compact = false }: { produc
   const check = checkQuantity(value, product.minOrderQuantity, product.packSize)
   const out = !product.stock.inStock
   const boxed = product.packSize > 1
+  useEffect(() => setState(undefined), [value]) // adet değişince eski durum mesajı silinir
 
   async function addToCart() {
     setBusy(true)
@@ -53,16 +54,21 @@ function QuantityStepper({ product, value, onChange, compact = false }: { produc
         <div className="store-stepper" role="group" aria-label={`${product.name} adet`}>
           <button type="button" aria-label="Azalt" disabled={out} onClick={() => onChange(String(stepQuantity(value, -1, product.minOrderQuantity, product.packSize)))}><Minus size={14} aria-hidden /></button>
           <input inputMode="numeric" aria-label={`${product.name} ${boxed ? 'koli' : 'adet'}`} aria-invalid={!check.valid} value={toBoxText(value, product.packSize)} disabled={out} onChange={(e) => onChange(fromBoxText(e.target.value, product.packSize))} />
+          <span className="store-stepper__unit" aria-hidden>{boxed ? 'koli' : 'adet'}</span>
           <button type="button" aria-label="Arttır" disabled={out} onClick={() => onChange(String(stepQuantity(value, 1, product.minOrderQuantity, product.packSize)))}><Plus size={14} aria-hidden /></button>
         </div>
-        {boxed && <span className="store-qty__unit">koli</span>}
         <button type="button" className="ps-btn store-add" disabled={!check.valid || out || busy} onClick={addToCart}>
           <ShoppingCart size={16} aria-hidden /> <span>{out ? 'Tükendi' : 'Sepete ekle'}</span>
         </button>
       </div>
-      {boxed && check.valid && !out && <span className="store-note">= {quantityLabel(Number(value), product.packSize)}</span>}
-      {!check.valid && !out && <button type="button" className="store-qty__fix" onClick={() => onChange(String(check.suggested))}>{boxed ? `Geçerli miktar en az ${quantityLabel(check.suggested, product.packSize)}.` : check.error} <u>{boxed ? `${check.suggested / product.packSize} koli yap` : `${check.suggested} yap`}</u></button>}
-      {state && <span role={state.ok ? 'status' : 'alert'} className={state.ok ? 'store-ok' : 'store-error'}>{state.text}</span>}
+      {/* Tek not satırı: durum > uyarı/öneri > koli karşılığı > boşluk; her kartta aynı yükseklik. */}
+      {state
+        ? <span role={state.ok ? 'status' : 'alert'} className={`store-qty__note ${state.ok ? 'store-ok' : 'store-error'}`}>{state.text}</span>
+        : !check.valid && !out
+          ? <button type="button" className="store-qty__fix store-qty__note" onClick={() => onChange(String(check.suggested))}>{boxed ? `Geçerli miktar en az ${quantityLabel(check.suggested, product.packSize)}.` : check.error} <u>{boxed ? `${check.suggested / product.packSize} koli yap` : `${check.suggested} yap`}</u></button>
+          : boxed && !out
+            ? <span className="store-note store-qty__note">= {quantityLabel(Number(value), product.packSize)}</span>
+            : <span className="store-qty__note" aria-hidden />}
     </div>
   )
 }

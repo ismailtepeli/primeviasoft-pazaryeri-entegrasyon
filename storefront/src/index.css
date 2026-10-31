@@ -168,6 +168,15 @@ a.store-action:hover, button.store-action:hover { color: var(--ink); background:
 .store-add { padding: 8px 16px; font-size: 14px; white-space: nowrap; }
 .store-qty--compact .store-add { flex: 1; }
 .store-qty--compact .store-qty__row { width: 100%; flex-wrap: nowrap; }
+.store-stepper__unit { font-size: 13px; color: var(--ink-soft); padding: 0 4px 0 2px; user-select: none; }
+.store-qty__note { min-height: 18px; font-size: 13px; line-height: 18px; }
+/* Ürün kartı: adet seçici ve düğme her kartta aynı iki satır; koli/adet fark etmeksizin hizalı. */
+.store-card .store-qty { width: 100%; gap: 6px; }
+.store-card .store-qty__row { flex-direction: column; align-items: stretch; flex-wrap: nowrap; gap: var(--space-2); }
+.store-card .store-stepper { width: 100%; justify-content: space-between; }
+.store-card .store-stepper input { flex: 1; min-width: 0; width: auto; text-align: right; padding-right: 4px; }
+.store-card .store-stepper__unit { min-width: 38px; text-align: left; }
+.store-card .store-add { width: 100%; justify-content: center; }
 .store-qty__fix { background: none; border: 0; padding: 0; color: var(--danger); font: 500 13px var(--font-sans); text-align: left; cursor: pointer; }
 .store-card .store-qty { margin-top: auto; }
 
