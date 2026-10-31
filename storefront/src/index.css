@@ -257,7 +257,21 @@ a.store-action:hover, button.store-action:hover { color: var(--ink); background:
 
 @media (max-width: 720px) {
   .store-header { padding: var(--space-3) var(--space-4); gap: var(--space-3); }
-  .store-account { margin-left: 0; width: 100%; justify-content: space-between; gap: var(--space-2); }
+  .store-account { margin-left: 0; width: 100%; justify-content: space-between; flex-wrap: nowrap; gap: var(--space-1); }
+  .store-action { font-size: 11.5px; padding: 4px 2px; min-width: 0; }
+  .store-user { max-width: 64px; }
+  /* Sepet tablosu dar ekranda yana kaydırmak yerine ürün başına kart olur: ürün üstte, fiyat/adet/tutar/çıkar altta. */
+  .store-table--stack { min-width: 0; }
+  .store-table--stack thead { display: none; }
+  .store-table--stack tbody tr { display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-2) var(--space-3); padding: var(--space-3); border-bottom: 1px solid var(--line); }
+  .store-table--stack tr:last-child { border-bottom: 0; }
+  .store-table--stack td { display: block; padding: 0; border: 0; }
+  .store-table--stack td:first-child { grid-column: 1 / -1; }
+  .store-table--stack td[data-label]::before { content: attr(data-label); display: block; margin-bottom: 2px; font-size: 12px; color: var(--ink-muted); }
+  .store-table--stack .store-table__action { align-self: end; text-align: right; }
+  .store-subcats { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--space-2); }
+  .store-subcat { padding: var(--space-2); gap: var(--space-2); }
+  .store-subcat img, .store-subcat__icon { width: 36px; height: 36px; }
   .store-footer { padding-left: var(--space-4); padding-right: var(--space-4); }
   .store-content { padding: var(--space-4); }
   .store-detail { grid-template-columns: 1fr; }

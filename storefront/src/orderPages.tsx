@@ -60,7 +60,7 @@ export function CartPage() {
     <div className="store-catalog">
       <h1>Sepet <span className="store-note">({cartSummary(cart.lines)})</span></h1>
       <div className="store-tablewrap">
-        <table className="store-table">
+        <table className="store-table store-table--stack">
           <thead><tr><th>Ürün</th><th>Birim fiyat</th><th>Adet</th><th>Tutar</th><th /></tr></thead>
           <tbody>
             {cart.lines.map((l) => {
@@ -78,18 +78,18 @@ export function CartPage() {
                       </div>
                     </div>
                   </td>
-                  <td>{l.issue?.kind === 'unavailable' ? '—' : <>{formatMoney(l.price.amount, l.price.currency)}<div className="store-note">{l.price.includesVat ? 'KDV dahil' : 'KDV hariç'}</div></>}</td>
-                  <td>
+                  <td data-label="Birim fiyat">{l.issue?.kind === 'unavailable' ? '—' : <>{formatMoney(l.price.amount, l.price.currency)}<div className="store-note">{l.price.includesVat ? 'KDV dahil' : 'KDV hariç'}</div></>}</td>
+                  <td data-label="Adet">
                     <div className="store-qty__cell">
                       <input className="ps-input store-qty__input" inputMode="numeric" aria-label={`${l.name} ${l.packSize > 1 ? 'koli' : 'adet'}`} value={qty[l.productId] ?? toBoxText(String(l.quantity), l.packSize)}
                         onChange={(e) => setQty((q) => ({ ...q, [l.productId]: e.target.value }))}
                         onBlur={() => { const v = Number(fromBoxText(qty[l.productId] ?? '', l.packSize)); if (qty[l.productId] !== undefined && Number.isInteger(v) && v !== l.quantity) void change(l.productId, v); setQty(({ [l.productId]: _, ...rest }) => rest) }} />
-                      {l.packSize > 1 && <span className="store-qty__unit">koli</span>}
+                      <span className="store-qty__unit">{l.packSize > 1 ? 'koli' : 'adet'}</span>
                     </div>
                     {l.packSize > 1 && <div className="store-note">= {quantityLabel(l.quantity, l.packSize)}</div>}
                   </td>
-                  <td><strong>{l.issue?.kind === 'unavailable' ? '—' : formatMoney(l.lineTotal, l.price.currency)}</strong></td>
-                  <td><button type="button" className="store-link-btn" onClick={() => change(l.productId, 0)} aria-label={`${l.name} sepetten çıkar`}>Çıkar</button></td>
+                  <td data-label="Tutar"><strong>{l.issue?.kind === 'unavailable' ? '—' : formatMoney(l.lineTotal, l.price.currency)}</strong></td>
+                  <td className="store-table__action"><button type="button" className="store-link-btn" onClick={() => change(l.productId, 0)} aria-label={`${l.name} sepetten çıkar`}>Çıkar</button></td>
                 </tr>
               )
             })}
