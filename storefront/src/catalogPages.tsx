@@ -4,7 +4,7 @@ import { ChevronRight, CircleCheck, CircleOff, Folder, ImageOff, LayoutGrid, Lis
 import { StoreApiError, storeApi } from './api'
 import {
   PAGE_SIZE, activeFilterCount, apiQuery, categoryHref, categoryTrail, checkQuantity, childrenOf, clearFilters, effectiveMin, findCategoryBySlug, formatMoney,
-  parseListParams, quantityNote, sortOptions, stepQuantity, toSearchParams, vatNote,
+  fromBoxText, parseListParams, quantityLabel, quantityNote, sortOptions, stepQuantity, toBoxText, toSearchParams, vatNote,
   type ListParams, type StoreCategory, type StoreFacets, type StoreProduct, type StoreProductDetail, type StoreProductPage, type StoreStock, type ViewMode,
 } from './catalog'
 import { useCart } from './CartContext'
@@ -31,13 +31,14 @@ function Thumb({ url, name, className = '' }: { url: string | null; name: string
     : <span className={`store-thumb store-thumb--empty ${className}`} role="img" aria-label="Görsel yok"><ImageOff size={22} aria-hidden /></span>
 }
 
-/** Adet seçici: +/- koli adedi kadar adımlar; geçersiz değerde sunucu kuralını açıklar ve tek tıkla düzeltir; geçerliyse sepete ekler. */
+/** Adet seçici: koli adedi 1'den büyükse kutu KOLİ sayar (1, 2, 3) ve altında adet karşılığı yazar; +/- bir koli adımlar; geçersiz değerde sunucu kuralını açıklar ve tek tıkla düzeltir; geçerliyse sepete ekler. */
 function QuantityStepper({ product, value, onChange, compact = false }: { product: StoreProduct; value: string; onChange: (v: string) => void; compact?: boolean }) {
   const { add } = useCart()
   const [state, setState] = useState<{ ok: boolean; text: string }>()
   const [busy, setBusy] = useState(false)
   const check = checkQuantity(value, product.minOrderQuantity, product.packSize)
   const out = !product.stock.inStock
+  const boxed = product.packSize > 1
 
   async function addToCart() {
     setBusy(true)
@@ -51,14 +52,16 @@ function QuantityStepper({ product, value, onChange, compact = false }: { produc
       <div className="store-qty__row">
         <div className="store-stepper" role="group" aria-label={`${product.name} adet`}>
           <button type="button" aria-label="Azalt" disabled={out} onClick={() => onChange(String(stepQuantity(value, -1, product.minOrderQuantity, product.packSize)))}><Minus size={14} aria-hidden /></button>
-          <input inputMode="numeric" aria-label={`${product.name} adet`} aria-invalid={!check.valid} value={value} disabled={out} onChange={(e) => onChange(e.target.value)} />
+          <input inputMode="numeric" aria-label={`${product.name} ${boxed ? 'koli' : 'adet'}`} aria-invalid={!check.valid} value={toBoxText(value, product.packSize)} disabled={out} onChange={(e) => onChange(fromBoxText(e.target.value, product.packSize))} />
           <button type="button" aria-label="Arttır" disabled={out} onClick={() => onChange(String(stepQuantity(value, 1, product.minOrderQuantity, product.packSize)))}><Plus size={14} aria-hidden /></button>
         </div>
+        {boxed && <span className="store-qty__unit">koli</span>}
         <button type="button" className="ps-btn store-add" disabled={!check.valid || out || busy} onClick={addToCart}>
           <ShoppingCart size={16} aria-hidden /> <span>{out ? 'Tükendi' : 'Sepete ekle'}</span>
         </button>
       </div>
-      {!check.valid && !out && <button type="button" className="store-qty__fix" onClick={() => onChange(String(check.suggested))}>{check.error} <u>{check.suggested} yap</u></button>}
+      {boxed && check.valid && !out && <span className="store-note">= {quantityLabel(Number(value), product.packSize)}</span>}
+      {!check.valid && !out && <button type="button" className="store-qty__fix" onClick={() => onChange(String(check.suggested))}>{boxed ? `Geçerli miktar en az ${quantityLabel(check.suggested, product.packSize)}.` : check.error} <u>{boxed ? `${check.suggested / product.packSize} koli yap` : `${check.suggested} yap`}</u></button>}
       {state && <span role={state.ok ? 'status' : 'alert'} className={state.ok ? 'store-ok' : 'store-error'}>{state.text}</span>}
     </div>
   )

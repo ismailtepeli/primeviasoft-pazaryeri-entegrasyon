@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { Truck } from 'lucide-react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { StoreApiError, storeApi } from './api'
-import { formatMoney } from './catalog'
+import { formatMoney, fromBoxText, quantityLabel, toBoxText } from './catalog'
 import { useCart } from './CartContext'
 import { formatDate, orderStatusText, orderSteps, priceChangeNote, type OrderDetail, type OrderRow } from './orders'
 import { useStore } from './StoreContext'
@@ -80,9 +80,13 @@ export function CartPage() {
                   </td>
                   <td>{l.issue?.kind === 'unavailable' ? '—' : <>{formatMoney(l.price.amount, l.price.currency)}<div className="store-note">{l.price.includesVat ? 'KDV dahil' : 'KDV hariç'}</div></>}</td>
                   <td>
-                    <input className="ps-input store-qty__input" inputMode="numeric" aria-label={`${l.name} adet`} value={qty[l.productId] ?? String(l.quantity)}
-                      onChange={(e) => setQty((q) => ({ ...q, [l.productId]: e.target.value }))}
-                      onBlur={() => { const v = Number(qty[l.productId]); if (qty[l.productId] !== undefined && Number.isInteger(v) && v !== l.quantity) void change(l.productId, v); setQty(({ [l.productId]: _, ...rest }) => rest) }} />
+                    <div className="store-qty__cell">
+                      <input className="ps-input store-qty__input" inputMode="numeric" aria-label={`${l.name} ${l.packSize > 1 ? 'koli' : 'adet'}`} value={qty[l.productId] ?? toBoxText(String(l.quantity), l.packSize)}
+                        onChange={(e) => setQty((q) => ({ ...q, [l.productId]: e.target.value }))}
+                        onBlur={() => { const v = Number(fromBoxText(qty[l.productId] ?? '', l.packSize)); if (qty[l.productId] !== undefined && Number.isInteger(v) && v !== l.quantity) void change(l.productId, v); setQty(({ [l.productId]: _, ...rest }) => rest) }} />
+                      {l.packSize > 1 && <span className="store-qty__unit">koli</span>}
+                    </div>
+                    {l.packSize > 1 && <div className="store-note">= {quantityLabel(l.quantity, l.packSize)}</div>}
                   </td>
                   <td><strong>{l.issue?.kind === 'unavailable' ? '—' : formatMoney(l.lineTotal, l.price.currency)}</strong></td>
                   <td><button type="button" className="store-link-btn" onClick={() => change(l.productId, 0)} aria-label={`${l.name} sepetten çıkar`}>Çıkar</button></td>

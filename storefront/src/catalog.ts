@@ -157,6 +157,31 @@ export function stepQuantity(text: string, direction: -1 | 1, min: number, pack:
   return Math.max(m, snapped === current ? current - p : snapped - p)
 }
 
+/**
+ * Koli adedi 1'den büyük ürünlerde adet kutusu KOLİ sayar (1, 2, 3 koli); sunucuya ve sepete her zaman ADET gider.
+ * Adet metnini kutuda gösterilecek koli metnine çevirir; koli katı değilse (geçersiz) olduğu gibi bırakır.
+ */
+export function toBoxText(pieces: string, pack: number): string {
+  if (pack <= 1) return pieces
+  const t = pieces.trim()
+  if (!/^\d+$/.test(t)) return pieces
+  const n = Number(t)
+  return n > 0 && n % pack === 0 ? String(n / pack) : pieces
+}
+
+/** Kutuya yazılan koli metnini adet metnine çevirir; sayı değilse olduğu gibi döner (doğrulama hata gösterir). */
+export function fromBoxText(boxes: string, pack: number): string {
+  if (pack <= 1) return boxes
+  const t = boxes.trim()
+  return /^\d+$/.test(t) ? String(Number(t) * pack) : boxes
+}
+
+/** "2 koli · 24 adet" ya da koli yoksa "24 adet". */
+export function quantityLabel(pieces: number, pack: number): string {
+  if (pack > 1 && pieces % pack === 0) return `${pieces / pack} koli · ${pieces} adet`
+  return `${pieces} adet`
+}
+
 export function quantityNote(min: number, pack: number): string {
   const m = effectiveMin(min, pack)
   const parts: string[] = []
