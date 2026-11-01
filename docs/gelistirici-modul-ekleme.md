@@ -53,3 +53,14 @@ Tanımsızsa geliştirme adresleri (`http://localhost:5174/t/{slug}/...`) kullan
 - **Kayıt:** `POST /api/webhooks/Trendyol` yeni bir gizli anahtar üretir, kanala kaydeder (`createWebhook`) ve özetini saklar; yeniden kayıt anahtarı değiştirir, kanal reddederse eski anahtar geçerli kalır. `GET /api/webhooks/Trendyol` durumu verir. Kayıt için herkese açık adres gerekir: `Webhooks:PublicBaseUrl` (ör. `https://api.firma.com`); yerelde boştur ve kayıt 409 döner.
 - **Doğrulanmadı:** Trendyol'daki `createWebhook` uç noktası ve gövdesi belgeye göre yazıldı, gerçek satıcı hesabıyla denenmedi. Gerçek hesapla ilk kayıtta uç nokta, kimlik doğrulama türü ve durum adları kontrol edilmelidir.
 
+
+## Bildirimler
+Yönetici panelinde (üst çubukta zil) ve bayi sitesinde (üst çubukta "Bildirimler") uygulama içi bildirimler vardır. Kodda tek giriş noktası `INotifier` (`NotifyAdminAsync`, `NotifyDealerAsync`); servisler onu isteğe bağlı yapıcı parametresi olarak alır.
+
+- **En iyi çaba:** Bildirim yazılamazsa (hata ya da yinelenen anahtar) asıl iş etkilenmez; `NotificationService` hatayı yutar ve günlüğe yazar.
+- **Yinelenen olay:** `dedupeKey` doluysa (kiracı, anahtar) tekildir; aynı olay yeniden işlense de tek bildirim oluşur. Anahtar `b2b-new:{siparişId}`, `mp-new:{kanal}:{siparişNo}` gibi olaya bağlı kurulur.
+- **Kitle:** `Admin` bildirimini kiracının tüm yöneticileri ortak görür (okundu bilgisi ortaktır); `Dealer` bildirimi yalnızca o bayiye aittir ve başka bayinin bildirimi okundu yapılamaz (404).
+- **Bağlantı:** Yalnızca uygulama içi göreli adres (`/siparis/{id}`) kabul edilir; dış adres ve `//` ile başlayanlar atılır.
+- **Üretilenler:** yeni B2B siparişi, bayinin sipariş iptali, stok yetmediği için verilemeyen sipariş, yeni pazaryeri siparişi ve yeni bayi başvurusu (yöneticiye); sipariş alındı, onaylandı, reddedildi, kargoya verildi, teslim edildi, iptal edildi (bayiye).
+- **Panel:** zil rozeti 30 saniyede bir `GET /api/notifications/unread-count` ile yoklanır (sekme gizliyken durur); açılınca son 30 bildirim listelenir. Bayi sitesi için aynı uçlar `api/store/notifications` altındadır.
+- **Kapsam dışı:** e-posta ve anlık itme (push) bildirimi yok; e-posta için sağlayıcı kararı #85'te bekliyor. Eski bildirimler şimdilik silinmez.

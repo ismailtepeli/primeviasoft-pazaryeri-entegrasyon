@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using Pazaryeri.Application.Dealers;
+using Pazaryeri.Application.Notifications;
 using Pazaryeri.Application.Orders;
 using Pazaryeri.Application.Stock;
 using Pazaryeri.Domain;
@@ -22,7 +23,7 @@ public record B2BAdminOrderDetail(Guid Id, string OrderNumber, DateTime OrderDat
 public record B2BOrderActionInput(string? Reason, string? Carrier, string? TrackingNumber);
 
 /// <summary>Yöneticinin B2B siparişleri: liste, ayrıntı ve onay/ret/sevk/teslim/iptal geçişleri (kurallar <see cref="B2BOrderFlow"/>'da).</summary>
-public class B2BAdminOrderService(AppDbContext db, IStockPoolService stock, TimeProvider time)
+public class B2BAdminOrderService(AppDbContext db, IStockPoolService stock, TimeProvider time, INotifier? notifier = null)
 {
     public const int PageSize = 20;
 
@@ -95,8 +96,20 @@ public class B2BAdminOrderService(AppDbContext db, IStockPoolService stock, Time
             }
         }
         db.ChangeTracker.Clear();
+        if (notifier is not null && order.DealerId is { } dealerId && Message(action, order.OrderNumber, reason, carrier, tracking) is var (kind, title, body))
+            await notifier.NotifyDealerAsync(dealerId, kind, title, body, $"/siparis/{id}", $"b2b-{action}:{id}", ct);
         return await GetAsync(id, ct);
     }
+
+    /// <summary>Süreç değişikliğinde bayiye gidecek bildirim (tür, başlık, ayrıntı).</summary>
+    private static (string Kind, string Title, string? Body) Message(B2BAction action, string number, string? reason, string? carrier, string? tracking) => action switch
+    {
+        B2BAction.Approve => (NotificationKinds.OrderApproved, $"Siparişiniz onaylandı: {number}", "Hazırlanıyor."),
+        B2BAction.Reject => (NotificationKinds.OrderRejected, $"Siparişiniz reddedildi: {number}", reason),
+        B2BAction.Ship => (NotificationKinds.OrderShipped, $"Siparişiniz kargoya verildi: {number}", string.Join(" · ", new[] { carrier, tracking is null ? null : $"Takip no: {tracking}" }.Where(x => !string.IsNullOrEmpty(x)))),
+        B2BAction.Deliver => (NotificationKinds.OrderDelivered, $"Siparişiniz teslim edildi: {number}", null),
+        _ => (NotificationKinds.OrderCancelled, $"Siparişiniz iptal edildi: {number}", reason),
+    };
 
     private async Task<Order> LoadAsync(Guid id, CancellationToken ct) =>
         await db.Orders.AsNoTracking().Include(o => o.Packages).ThenInclude(p => p.Lines)

@@ -1,6 +1,6 @@
 import { Link, Navigate, NavLink, Outlet, useLocation } from 'react-router-dom'
 import { useAuth } from '../auth/AuthContext'
-import { AddChannelButton, Button, SyncNowButton, ThemeToggle } from '../components'
+import { AddChannelButton, Button, NotificationBell, SyncNowButton, ThemeToggle } from '../components'
 import { isRouteEnabled, visibleRoutes } from '../modules/moduleState'
 import { useModules } from '../modules/ModulesContext'
 import ModuleDisabled from '../pages/ModuleDisabled'
@@ -55,7 +55,10 @@ export default function AppLayout() {
             <h1>{current.title}</h1>
             <p>{current.subtitle}</p>
           </div>
-          {isRouteEnabled(current, enabled) && headerAction(current.path, current.action)}
+          <div className="app__header-actions">
+            <NotificationBell />
+            {isRouteEnabled(current, enabled) && headerAction(current.path, current.action)}
+          </div>
         </header>
         <main className="app__content">
           {isRouteEnabled(current, enabled) ? <Outlet /> : <ModuleDisabled moduleId={current.module!} />}

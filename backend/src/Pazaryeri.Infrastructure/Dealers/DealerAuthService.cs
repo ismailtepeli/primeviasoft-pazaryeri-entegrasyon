@@ -6,6 +6,7 @@ using Pazaryeri.Application.Abstractions;
 using Pazaryeri.Application.Auth;
 using Pazaryeri.Application.Dealers;
 using Pazaryeri.Application.Modules;
+using Pazaryeri.Application.Notifications;
 using Pazaryeri.Domain;
 using Pazaryeri.Infrastructure.Persistence;
 
@@ -16,7 +17,7 @@ namespace Pazaryeri.Infrastructure.Dealers;
 /// Giriş öncesi kiracı bilinmediği için kiracı slug'ı ile bulunur ve işlem boyunca ortam kiracısı olarak kullanılır.
 /// </summary>
 public class DealerAuthService(AppDbContext db, ITokenService tokens, IModuleService modules, TimeProvider time,
-    IEmailSender? email = null, StoreLinkOptions? links = null) : IDealerAuthService
+    IEmailSender? email = null, StoreLinkOptions? links = null, INotifier? notifier = null) : IDealerAuthService
 {
     public static readonly TimeSpan ResetLifetime = TimeSpan.FromMinutes(60);
     public static readonly TimeSpan ResetCooldown = TimeSpan.FromMinutes(1);
@@ -54,6 +55,8 @@ public class DealerAuthService(AppDbContext db, ITokenService tokens, IModuleSer
         db.DealerUsers.Add(user);
         try { await db.SaveChangesAsync(ct); }
         catch (DbUpdateException) { return new(DealerAuthResult.Duplicate, Error: "Bu e-posta ya da vergi numarasıyla zaten bir kayıt var."); } // eşzamanlı aynı başvuru
+        if (notifier is not null)
+            await notifier.NotifyAdminAsync(NotificationKinds.DealerApplication, "Yeni bayi başvurusu", $"{dealer.Name} · VN {dealer.TaxNumber}", "/bayiler", $"dealer-apply:{dealer.Id}", ct);
         return new(DealerAuthResult.Ok, dealer.Id);
     }
 

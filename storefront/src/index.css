@@ -308,3 +308,24 @@ a.store-action:hover, button.store-action:hover { color: var(--ink); background:
 
 .store-qty__unit { font-size: 13px; color: var(--ink-soft); }
 .store-qty__cell { display: inline-flex; align-items: center; gap: var(--space-2); }
+
+/* Bildirim zili (yönetici panelindeki ile aynı görünüm) */
+.notif { position: relative; }
+.store-badge--alert { background: var(--danger); color: var(--on-inverse); }
+.notif__panel { position: absolute; right: 0; top: calc(100% + var(--space-2)); z-index: 30; width: min(400px, calc(100vw - 32px)); max-height: 70vh; display: flex; flex-direction: column; background: var(--surface); border: 1px solid var(--line); border-radius: 22px; overflow: hidden; }
+.notif__head { display: flex; align-items: center; justify-content: space-between; gap: var(--space-3); padding: var(--space-3) var(--space-4); border-bottom: 1px solid var(--line); }
+.notif__readall { display: inline-flex; align-items: center; gap: 6px; border: 0; background: none; padding: 0; font: 500 13px var(--font-sans); color: var(--accent); cursor: pointer; }
+.notif__readall:disabled { color: var(--ink-muted); cursor: default; }
+.notif__list { list-style: none; margin: 0; padding: 0; overflow-y: auto; }
+.notif__list li + li { border-top: 1px solid var(--line); }
+.notif__item { display: flex; align-items: flex-start; gap: var(--space-3); width: 100%; padding: var(--space-3) var(--space-4); border: 0; background: none; text-align: left; cursor: pointer; font: 14px var(--font-sans); color: var(--ink); }
+.notif__item:hover { background: var(--surface-alt); }
+.notif__item--unread { background: var(--teal-50); }
+.notif__icon { flex: none; display: inline-grid; place-items: center; width: 32px; height: 32px; border-radius: 999px; background: var(--surface-alt); color: var(--accent); }
+.notif__text { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.notif__title { font-weight: 600; overflow-wrap: anywhere; }
+.notif__item:not(.notif__item--unread) .notif__title { font-weight: 500; }
+.notif__body { color: var(--ink-soft); overflow-wrap: anywhere; }
+.notif__time { color: var(--ink-muted); font-size: 12px; }
+.notif__empty { margin: 0; padding: var(--space-6) var(--space-4); text-align: center; color: var(--ink-muted); font-size: 14px; }
+@media (max-width: 720px) { .notif { position: static; } .notif__panel { left: 16px; right: 16px; width: auto; top: 64px; position: fixed; } }

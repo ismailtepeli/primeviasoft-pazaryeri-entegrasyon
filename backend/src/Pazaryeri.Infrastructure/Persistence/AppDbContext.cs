@@ -37,6 +37,7 @@ public class AppDbContext(DbContextOptions<AppDbContext> options, ITenantProvide
     public DbSet<OrderPackage> OrderPackages => Set<OrderPackage>();
     public DbSet<OrderLine> OrderLines => Set<OrderLine>();
     public DbSet<OrderSyncState> OrderSyncStates => Set<OrderSyncState>();
+    public DbSet<Notification> Notifications => Set<Notification>();
     public DbSet<WebhookEndpoint> WebhookEndpoints => Set<WebhookEndpoint>();
     public DbSet<WebhookEvent> WebhookEvents => Set<WebhookEvent>();
     public DbSet<SentBodyHash> SentBodyHashes => Set<SentBodyHash>();
@@ -235,6 +236,18 @@ public class AppDbContext(DbContextOptions<AppDbContext> options, ITenantProvide
             b.Property(u => u.Role).HasConversion<string>().HasMaxLength(20);
             b.HasIndex(u => new { u.TenantId, u.Email }).IsUnique();
             b.HasOne<Tenant>().WithMany().HasForeignKey(u => u.TenantId).OnDelete(DeleteBehavior.Restrict);
+        });
+
+        builder.Entity<Notification>(b =>
+        {
+            b.Property(n => n.Kind).HasMaxLength(60).IsRequired();
+            b.Property(n => n.Title).HasMaxLength(200).IsRequired();
+            b.Property(n => n.Body).HasMaxLength(500);
+            b.Property(n => n.Link).HasMaxLength(300);
+            b.Property(n => n.DedupeKey).HasMaxLength(200);
+            b.HasIndex(n => new { n.TenantId, n.Audience, n.DealerId, n.CreatedAt });
+            b.HasIndex(n => new { n.TenantId, n.DedupeKey }).IsUnique().HasFilter("[DedupeKey] IS NOT NULL");
+            b.HasOne<Tenant>().WithMany().HasForeignKey(n => n.TenantId).OnDelete(DeleteBehavior.Restrict);
         });
 
         builder.Entity<DealerPasswordReset>(b =>

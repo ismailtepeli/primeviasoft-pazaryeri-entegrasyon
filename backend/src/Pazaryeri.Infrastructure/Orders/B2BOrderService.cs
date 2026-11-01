@@ -2,6 +2,7 @@ using System.Text.Json.Serialization;
 using Microsoft.EntityFrameworkCore;
 using Pazaryeri.Application.Orders;
 using Pazaryeri.Application.Pricing;
+using Pazaryeri.Application.Notifications;
 using Pazaryeri.Application.Stock;
 using Pazaryeri.Domain;
 using Pazaryeri.Infrastructure.Persistence;
@@ -53,7 +54,7 @@ public record QuickOrderResult(int Added, IReadOnlyList<QuickOrderRowError> Erro
 /// (<see cref="IStockPoolService"/>) düşer. Pazaryeri satışından farkı: stok yetmiyorsa fazla satış yapılmaz, sipariş reddedilir
 /// (ya da bayi kısmi karşılamayı seçer).
 /// </summary>
-public class B2BOrderService(AppDbContext db, StoreCatalog catalog, DealerPriceService prices, IStockPoolService stock, TimeProvider time)
+public class B2BOrderService(AppDbContext db, StoreCatalog catalog, DealerPriceService prices, IStockPoolService stock, TimeProvider time, INotifier? notifier = null)
 {
     public const string Channel = "B2B";
     public const int MaxLines = 200;
@@ -292,23 +293,26 @@ public class B2BOrderService(AppDbContext db, StoreCatalog catalog, DealerPriceS
         db.ChangeTracker.Clear();
 
         var number = await NewNumberAsync(ct);
-        var deducted = new List<(CartLineView Line, int Quantity, string Reference, bool Applied)>();
-        var failed = new List<CartIssue>();
-        var index = 0;
-        foreach (var (line, qty) in ordered)
+        // Stok tek atomik işlemde ya hep ya hiç düşülür: eşzamanlı siparişlerde yetmeyen sipariş stoğu geçici bile tutmaz,
+        // kaybeden bayi kalan adedi görür ve sepeti korunur.
+        var codes = ordered.Select(o => o.Line.Code).ToList();
+        var safeties = await db.Products.AsNoTracking().Where(p => codes.Contains(p.Barcode)).ToDictionaryAsync(p => p.Barcode, p => Math.Max(0, p.SafetyStock ?? 0), StringComparer.OrdinalIgnoreCase, ct);
+        var references = ordered.Select((o, i) => $"{number}:{i + 1}").ToList();
+        var reserve = await stock.DeductAllOrNothingAsync(Channel,
+            ordered.Select((o, i) => new StockReserveLine(o.Line.Code, o.Quantity, references[i], safeties.GetValueOrDefault(o.Line.Code))).ToList(), ct);
+        if (!reserve.Success)
         {
-            var reference = $"{number}:{++index}";
-            var r = (await stock.DeductForSaleAsync(Channel, reference, [new StockLine(line.Code, qty)], ct))[0];
-            var safety = await db.Products.AsNoTracking().Where(p => p.Barcode == line.Code).Select(p => p.SafetyStock ?? 0).FirstOrDefaultAsync(ct);
-            var ok = r.Outcome == StockOutcome.PoolDisabled || (r.Outcome == StockOutcome.Applied && r.Oversold == 0 && r.StockAfter >= safety);
-            deducted.Add((line, qty, reference, r.Outcome == StockOutcome.Applied));
-            if (!ok) { failed.Add(new CartIssue("stock", $"{line.Name}: stok yetmedi.")); break; }
+            await RollbackAsync(dealerId, [], ordered, ct);
+            var issues = reserve.Shortages.Select(sh =>
+            {
+                var name = ordered.First(o => string.Equals(o.Line.Code, sh.Barcode, StringComparison.OrdinalIgnoreCase)).Line.Name;
+                return new CartIssue("stock", sh.Available > 0 ? $"{name}: stokta yalnızca {sh.Available} adet kaldı (istenen {sh.Requested})." : $"{name}: stok tükendi.");
+            }).ToList();
+            if (notifier is not null)
+                await notifier.NotifyAdminAsync(NotificationKinds.B2BOrderLost, "Stok yetmediği için sipariş verilemedi", $"{dealer.Name}: {string.Join(" ", issues.Select(i => i.Text))}", "/siparisler", ct: ct);
+            throw new StoreException(409, "Stok yetmediği için sipariş verilemedi; sepetiniz korundu.", new { issues });
         }
-        if (failed.Count > 0)
-        {
-            await RollbackAsync(dealerId, deducted, ordered, ct);
-            throw new StoreException(409, "Stok yetmediği için sipariş verilemedi; sepetiniz korundu.", new { issues = failed });
-        }
+        var deducted = ordered.Select((o, i) => (o.Line, o.Quantity, references[i], reserve.Applied)).ToList();
 
         try
         {
@@ -318,6 +322,7 @@ public class B2BOrderService(AppDbContext db, StoreCatalog catalog, DealerPriceS
             // Kayıtlı adresi olmayan bayinin girdiği adres, istenirse kayıtlı adres olur; dolu adres koşullu güncellemeyle korunur.
             if (input.SaveAddress && DealerRulesClean(dealer.Address) is null)
                 await db.Dealers.Where(d => d.Id == dealerId && (d.Address == null || d.Address == "")).ExecuteUpdateAsync(s => s.SetProperty(d => d.Address, address), ct);
+            await NotifyPlacedAsync(order, dealer, ct);
             return ToDetail(order);
         }
         catch (DbUpdateException)
@@ -326,6 +331,15 @@ public class B2BOrderService(AppDbContext db, StoreCatalog catalog, DealerPriceS
             await RollbackAsync(dealerId, deducted, ordered, ct);
             throw new StoreException(409, "Sipariş kaydedilemedi; stok geri eklendi ve sepetiniz korundu.");
         }
+    }
+
+    private async Task NotifyPlacedAsync(Order order, Dealer dealer, CancellationToken ct)
+    {
+        if (notifier is null) return;
+        var total = $"{order.TotalPrice:0.00} {order.Currency ?? "TRY"}";
+        var lineCount = order.Packages.SelectMany(p => p.Lines).Count();
+        await notifier.NotifyAdminAsync(NotificationKinds.B2BOrderNew, $"Yeni B2B siparişi {order.OrderNumber}", $"{dealer.Name} · {lineCount} kalem · {total}", "/siparisler", $"b2b-new:{order.Id}", ct);
+        await notifier.NotifyDealerAsync(dealer.Id, NotificationKinds.OrderReceived, $"Siparişiniz alındı: {order.OrderNumber}", $"{lineCount} kalem · {total}. Onaylandığında haber vereceğiz.", $"/siparis/{order.Id}", $"b2b-received:{order.Id}", ct);
     }
 
     private static int PartialQuantity(CartLineView l)
@@ -422,7 +436,9 @@ public class B2BOrderService(AppDbContext db, StoreCatalog catalog, DealerPriceS
         db.ChangeTracker.Clear();
         var now = Now();
         await db.OrderPackages.Where(p => p.OrderId == id).ExecuteUpdateAsync(s => s.SetProperty(p => p.Status, OrderStatus.Cancelled).SetProperty(p => p.ChannelStatus, "Cancelled").SetProperty(p => p.LastModifiedAt, now), ct);
-        await db.Orders.Where(o => o.Id == id && o.Status == OrderStatus.New).ExecuteUpdateAsync(s => s.SetProperty(o => o.Status, OrderStatus.Cancelled).SetProperty(o => o.LastModifiedAt, now), ct);
+        var cancelled = await db.Orders.Where(o => o.Id == id && o.Status == OrderStatus.New).ExecuteUpdateAsync(s => s.SetProperty(o => o.Status, OrderStatus.Cancelled).SetProperty(o => o.LastModifiedAt, now), ct);
+        if (cancelled > 0 && notifier is not null)
+            await notifier.NotifyAdminAsync(NotificationKinds.B2BOrderCancelled, $"Bayi siparişi iptal etti: {order.OrderNumber}", order.CustomerName, "/siparisler", $"b2b-cancel:{order.Id}", ct);
         return ToDetail(await LoadAsync(dealerId, id, false, ct));
     }
 

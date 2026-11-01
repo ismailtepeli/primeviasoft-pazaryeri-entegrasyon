@@ -4,6 +4,7 @@ import { ClipboardList, LayoutGrid, Zap, LogOut, Menu, Monitor, Moon, Search, Sh
 import { storeApi } from './api'
 import { categoryHref, childrenOf, type StoreCategory } from './catalog'
 import { useCart } from './CartContext'
+import { NotificationBell } from './NotificationBell'
 import { cartSummary, cartUnits } from './orders'
 import { useStore } from './StoreContext'
 import { applyTheme, readPreference, savePreference, themeOptions, type ThemePreference } from './theme'
@@ -136,6 +137,7 @@ export default function Layout() {
                 <span className="store-action__icon"><ShoppingCart size={20} aria-hidden />{units > 0 && <span className="store-badge">{units > 99 ? '99+' : units}</span>}</span>
                 <span>Sepet</span>
               </Link>
+              <NotificationBell token={token} />
               <Link to="/hesap" className="store-action" title={user?.email}><User size={20} aria-hidden /><span className="store-user">{user?.fullName || user?.email}</span></Link>
               <button type="button" className="store-action store-action--btn" onClick={logout}><LogOut size={20} aria-hidden /><span>Çıkış</span></button>
             </>

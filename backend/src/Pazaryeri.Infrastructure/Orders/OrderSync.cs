@@ -6,6 +6,7 @@ using Pazaryeri.Application.Credentials;
 using Pazaryeri.Application.Jobs;
 using Pazaryeri.Application.Marketplace;
 using Pazaryeri.Application.Modules;
+using Pazaryeri.Application.Notifications;
 using Pazaryeri.Application.Stock;
 using Pazaryeri.Domain;
 using Pazaryeri.Infrastructure.Persistence;
@@ -19,7 +20,7 @@ namespace Pazaryeri.Infrastructure.Orders;
 /// kendi durumuyla kalır. Yeni satırlar stok havuzundan bir kez düşülür; iptal/iade edilen paketlerin düşülmüş satırları
 /// (başka aktif pakette yoksa) bir kez geri eklenir.
 /// </summary>
-public class OrderIngestService(AppDbContext db, IStockPoolService stock)
+public class OrderIngestService(AppDbContext db, IStockPoolService stock, INotifier? notifier = null)
 {
     public async Task<int> IngestAsync(string channel, IReadOnlyList<MarketplaceOrder> incoming, CancellationToken ct)
     {
@@ -31,6 +32,7 @@ public class OrderIngestService(AppDbContext db, IStockPoolService stock)
             var first = group.First();
             var order = await db.Orders.Include(x => x.Packages).ThenInclude(p => p.Lines)
                 .FirstOrDefaultAsync(x => x.Channel == channel && x.OrderNumber == group.Key, ct);
+            var isNew = order is null;
             if (order is null)
             {
                 order = new Order { Channel = channel, OrderNumber = group.Key, OrderDate = first.OrderDate, CustomerName = first.CustomerName };
@@ -70,7 +72,10 @@ public class OrderIngestService(AppDbContext db, IStockPoolService stock)
 
             Recalculate(order);
             await db.SaveChangesAsync(ct);
+            var (number, customer, total, status) = (order.OrderNumber, order.CustomerName, order.TotalPrice, order.Status);
             await ApplyStockAsync(channel, order.Id, ct);
+            if (isNew && notifier is not null && status is not (OrderStatus.Cancelled or OrderStatus.Returned))
+                await notifier.NotifyAdminAsync(NotificationKinds.MarketplaceOrderNew, $"Yeni {channel} siparişi {number}", $"{customer} · {total:0.00}", "/siparisler", $"mp-new:{channel}:{number}", ct);
             touched++;
         }
         return touched;

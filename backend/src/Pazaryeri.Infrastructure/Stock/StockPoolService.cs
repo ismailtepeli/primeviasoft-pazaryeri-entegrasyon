@@ -29,6 +29,63 @@ public class StockPoolService(AppDbContext db, IJobQueue queue) : IStockPoolServ
         return results;
     }
 
+    public async Task<StockReserveResult> DeductAllOrNothingAsync(string channel, IReadOnlyList<StockReserveLine> lines, CancellationToken ct = default)
+    {
+        if (string.IsNullOrWhiteSpace(channel) || channel.Length > 40) throw new ArgumentException("Kanal geçersiz.", nameof(channel));
+        if (lines.Any(l => l.Quantity <= 0 || string.IsNullOrWhiteSpace(l.Reference) || l.Reference.Length > 200)) throw new ArgumentException("Satır geçersiz.", nameof(lines));
+        if (!await PoolEnabledAsync(ct)) return new(true, false, []);
+
+        // Aynı barkod tek satıra indirilir; barkod sırasıyla işlenir ki eşzamanlı çok satırlı siparişler birbirini kilitlemesin.
+        var ordered = lines.GroupBy(l => l.Barcode.Trim(), StringComparer.OrdinalIgnoreCase)
+            .Select(g => new StockReserveLine(g.Key, g.Sum(l => l.Quantity), g.First().Reference, g.Max(l => l.Keep)))
+            .OrderBy(l => l.Barcode, StringComparer.Ordinal).ToList();
+
+        await using var tx = await db.Database.BeginTransactionAsync(ct);
+        var shortages = new List<StockShortage>();
+        var movements = new List<(StockReserveLine Line, Guid ProductId, int StockAfter)>();
+        foreach (var line in ordered)
+        {
+            var product = await db.Products.AsNoTracking().Where(p => p.Barcode == line.Barcode).Select(p => new { p.Id }).FirstOrDefaultAsync(ct);
+            if (product is null) { shortages.Add(new StockShortage(line.Barcode, line.Quantity, 0)); continue; }
+            if (await db.StockMovements.AnyAsync(m => m.Channel == channel && m.Type == StockMovementType.Sale && m.Reference == line.Reference && m.ProductId == product.Id, ct)) continue; // aynı olay tekrar: stok zaten düşülmüş
+
+            // Tek koşullu güncelleme: kontrol ve düşüm ayrılmadığı için iki sipariş aynı stoğu alamaz.
+            var rows = await db.Products.Where(p => p.Id == product.Id && p.Stock - line.Keep >= line.Quantity)
+                .ExecuteUpdateAsync(s => s.SetProperty(p => p.Stock, p => p.Stock - line.Quantity), ct);
+            if (rows == 0)
+            {
+                var stock = await db.Products.AsNoTracking().Where(p => p.Id == product.Id).Select(p => p.Stock).FirstAsync(ct);
+                shortages.Add(new StockShortage(line.Barcode, line.Quantity, Math.Max(0, stock - line.Keep)));
+                continue;
+            }
+            var after = await db.Products.AsNoTracking().Where(p => p.Id == product.Id).Select(p => p.Stock).FirstAsync(ct);
+            movements.Add((line, product.Id, after));
+        }
+
+        if (shortages.Count > 0)
+        {
+            await tx.RollbackAsync(ct);
+            return new(false, false, shortages);
+        }
+
+        foreach (var (line, productId, after) in movements)
+            db.StockMovements.Add(new StockMovement { ProductId = productId, Channel = channel, Type = StockMovementType.Sale, Quantity = -line.Quantity, Requested = line.Quantity, StockAfter = after, Reference = line.Reference });
+        try
+        {
+            await db.SaveChangesAsync(ct);
+            await tx.CommitAsync(ct);
+        }
+        catch (DbUpdateException)
+        {
+            db.ChangeTracker.Clear();
+            await tx.RollbackAsync(ct);
+            throw;
+        }
+        db.ChangeTracker.Clear();
+        if (movements.Count > 0) await TriggerSyncAsync(channel, ct);
+        return new(true, movements.Count > 0, []);
+    }
+
     public async Task<IReadOnlyList<StockLineResult>> RestoreAsync(string channel, string saleReference, string eventReference, IReadOnlyList<StockLine> lines, CancellationToken ct = default)
     {
         Validate(channel, saleReference);
