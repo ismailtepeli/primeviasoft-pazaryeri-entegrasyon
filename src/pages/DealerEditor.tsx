@@ -89,7 +89,7 @@ export default function DealerEditor({ dealerId, groups, onClose, onChanged }: P
       </header>
       <div className="dealer-form">
         <TextInput label="Firma adı" value={form.name} onChange={set('name')} error={errors.name} />
-        <TextInput label="Vergi numarası" hint="VKN 10, TCKN 11 hane" inputMode="numeric" value={form.taxNumber} onChange={set('taxNumber')} error={errors.taxNumber} />
+        <TextInput label="Vergi numarası" hint="VKN 10, TCKN 11 hane" inputMode="numeric" maxLength={11} value={form.taxNumber} onChange={(e) => setForm((f) => ({ ...f, taxNumber: e.target.value.replace(/\D/g, '').slice(0, 11) }))} error={errors.taxNumber} />
         <TextInput label="Vergi dairesi" value={form.taxOffice} onChange={set('taxOffice')} />
         <TextInput label="Yetkili" value={form.contactName} onChange={set('contactName')} />
         <TextInput label="E-posta" type="email" value={form.email} onChange={set('email')} error={errors.email} />

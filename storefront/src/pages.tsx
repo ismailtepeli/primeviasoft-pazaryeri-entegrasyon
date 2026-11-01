@@ -110,7 +110,7 @@ export function ApplyPage() {
     <Panel title={`${info.name} bayi başvurusu`}>
       <form className="store-form store-form--grid" onSubmit={submit} noValidate>
         <Field label="Firma adı" value={form.companyName} onChange={set('companyName')} error={errors.companyName} />
-        <Field label="Vergi numarası" hint="VKN 10, TCKN 11 hane" inputMode="numeric" value={form.taxNumber} onChange={set('taxNumber')} error={errors.taxNumber} />
+        <Field label="Vergi numarası" hint="VKN 10, TCKN 11 hane" inputMode="numeric" maxLength={11} value={form.taxNumber} onChange={(e) => setForm((f) => ({ ...f, taxNumber: e.target.value.replace(/\D/g, '').slice(0, 11) }))} error={errors.taxNumber} />
         <Field label="Vergi dairesi" value={form.taxOffice} onChange={set('taxOffice')} />
         <Field label="Yetkili adı soyadı" value={form.contactName} onChange={set('contactName')} />
         <Field label="E-posta" type="email" autoComplete="username" value={form.email} onChange={set('email')} error={errors.email} />
