@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.RateLimiting;
 using Pazaryeri.Api.Modules;
 using Pazaryeri.Application.Modules;
 using System.IdentityModel.Tokens.Jwt;
@@ -15,6 +16,7 @@ namespace Pazaryeri.Api.Controllers;
 public class AuthController(IAuthService auth) : ControllerBase
 {
     [AllowAnonymous]
+    [EnableRateLimiting(StoreRateLimiting.AuthPolicy)] // parola denemesine karşı: istemci başına dakikada 10
     [HttpPost("login")]
     public async Task<ActionResult<LoginResponse>> Login(LoginRequest request, CancellationToken ct)
     {

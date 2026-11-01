@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.RateLimiting;
 using Pazaryeri.Api.Modules;
 using Pazaryeri.Application.Modules;
 using Microsoft.AspNetCore.Authorization;
@@ -30,6 +31,7 @@ public class AmazonOAuthController(IAmazonOAuthService oauth, IOptions<AmazonLwa
     /// İşlem bitince kullanıcı Mağazalar ekranına döner.
     /// </summary>
     [AllowAnonymous]
+    [EnableRateLimiting(StoreRateLimiting.AuthPolicy)]
     [HttpGet("api/oauth/amazon/callback")]
     public async Task<IActionResult> Callback(
         [FromQuery(Name = "spapi_oauth_code")] string? code,
