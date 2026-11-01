@@ -14,10 +14,14 @@ public record B2BAdminOrderPage(IReadOnlyList<B2BAdminOrderRow> Items, int Total
 
 public record B2BOrderCounts(int Pending, int Preparing, int Shipped, int Delivered, int Cancelled);
 
+/// <summary>Yönetici satırı: bayinin aynı ürünü bir önceki siparişinde hangi fiyata aldığı (iptal ve ret hariç); önceki sipariş yoksa boş.</summary>
+public record B2BAdminOrderLine(Guid? ProductId, string Name, string Code, int Quantity, decimal UnitPrice, bool PriceIncludesVat, int VatRate,
+    decimal? PreviousUnitPrice = null, bool PreviousPriceIncludesVat = false, DateTime? PreviousDate = null, decimal? PreviousChangePercent = null);
+
 public record B2BAdminDealer(Guid? Id, string Name, string? TaxNumber, string? ContactName, string? Email, string? Phone);
 
 public record B2BAdminOrderDetail(Guid Id, string OrderNumber, DateTime OrderDate, string Status, decimal TotalNet, decimal TotalGross, string Currency,
-    string? ShippingAddress, string? Note, B2BAdminDealer Dealer, IReadOnlyList<B2BOrderLine> Lines, string? ShipmentCarrier, string? TrackingNumber,
+    string? ShippingAddress, string? Note, B2BAdminDealer Dealer, IReadOnlyList<B2BAdminOrderLine> Lines, string? ShipmentCarrier, string? TrackingNumber,
     DateTime? ShippedAt, DateTime? ApprovedAt, string? StatusNote, IReadOnlyList<string> Actions);
 
 public record B2BOrderActionInput(string? Reason, string? Carrier, string? TrackingNumber);
@@ -115,15 +119,47 @@ public class B2BAdminOrderService(AppDbContext db, IStockPoolService stock, Time
         await db.Orders.AsNoTracking().Include(o => o.Packages).ThenInclude(p => p.Lines)
             .FirstOrDefaultAsync(o => o.Id == id && o.Channel == B2BOrderService.Channel, ct) ?? throw new StoreException(404, "Sipariş bulunamadı.");
 
+    private sealed record PreviousPrice(string Barcode, decimal Price, bool IncludesVat, int VatRate, DateTime Date);
+
+    /// <summary>Aynı bayinin bu siparişten önceki, iptal/iade olmayan B2B siparişlerindeki her barkodun en son birim fiyatı.</summary>
+    private async Task<Dictionary<string, PreviousPrice>> PreviousPricesAsync(Order o, CancellationToken ct)
+    {
+        if (o.DealerId is not { } dealerId) return [];
+        var codes = o.Packages.SelectMany(p => p.Lines).Select(l => l.Barcode).Distinct().ToList();
+        var rows = await db.Orders.AsNoTracking()
+            .Where(x => x.Channel == B2BOrderService.Channel && x.DealerId == dealerId && x.Id != o.Id && x.OrderDate < o.OrderDate
+                && x.Status != OrderStatus.Cancelled && x.Status != OrderStatus.Returned)
+            .SelectMany(x => x.Packages.SelectMany(p => p.Lines).Where(l => codes.Contains(l.Barcode)),
+                (x, l) => new { l.Barcode, l.Price, l.PriceIncludesVat, l.VatRate, x.OrderDate }).ToListAsync(ct);
+        return rows.GroupBy(r => r.Barcode, StringComparer.OrdinalIgnoreCase)
+            .ToDictionary(g => g.Key, g => g.OrderByDescending(r => r.OrderDate).Select(r => new PreviousPrice(r.Barcode, r.Price, r.PriceIncludesVat, r.VatRate, r.OrderDate)).First(), StringComparer.OrdinalIgnoreCase);
+    }
+
+    private static B2BAdminOrderLine WithPrevious(OrderLine l, Dictionary<string, PreviousPrice> previous)
+    {
+        var line = new B2BAdminOrderLine(l.ProductId, l.Name, l.Barcode, l.Quantity, l.Price, l.PriceIncludesVat, l.VatRate);
+        if (!previous.TryGetValue(l.Barcode, out var p)) return line;
+        return line with { PreviousUnitPrice = p.Price, PreviousPriceIncludesVat = p.IncludesVat, PreviousDate = p.Date, PreviousChangePercent = ChangePercent(l.Price, l.PriceIncludesVat, l.VatRate, p) };
+    }
+
+    /// <summary>Fiyatlar KDV dahil/hariç farklı kurulduysa karşılaştırma KDV dahil birim fiyat üzerinden yapılır.</summary>
+    private static decimal? ChangePercent(decimal price, bool includesVat, int vatRate, PreviousPrice p)
+    {
+        static decimal Gross(decimal amount, bool incl, int vat) => incl ? amount : amount * (1 + vat / 100m);
+        var before = Gross(p.Price, p.IncludesVat, p.VatRate);
+        return before <= 0 ? null : Math.Round((Gross(price, includesVat, vatRate) - before) / before * 100m, 1);
+    }
+
     private async Task<B2BAdminOrderDetail> ToDetailAsync(Order o, CancellationToken ct)
     {
         var dealer = o.DealerId is { } did
             ? await db.Dealers.AsNoTracking().Where(d => d.Id == did).Select(d => new B2BAdminDealer(d.Id, d.Name, d.TaxNumber, d.ContactName, d.Email, d.Phone)).FirstOrDefaultAsync(ct)
             : null;
+        var previous = await PreviousPricesAsync(o, ct);
         return new B2BAdminOrderDetail(o.Id, o.OrderNumber, o.OrderDate, o.Status.ToString(), o.TotalNet ?? o.TotalPrice, o.TotalPrice, o.Currency ?? "TRY", o.ShippingAddress, o.Note,
             dealer ?? new B2BAdminDealer(null, o.CustomerName, null, null, null, null),
             o.Packages.SelectMany(p => p.Lines).OrderBy(l => int.TryParse(l.LineId, out var n) ? n : 0)
-                .Select(l => new B2BOrderLine(l.ProductId, l.Name, l.Barcode, l.Quantity, l.Price, l.PriceIncludesVat, l.VatRate)).ToList(),
+                .Select(l => WithPrevious(l, previous)).ToList(),
             o.ShipmentCarrier, o.TrackingNumber, o.ShippedAt, o.ApprovedAt, o.StatusNote,
             B2BOrderFlow.Allowed(o.Status).Select(a => a.ToString()).ToList());
     }

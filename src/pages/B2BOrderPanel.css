@@ -14,3 +14,8 @@
 .b2b-order__actions .ps-btn { display: inline-flex; align-items: center; gap: 6px; }
 .b2b-order__ok { margin: 0; color: var(--success); }
 .b2b-order__error { margin: 0; color: var(--danger); }
+/* Önceki alışa göre fiyat değişimi: yalnızca renkle değil ok ve metinle de anlatılır */
+.b2b-order__delta { font-size: 13px; font-weight: 600; white-space: nowrap; }
+.b2b-order__delta--up { color: var(--danger); }
+.b2b-order__delta--down { color: var(--success); }
+.b2b-order__delta--same { color: var(--ink-muted); font-weight: 500; }

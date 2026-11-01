@@ -551,7 +551,7 @@ export interface B2BAdminOrder {
   shippingAddress: string | null
   note: string | null
   dealer: { id: string | null; name: string; taxNumber: string | null; contactName: string | null; email: string | null; phone: string | null }
-  lines: { productId: string | null; name: string; code: string; quantity: number; unitPrice: number; priceIncludesVat: boolean; vatRate: number }[]
+  lines: B2BAdminOrderLine[]
   shipmentCarrier: string | null
   trackingNumber: string | null
   shippedAt: string | null
@@ -597,4 +597,19 @@ export interface OrderPage {
   items: OrderRow[]
   total: number
   counts: OrderCounts
+}
+
+/** Yönetici sipariş satırı; önceki alış alanları bayinin aynı ürünü bir önceki siparişinde aldığı fiyatı gösterir (önceki sipariş yoksa null). */
+export interface B2BAdminOrderLine {
+  productId: string | null
+  name: string
+  code: string
+  quantity: number
+  unitPrice: number
+  priceIncludesVat: boolean
+  vatRate: number
+  previousUnitPrice: number | null
+  previousPriceIncludesVat: boolean
+  previousDate: string | null
+  previousChangePercent: number | null
 }

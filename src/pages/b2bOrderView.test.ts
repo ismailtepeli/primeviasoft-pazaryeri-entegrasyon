@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { b2bNextStep, b2bStatusBadge, balanceLabel, primaryAction, validatePaymentForm, validateReason, validateShipment } from './b2bOrderView'
+import { b2bNextStep, b2bStatusBadge, balanceLabel, primaryAction, validatePaymentForm, validateReason, validateShipment, previousPriceInfo } from './b2bOrderView'
 
 describe('b2bOrderView', () => {
   it('B2B durum adları onay akışını anlatır', () => {
@@ -43,5 +43,15 @@ describe('b2bOrderView', () => {
     expect(validatePaymentForm('0')).not.toBeNull()
     expect(validatePaymentForm('abc')).not.toBeNull()
     expect(validatePaymentForm('')).not.toBeNull()
+  })
+
+  it('önceki alış: yoksa boş, varsa fiyat, tarih ve değişim yönü', () => {
+    expect(previousPriceInfo({ previousUnitPrice: null, previousPriceIncludesVat: false, previousDate: null, previousChangePercent: null })).toBeNull()
+    const up = previousPriceInfo({ previousUnitPrice: 10, previousPriceIncludesVat: true, previousDate: '2026-10-28T10:00:00', previousChangePercent: 20 })!
+    expect([up.direction, up.change, up.vat]).toEqual(['up', '↑ %20', 'KDV dahil'])
+    expect(up.price).toContain('10,00')
+    expect(up.date).toMatch(/28 Eki 2026/)
+    expect(previousPriceInfo({ previousUnitPrice: 12, previousPriceIncludesVat: false, previousDate: null, previousChangePercent: -25 })!.change).toBe('↓ %25')
+    expect(previousPriceInfo({ previousUnitPrice: 12, previousPriceIncludesVat: false, previousDate: null, previousChangePercent: 0 })!.change).toBe('aynı fiyat')
   })
 })

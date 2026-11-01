@@ -1,4 +1,4 @@
-import type { B2BAction, B2BOrderStatusBadge } from '../api/types'
+import type { B2BAction, B2BAdminOrderLine, B2BOrderStatusBadge } from '../api/types'
 
 /** B2B siparişinde durum adları: "Yeni" burada onay bekleyen siparişi, "Hazırlanıyor" onaylanmış siparişi anlatır. */
 export const b2bStatusBadge: Record<string, B2BOrderStatusBadge> = {
@@ -51,6 +51,23 @@ export function validatePaymentForm(amount: string): string | null {
 }
 
 export const money = new Intl.NumberFormat('tr-TR', { style: 'currency', currency: 'TRY' })
+
+export interface PreviousPriceInfo { price: string; vat: string; date: string; change: string; direction: 'up' | 'down' | 'same' }
+
+/** Bayinin bu ürünü önceki siparişinde hangi fiyata aldığı; önceki sipariş yoksa null. Değişim, şu anki fiyata göredir. */
+export function previousPriceInfo(l: Pick<B2BAdminOrderLine, 'previousUnitPrice' | 'previousPriceIncludesVat' | 'previousDate' | 'previousChangePercent'>): PreviousPriceInfo | null {
+  if (l.previousUnitPrice == null) return null
+  const percent = l.previousChangePercent ?? 0
+  const direction = percent > 0 ? 'up' : percent < 0 ? 'down' : 'same'
+  const formatted = new Intl.NumberFormat('tr-TR', { maximumFractionDigits: 1 }).format(Math.abs(percent))
+  return {
+    price: money.format(l.previousUnitPrice),
+    vat: l.previousPriceIncludesVat ? 'KDV dahil' : 'KDV hariç',
+    date: l.previousDate ? new Date(/(Z|[+-]\d{2}:?\d{2})$/.test(l.previousDate) ? l.previousDate : l.previousDate + 'Z').toLocaleDateString('tr-TR', { day: 'numeric', month: 'short', year: 'numeric' }) : '',
+    change: direction === 'same' ? 'aynı fiyat' : `${direction === 'up' ? '↑' : '↓'} %${formatted}`,
+    direction,
+  }
+}
 
 /** Sipariş listesindeki "Sıradaki adım" sütunu (B2B akışı). */
 export function b2bNextStep(status: string): string {

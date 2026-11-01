@@ -3,7 +3,7 @@ import { Check, PackageCheck, Truck, X } from 'lucide-react'
 import { api } from '../api/client'
 import type { B2BAction, B2BAdminOrder } from '../api/types'
 import { Button, StatusBadge, TextInput } from '../components'
-import { b2bActionLabel, b2bStatusBadge, money, primaryAction, validateReason, validateShipment } from './b2bOrderView'
+import { b2bActionLabel, b2bStatusBadge, money, previousPriceInfo, primaryAction, validateReason, validateShipment } from './b2bOrderView'
 import './B2BOrderPanel.css'
 
 interface Props {
@@ -85,9 +85,25 @@ export default function B2BOrderPanel({ orderId, onClose, onChanged }: Props) {
       </dl>
 
       <table className="b2b-order__lines">
-        <thead><tr><th scope="col">Ürün</th><th scope="col">Birim fiyat</th><th scope="col">Adet</th></tr></thead>
+        <thead><tr><th scope="col">Ürün</th><th scope="col">Birim fiyat</th><th scope="col">Önceki alış</th><th scope="col">Adet</th></tr></thead>
         <tbody>
-          {order.lines.map((l) => <tr key={`${l.code}-${l.name}`}><td><strong>{l.name}</strong><br /><span className="b2b-order__muted">{l.code}</span></td><td>{money.format(l.unitPrice)} <span className="b2b-order__muted">{l.priceIncludesVat ? 'KDV dahil' : 'KDV hariç'}</span></td><td>{l.quantity}</td></tr>)}
+          {order.lines.map((l) => {
+            const prev = previousPriceInfo(l)
+            return (
+              <tr key={`${l.code}-${l.name}`}>
+                <td><strong>{l.name}</strong><br /><span className="b2b-order__muted">{l.code}</span></td>
+                <td>{money.format(l.unitPrice)} <span className="b2b-order__muted">{l.priceIncludesVat ? 'KDV dahil' : 'KDV hariç'}</span></td>
+                <td>{prev ? (
+                  <>
+                    {prev.price} <span className="b2b-order__muted">{prev.vat}</span><br />
+                    <span className="b2b-order__muted">{prev.date}</span>{' '}
+                    <span className={`b2b-order__delta b2b-order__delta--${prev.direction}`}>{prev.change}</span>
+                  </>
+                ) : <span className="b2b-order__muted">İlk alış</span>}</td>
+                <td>{l.quantity}</td>
+              </tr>
+            )
+          })}
         </tbody>
       </table>
       <p className="b2b-order__totals">KDV hariç <strong>{money.format(order.totalNet)}</strong> · Genel toplam <strong>{money.format(order.totalGross)}</strong></p>
