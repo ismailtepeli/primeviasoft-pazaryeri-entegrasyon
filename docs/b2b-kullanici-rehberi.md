@@ -2,6 +2,21 @@
 
 Bu rehber, yönetim panelini B2B için kullanacak kişilere yöneliktir. Bayiler için ayrı bir site (storefront) vardır; panel yalnızca sizin içindir.
 
+## Satış kanalları ve site kurulumu
+Proje üç satış kanalını destekler: **Pazaryerleri**, **B2B (bayi sitesi)** ve **B2C (son tüketici mağazası)**. Her kanal bir grup modüldür:
+
+| Kanal | Açtığı modüller |
+|---|---|
+| Pazaryerleri | Pazaryeri entegrasyonu, Stok ve fiyat senkronu, Siparişler |
+| B2B | Bayi yönetimi, Fiyat listeleri, B2B bayi sitesi, Siparişler |
+| B2C | B2C mağaza, Siparişler (**yakında**; şimdilik seçilemez) |
+
+- **İlk giriş:** Yeni kurulan bir hesapta ilk girişte kurulum sihirbazı çıkar: "Nerede satış yapacaksınız?" Kanalları seçip **Kurulumu tamamla**'ya basarsınız; yalnızca seçilen kanalların menüleri ve arka plan işleri açılır. Hiç kanal seçilmezse ürün, kategori ve stok yönetimi açık kalır. Sihirbaz bir kez çıkar.
+- **Sonradan değiştirme:** **Ayarlar > Satış kanalları**'ndan kanalları istediğiniz zaman açıp kapatabilirsiniz. Bir kanalı kapatırken onay istenir: menüsü gizlenir, arka plan işleri durur, verileriniz silinmez; yeniden açınca kaldığı yerden devam eder.
+- **Ortak modüller:** Siparişler gibi birden çok kanalın kullandığı modül, o kanallardan biri açık olduğu sürece açık kalır. Hiç kanal kalmazsa Siparişler ve ona bağlı Faturalar da kapanır.
+- **İnce ayar:** Tek tek modülleri **Ayarlar > Modüller** sekmesinden de yönetebilirsiniz.
+- Sihirbazdan önce var olan hesaplar kurulumu tamamlanmış sayılır; sihirbazı görmezler.
+
 ## 1. Modülleri açma (Ayarlar > Modüller)
 
 Her özellik bir modüldür; kapalı modülün menüsü görünmez, API'si 403 döner ve arka plan işleri çalışmaz. **Veri silinmez**; modülü yeniden açınca her şey geri gelir.

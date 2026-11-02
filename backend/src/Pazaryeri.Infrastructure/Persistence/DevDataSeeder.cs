@@ -27,7 +27,7 @@ public class DevDataSeeder(AppDbContext db, IConfiguration config)
         var tenant = await db.Tenants.FirstOrDefaultAsync(t => t.Name == tenantName, ct);
         if (tenant is null)
         {
-            tenant = new Tenant { Name = tenantName, Slug = string.IsNullOrEmpty(slug) ? null : slug };
+            tenant = new Tenant { Name = tenantName, Slug = string.IsNullOrEmpty(slug) ? null : slug, SetupCompletedAt = DateTime.UtcNow }; // geliştirme kiracısı sihirbaz çıkarmaz
             db.Tenants.Add(tenant);
         }
 

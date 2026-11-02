@@ -359,6 +359,8 @@ export interface ModuleStatus {
   core: boolean
   enabled: boolean
   dependsOn: string[]
+  /** false ise modül tanımlı ama henüz hazır değil ("yakında"). */
+  available?: boolean
 }
 
 export type DealerStatusKind = 'Pending' | 'Active' | 'Passive'
@@ -619,3 +621,16 @@ export interface PriceChangeResult { updated: number; unchanged: number; skipped
 export interface ProductPriceImportError { row: number; barcode: string; message: string }
 
 export interface ProductPriceImportResult { updated: number; unchanged: number; errors: ProductPriceImportError[] }
+
+/** Satış kanalı (pazaryerleri, B2B, B2C): bir grup modül; kurulum sihirbazı ve Ayarlar'da aç/kapa. */
+export interface SalesChannel {
+  id: string
+  name: string
+  description: string
+  /** false ise kanal henüz hazır değil ("yakında") ve seçilemez. */
+  available: boolean
+  enabled: boolean
+  modules: string[]
+}
+
+export interface SetupState { completed: boolean; channels: SalesChannel[] }

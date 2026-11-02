@@ -4,6 +4,7 @@ import { AddChannelButton, Button, NotificationBell, SyncNowButton, ThemeToggle 
 import { isRouteEnabled, visibleRoutes } from '../modules/moduleState'
 import { useModules } from '../modules/ModulesContext'
 import ModuleDisabled from '../pages/ModuleDisabled'
+import { useSetup } from '../setup/SetupContext'
 import { routeFor, routes } from '../routes'
 import './AppLayout.css'
 
@@ -26,8 +27,10 @@ export default function AppLayout() {
   const { authenticated, logout } = useAuth()
   const current = routeFor(pathname)
   const { enabled } = useModules()
+  const { setup } = useSetup()
 
   if (!authenticated) return <Navigate to="/giris" replace />
+  if (setup && !setup.completed) return <Navigate to="/kurulum" replace /> // yeni kiracı: önce satış kanallarını seçer
 
   return (
     <div className="app">

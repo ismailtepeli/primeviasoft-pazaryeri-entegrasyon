@@ -12,12 +12,14 @@ public static class ModuleIds
     public const string Dealers = "dealers";
     public const string PriceLists = "price-lists";
     public const string B2BStore = "b2b-store";
+    public const string B2CStore = "b2c-store";
 }
 
 /// <param name="Core">Kapatılamaz.</param>
 /// <param name="DefaultEnabled">Kiracı için kayıt yoksa durum.</param>
 /// <param name="DependsOn">Açık olması gereken modüller.</param>
-public record ModuleDef(string Id, string Name, string Description, bool Core, bool DefaultEnabled, IReadOnlyList<string> DependsOn);
+/// <param name="Available">false ise modül tanımlıdır ama henüz hazır değildir ("yakında"); açılamaz.</param>
+public record ModuleDef(string Id, string Name, string Description, bool Core, bool DefaultEnabled, IReadOnlyList<string> DependsOn, bool Available = true);
 
 /// <summary>Kod içindeki modül tanımları (ADR 0001). Kimlikler kararlıdır, yeniden adlandırılmaz.</summary>
 public static class ModuleCatalog
@@ -32,6 +34,7 @@ public static class ModuleCatalog
         new(ModuleIds.Dealers, "Bayi yönetimi", "Bayi firmalar, bayi kullanıcıları ve bayi grupları.", false, false, [ModuleIds.Core]),
         new(ModuleIds.PriceLists, "Fiyat listeleri", "Bayi gruplarına özel fiyat, iskonto, minimum ve koli adedi.", false, false, [ModuleIds.Dealers]),
         new(ModuleIds.B2BStore, "B2B bayi sitesi", "Bayilerin ürünleri gördüğü ve sipariş verdiği site.", false, false, [ModuleIds.Dealers, ModuleIds.Orders]),
+        new(ModuleIds.B2CStore, "B2C mağaza", "Son tüketicilerin hesapla ya da misafir olarak alışveriş yaptığı herkese açık mağaza. Yakında.", false, false, [ModuleIds.Orders], false),
     ];
 
     public static ModuleDef? Find(string id) => All.FirstOrDefault(m => m.Id == id);
@@ -59,11 +62,11 @@ public static class ModuleCatalog
         All.Where(m => enabled.Contains(m.Id) && m.DependsOn.Contains(id)).Select(m => m.Id).ToList();
 }
 
-public enum ModuleChangeResult { Changed, Unchanged, Unknown, CoreCannotDisable, MissingDependencies, HasDependents }
+public enum ModuleChangeResult { Changed, Unchanged, Unknown, CoreCannotDisable, MissingDependencies, HasDependents, NotAvailable }
 
 public record ModuleChange(ModuleChangeResult Result, IReadOnlyList<string> Related);
 
-public record ModuleStatus(string Id, string Name, string Description, bool Core, bool Enabled, IReadOnlyList<string> DependsOn);
+public record ModuleStatus(string Id, string Name, string Description, bool Core, bool Enabled, IReadOnlyList<string> DependsOn, bool Available = true);
 
 public interface IModuleService
 {

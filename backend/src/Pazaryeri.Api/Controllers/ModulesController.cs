@@ -24,6 +24,7 @@ public class ModulesController(IModuleService modules) : ControllerBase
         return change.Result switch
         {
             ModuleChangeResult.Unknown => NotFound(new { error = "Bilinmeyen modül." }),
+            ModuleChangeResult.NotAvailable => Conflict(new { error = "not_available", message = "Bu modül henüz hazır değil; yakında açılabilecek." }),
             ModuleChangeResult.CoreCannotDisable => Conflict(new { error = "core_cannot_disable", message = "Çekirdek modül kapatılamaz." }),
             ModuleChangeResult.MissingDependencies => Conflict(new { error = "missing_dependencies", modules = change.Related, message = "Önce şu modülleri açın: " + Names(change.Related) }),
             ModuleChangeResult.HasDependents => Conflict(new { error = "has_dependents", modules = change.Related, message = "Önce şu modülleri kapatın: " + Names(change.Related) }),

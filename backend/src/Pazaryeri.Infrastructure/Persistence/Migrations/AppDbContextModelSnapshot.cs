@@ -1979,6 +1979,9 @@ namespace Pazaryeri.Infrastructure.Persistence.Migrations
                         .IsRequired()
                         .HasColumnType("nvarchar(450)");
 
+                    b.Property<DateTime?>("SetupCompletedAt")
+                        .HasColumnType("datetime2");
+
                     b.Property<string>("Slug")
                         .HasMaxLength(60)
                         .HasColumnType("nvarchar(60)");

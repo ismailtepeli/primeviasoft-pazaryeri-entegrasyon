@@ -30,7 +30,7 @@ public class ModuleService(AppDbContext db, ITenantProvider tenant, IMemoryCache
     public async Task<IReadOnlyList<ModuleStatus>> ListAsync(CancellationToken ct = default)
     {
         var enabled = await EnabledAsync(null, ct);
-        return ModuleCatalog.All.Select(m => new ModuleStatus(m.Id, m.Name, m.Description, m.Core, enabled.Contains(m.Id), m.DependsOn)).ToList();
+        return ModuleCatalog.All.Select(m => new ModuleStatus(m.Id, m.Name, m.Description, m.Core, enabled.Contains(m.Id), m.DependsOn, m.Available)).ToList();
     }
 
     public async Task<ModuleChange> SetAsync(string moduleId, bool enable, CancellationToken ct = default)
@@ -50,6 +50,7 @@ public class ModuleService(AppDbContext db, ITenantProvider tenant, IMemoryCache
         }
         else
         {
+            if (!def.Available) return new(ModuleChangeResult.NotAvailable, []);
             var missing = ModuleCatalog.MissingDependencies(moduleId, enabled);
             if (missing.Count > 0) return new(ModuleChangeResult.MissingDependencies, missing);
         }

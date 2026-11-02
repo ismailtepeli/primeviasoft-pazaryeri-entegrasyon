@@ -4,17 +4,19 @@ import { useModules } from '../modules/ModulesContext'
 import { isModuleEnabled } from '../modules/moduleState'
 import B2BVisibility from './B2BVisibility'
 import ModuleSettings from './ModuleSettings'
+import SalesChannelSettings from '../setup/SalesChannelSettings'
 
 
-/** Ayarlar: şimdilik Modüller sekmesi; Hesap/Firma ayarları sonra eklenecek. */
+/** Ayarlar: Satış kanalları ve Modüller sekmeleri; Hesap/Firma ayarları sonra eklenecek. */
 export default function Settings() {
-  const [tab, setTab] = useState('modules')
+  const [tab, setTab] = useState('channels')
   const { enabled } = useModules()
-  const tabs = [{ value: 'modules', label: 'Modüller' }, ...(isModuleEnabled('b2b-store', enabled) ? [{ value: 'b2b', label: 'B2B görünürlük' }] : [])]
-  const active = tabs.some((t) => t.value === tab) ? tab : 'modules'
+  const tabs = [{ value: 'channels', label: 'Satış kanalları' }, { value: 'modules', label: 'Modüller' }, ...(isModuleEnabled('b2b-store', enabled) ? [{ value: 'b2b', label: 'B2B görünürlük' }] : [])]
+  const active = tabs.some((t) => t.value === tab) ? tab : 'channels'
   return (
     <div className="settings">
       <Tabs items={tabs} value={active} onChange={setTab} />
+      {active === 'channels' && <SalesChannelSettings />}
       {active === 'modules' && <ModuleSettings />}
       {active === 'b2b' && <B2BVisibility />}
     </div>

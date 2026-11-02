@@ -70,8 +70,10 @@ public static class DependencyInjection
         services.AddScoped<ISyncJobHandler, StockPriceSyncHandler>();
         services.AddMemoryCache();
         services.AddScoped<IModuleService, ModuleService>();
+        services.AddScoped<ISetupService, SetupService>();
         services.AddScoped<ISyncJobHandler, OrderSyncHandler>();
         services.AddScoped<OrderIngestService>();
+        services.AddScoped<OrderFulfillmentService>();
         services.AddScoped<WebhookReceiver>();
         services.AddScoped<WebhookRegistrationService>();
         services.AddSingleton(new WebhookOptions(config["Webhooks:PublicBaseUrl"]));

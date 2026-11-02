@@ -31,12 +31,12 @@ export default function ModuleSettings() {
           return (
             <li key={m.id} className="ps-card module">
               <div className="module__text">
-                <h2>{m.name} <StatusBadge variant={m.enabled ? 'success' : 'inactive'}>{m.enabled ? 'Açık' : 'Kapalı'}</StatusBadge></h2>
+                <h2>{m.name} <StatusBadge variant={m.available === false ? 'inactive' : m.enabled ? 'success' : 'inactive'}>{m.available === false ? 'Yakında' : m.enabled ? 'Açık' : 'Kapalı'}</StatusBadge></h2>
                 <p>{m.description}</p>
                 {reason && <p className="module__reason">{reason}</p>}
               </div>
               <button type="button" role="switch" aria-checked={m.enabled} aria-label={`${m.name} modülü`}
-                className="switch" disabled={!!reason || busy === m.id}
+                className="switch" disabled={!!reason || busy === m.id || m.available === false}
                 onClick={() => (m.enabled ? setConfirming(m.id) : change(m, true))}>
                 <span className="switch__thumb" />
               </button>

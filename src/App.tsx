@@ -10,6 +10,8 @@ import Overview from './pages/Overview'
 import PagePlaceholder from './pages/PagePlaceholder'
 import { AuthProvider } from './auth/AuthContext'
 import { ModulesProvider } from './modules/ModulesContext'
+import { SetupProvider } from './setup/SetupContext'
+import SetupWizard from './setup/SetupWizard'
 import Settings from './pages/Settings'
 import ProductEdit from './pages/ProductEdit'
 import Products from './pages/Products'
@@ -35,10 +37,12 @@ export default function App() {
   return (
     <AuthProvider>
       <ModulesProvider>
+      <SetupProvider>
       <BrowserRouter>
         <Routes>
           <Route path="/tasarim-sistemi" element={<DesignSystem />} />
           <Route path="/giris" element={<Login />} />
+          <Route path="/kurulum" element={<SetupWizard />} />
           <Route element={<AppLayout />}>
             {routes.map((r) => (
               <Route key={r.path} path={r.path} element={pageFor(r.path, r.label)} />
@@ -49,6 +53,7 @@ export default function App() {
           </Route>
         </Routes>
       </BrowserRouter>
+      </SetupProvider>
       </ModulesProvider>
     </AuthProvider>
   )
