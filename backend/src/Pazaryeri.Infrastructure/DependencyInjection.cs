@@ -18,8 +18,6 @@ using Pazaryeri.Infrastructure.Modules;
 using Pazaryeri.Infrastructure.Orders;
 using Pazaryeri.Infrastructure.Products;
 using Pazaryeri.Infrastructure.Stock;
-using Pazaryeri.Application.Products;
-using Pazaryeri.Infrastructure.Products;
 using Pazaryeri.Infrastructure.Amazon;
 using Pazaryeri.Infrastructure.Auth;
 using Pazaryeri.Infrastructure.Credentials;
