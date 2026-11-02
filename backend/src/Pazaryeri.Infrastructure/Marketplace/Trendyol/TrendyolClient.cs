@@ -12,7 +12,7 @@ namespace Pazaryeri.Infrastructure.Marketplace.Trendyol;
 /// Trendyol entegrasyon API adapter'ı. Kimlik: Basic (apiKey:apiSecret);
 /// User-Agent: "{sellerId} - {Firma}". Uç nokta yolları Trendyol dokümanına göredir.
 /// </summary>
-public class TrendyolClient(HttpClient http, MarketplaceCredentials credentials) : IMarketplaceClient, IChannelCatalogClient
+public class TrendyolClient(HttpClient http, MarketplaceCredentials credentials, string? baseUrlOverride = null) : IMarketplaceClient, IChannelCatalogClient
 {
     public const string ChannelName = "Trendyol";
     public const string ProductionBaseUrl = "https://apigw.trendyol.com";
@@ -22,7 +22,8 @@ public class TrendyolClient(HttpClient http, MarketplaceCredentials credentials)
 
     public string Channel => ChannelName;
 
-    private string BaseUrl => credentials.UseStaging ? StagingBaseUrl : ProductionBaseUrl;
+    /// <summary>Sunucu yapılandırmasındaki adres (örn. yerel sandbox) varsa o kullanılır; mağaza ayarından değiştirilemez.</summary>
+    private string BaseUrl => baseUrlOverride?.TrimEnd('/') ?? (credentials.UseStaging ? StagingBaseUrl : ProductionBaseUrl);
     private string Seller => Uri.EscapeDataString(credentials.SellerId);
 
     public async Task<BatchResult> SendProductsAsync(IReadOnlyList<ProductItem> products, CancellationToken ct = default)

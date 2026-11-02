@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Pazaryeri.Application.Abstractions;
@@ -9,13 +10,16 @@ using Pazaryeri.Infrastructure.Persistence;
 
 namespace Pazaryeri.Infrastructure.Marketplace;
 
-public class MarketplaceClientFactory(IHttpClientFactory httpFactory) : IMarketplaceClientFactory
+public class MarketplaceClientFactory(IHttpClientFactory httpFactory, IConfiguration? config = null) : IMarketplaceClientFactory
 {
     public const string HttpClientName = "marketplace";
+    /// <summary>Geliştirmede kanalları yerel sahte sunucuya yönlendirir, örn. Marketplace:Sandbox:Trendyol = http://localhost:5099</summary>
+    public const string SandboxSection = "Marketplace:Sandbox";
 
     public IMarketplaceClient Create(MarketplaceCredentials credentials) => credentials.Channel switch
     {
-        TrendyolClient.ChannelName => new TrendyolClient(httpFactory.CreateClient(HttpClientName), credentials),
+        TrendyolClient.ChannelName => new TrendyolClient(httpFactory.CreateClient(HttpClientName), credentials,
+            config?[$"{SandboxSection}:{TrendyolClient.ChannelName}"] is { Length: > 0 } sandbox ? sandbox : null),
         _ => throw new NotSupportedException($"'{credentials.Channel}' kanalı için adapter yok."),
     };
 }
