@@ -14,12 +14,17 @@ public static class SandboxApp
 {
     private static readonly string[] Statuses = ["Created", "Picking", "Invoiced", "Shipped", "Delivered", "Cancelled", "UnSupplied"];
 
+    /// <summary>Satıcının API ile yapabildiği geçişler. Shipped/Delivered kargo hareketidir, satıcı set edemez.</summary>
     private static readonly Dictionary<string, string[]> Transitions = new()
     {
         ["Created"] = ["Picking", "Cancelled", "UnSupplied"],
         ["Picking"] = ["Invoiced", "Cancelled", "UnSupplied"],
-        ["Invoiced"] = ["Shipped"],
-        ["Shipped"] = ["Delivered"],
+    };
+
+    private static readonly Dictionary<string, string> CarrierTransitions = new()
+    {
+        ["Invoiced"] = "Shipped",
+        ["Shipped"] = "Delivered",
     };
 
     private static readonly int[] VatRates = [0, 1, 8, 10, 18, 20];
@@ -373,6 +378,21 @@ public static class SandboxApp
                 }
             }
             return Json(new JsonObject { ["created"] = created });
+        });
+
+        // Kargo firmasının paketi ilerletmesi: Invoiced → Shipped → Delivered ({"status":"Shipped"}).
+        app.MapPost("/__sandbox/orders/{packageId:long}/carrier", (long packageId, JsonNode? body) =>
+        {
+            var next = body?["status"]?.ToString() ?? "";
+            lock (state.Gate)
+            {
+                var order = state.Orders.FirstOrDefault(o => o.PackageId == packageId);
+                if (order is null) return Json(Error("Paket bulunamadı."), 404);
+                if (!CarrierTransitions.TryGetValue(order.Status, out var allowed) || allowed != next)
+                    return Json(Error($"{order.Status} durumundaki paket kargoda {next} olamaz."), 400);
+                order.Status = next; order.LastModified = DateTimeOffset.UtcNow;
+                return Json(OrderJson(order));
+            }
         });
 
         // Gerçek Trendyol'un yaptığı gibi, kayıtlı alıcıya (ya da verilen adrese) Basic kimlikle paket JSON'u gönderir.
