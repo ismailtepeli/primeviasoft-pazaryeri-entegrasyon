@@ -1,12 +1,15 @@
 import { useState, type FormEvent } from 'react'
 import { api } from '../api/client'
-import type { OrderRow } from '../api/types'
+import type { OrderRow, OrderStatusKind } from '../api/types'
 import { Button, StatusBadge, TextInput } from '../components'
 import { fulfillmentAction, invoiceNumberError, orderStatusBadge } from './orderView'
 import { orderSteps, stoppedNote } from './orderSteps'
 
+/** Kanalın kabul ettiği yeni durum; panel liste yenilenmeden önce de güncel kalır. */
+export interface FulfillmentUpdate { status: OrderStatusKind; channelStatus: string }
+
 /** Seçili siparişin akış çubuğu: Oluştu → Toplanıyor → Faturalandı → Etiket → Kargoda. */
-export default function OrderStepper({ order, onClose, onChanged }: { order: OrderRow; onClose: () => void; onChanged: () => void }) {
+export default function OrderStepper({ order, onClose, onChanged }: { order: OrderRow; onClose: () => void; onChanged: (update: FulfillmentUpdate) => void }) {
   const steps = orderSteps(order.status, order.channelStatus)
   const note = stoppedNote(order.status)
   const badge = orderStatusBadge[order.status]
@@ -27,13 +30,13 @@ export default function OrderStepper({ order, onClose, onChanged }: { order: Ord
     setBusy(true)
     setError(undefined)
     try {
-      await api(`/orders/${order.id}/${action.kind}`, {
+      const result = await api<FulfillmentUpdate>(`/orders/${order.id}/${action.kind}`, {
         method: 'POST',
         body: action.kind === 'invoice' ? JSON.stringify({ invoiceNumber: invoice.trim() }) : undefined,
       })
       setInvoice('')
       setTouched(false)
-      onChanged()
+      onChanged({ status: result.status, channelStatus: result.channelStatus })
     } catch (err) {
       setError((err as Error).message)
     } finally {

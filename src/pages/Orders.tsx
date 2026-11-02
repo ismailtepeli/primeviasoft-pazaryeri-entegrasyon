@@ -91,7 +91,7 @@ export default function Orders() {
       </div>
       {selectedOrder && (selectedOrder.channel === 'B2B'
         ? <B2BOrderPanel orderId={selectedOrder.id} onClose={() => setSelected(undefined)} onChanged={() => setReloadKey((k) => k + 1)} />
-        : <OrderStepper order={selectedOrder} onClose={() => setSelected(undefined)} onChanged={() => setReloadKey((k) => k + 1)} />)}
+        : <OrderStepper order={selectedOrder} onClose={() => setSelected(undefined)} onChanged={(u) => { setSelected({ ...selectedOrder, ...u }); setReloadKey((k) => k + 1) }} />)}
       {error && <p role="alert" style={{ color: 'var(--danger)' }}>{error}</p>}
       <DataTable columns={columns} rows={data.items} rowKey={(o) => o.id} pageSize={ORDER_PAGE_SIZE}
         serverPaging={{ page: page - 1, total: data.total, onPageChange: (p) => setPage(p + 1) }}

@@ -169,7 +169,7 @@ public class OrderFulfillmentTests : IAsyncLifetime
 
         FulfillmentResult picking;
         await using (var db = NewDb(tenant)) picking = await Fulfillment(db, queue).ActAsync(order.Id, FulfillmentAction.Picking, null, default);
-        Assert.Equal((1, OrderStatus.Preparing, "Picking"), (picking.Updated, picking.Status, picking.ChannelStatus));
+        Assert.Equal((1, "Preparing", "Picking"), (picking.Updated, picking.Status, picking.ChannelStatus));
         Assert.Equal("Picking", await SandboxStatusAsync(packageId));
         Assert.Contains(SyncJobType.OrderSync, queue.Enqueued);
 

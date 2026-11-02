@@ -10,7 +10,8 @@ namespace Pazaryeri.Infrastructure.Orders;
 public enum FulfillmentAction { Picking, Invoice }
 
 /// <param name="Updated">Kanalın kabul ettiği paket sayısı.</param>
-public record FulfillmentResult(string OrderNumber, int Updated, OrderStatus Status, string ChannelStatus);
+/// <param name="Status">Ortak sipariş durumu adı ("Preparing" gibi); arayüz paneli buna göre tazeler.</param>
+public record FulfillmentResult(string OrderNumber, int Updated, string Status, string ChannelStatus);
 
 /// <summary>
 /// Pazaryeri siparişinin durumunu kanala geri yazar: Created → Picking (hazırlanıyor), Picking → Invoiced (fatura numarasıyla).
@@ -74,6 +75,6 @@ public class OrderFulfillmentService(AppDbContext db, IChannelCredentialService 
                 catch (Exception) { /* uzlaştırma senkronu zamanlayıcıyla da çalışır; kuyruğa alınamaması işlemi bozmaz */ }
             }
         }
-        return new FulfillmentResult(order.OrderNumber, updated, order.Status, to);
+        return new FulfillmentResult(order.OrderNumber, updated, order.Status.ToString(), to);
     }
 }
