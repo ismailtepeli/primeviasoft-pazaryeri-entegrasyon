@@ -37,6 +37,10 @@ public class Product : TenantEntity
     public decimal Price { get; set; }
     /// <summary>B2B bayi sitesinde görünür mü (varsayılan kapalı; bilerek açılır).</summary>
     public bool B2BVisible { get; set; }
+    /// <summary>B2C mağazada (herkese açık vitrin) görünür mü; B2B görünürlüğünden bağımsızdır.</summary>
+    public bool B2CVisible { get; set; }
+    /// <summary>B2C kampanya fiyatı (KDV dahil); doluysa ve normal fiyattan düşükse vitrinde bu fiyat geçerlidir, normal fiyat üstü çizili görünür.</summary>
+    public decimal? B2CSalePrice { get; set; }
     /// <summary>B2B: bayinin tek siparişte alabileceği en az adet.</summary>
     public int MinOrderQuantity { get; set; } = 1;
     /// <summary>B2B: koli/çoklu adet; sipariş adedi bunun katı olmalı.</summary>

@@ -11,7 +11,7 @@ public record DemoSeedResult(int Categories, int Products, int Dealers);
 
 /// <summary>
 /// Geliştirme ortamı için tekrarlanabilir demo veri (<c>dotnet run --project src/Pazaryeri.Api -- seed-demo</c>): birkaç kategori,
-/// "DEMO-" barkodlu ürünler, bir bayi grubu ve giriş yapabilen bir bayi; B2B bayi sitesi modülleri açılır. Ne eksikse onu ekler,
+/// "DEMO-" barkodlu ürünler (B2B ve B2C'de görünür, biri kampanya fiyatlı), bir bayi grubu ve giriş yapabilen bir bayi; B2B bayi sitesi ve (geliştirme için) B2C mağaza modülleri açılır. Ne eksikse onu ekler,
 /// var olana dokunmaz; kaç kez çalıştırılsa aynı sonucu verir. Yalnızca Development ortamında çalıştırılır.
 /// </summary>
 public class DemoDataSeeder(AppDbContext db, IConfiguration config)
@@ -71,7 +71,7 @@ public class DemoDataSeeder(AppDbContext db, IConfiguration config)
             db.Products.Add(new Product
             {
                 TenantId = tenantId, Barcode = barcode, Name = p.Name, Brand = p.Brand, CategoryId = categories[p.Category].Id,
-                Price = p.Price, VatRate = 20, Stock = p.Stock, B2BVisible = true, MinOrderQuantity = p.Min, PackSize = p.Pack,
+                Price = p.Price, VatRate = 20, Stock = p.Stock, B2BVisible = true, B2CVisible = true, B2CSalePrice = i == 1 ? 179.90m : null, MinOrderQuantity = p.Min, PackSize = p.Pack,
             });
         }
         await db.SaveChangesAsync(ct);
@@ -107,11 +107,11 @@ public class DemoDataSeeder(AppDbContext db, IConfiguration config)
         return await db.Dealers.CountAsync(ct);
     }
 
-    /// <summary>Demo bayi sitesinin çalışması için gereken modülleri açar (kiracının mevcut seçimi bozulmaz, yalnızca eksikler açılır).</summary>
+    /// <summary>Demo siteler için gereken modülleri açar (kiracının mevcut seçimi bozulmaz, yalnızca eksikler açılır). B2C mağaza hazır olana dek kiracılar bunu Ayarlar'dan açamaz; geliştirme için doğrudan açılır.</summary>
     private async Task EnsureModulesAsync(Guid tenantId, CancellationToken ct)
     {
         var rows = await db.TenantModules.ToListAsync(ct);
-        foreach (var id in new[] { ModuleIds.Orders, ModuleIds.Dealers, ModuleIds.PriceLists, ModuleIds.B2BStore })
+        foreach (var id in new[] { ModuleIds.Orders, ModuleIds.Dealers, ModuleIds.PriceLists, ModuleIds.B2BStore, ModuleIds.B2CStore })
         {
             var row = rows.FirstOrDefault(r => r.ModuleId == id);
             if (row is null) db.TenantModules.Add(new TenantModule { TenantId = tenantId, ModuleId = id, Enabled = true });

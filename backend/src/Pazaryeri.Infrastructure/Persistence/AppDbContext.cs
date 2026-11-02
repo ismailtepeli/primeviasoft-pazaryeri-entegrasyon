@@ -129,6 +129,7 @@ public class AppDbContext(DbContextOptions<AppDbContext> options, ITenantProvide
             b.Property(p => p.Variant).HasMaxLength(500);
             b.HasIndex(p => new { p.TenantId, p.MainId });
             b.Property(p => p.Price).HasPrecision(18, 2);
+            b.Property(p => p.B2CSalePrice).HasPrecision(18, 2);
             b.Property(p => p.Cost).HasPrecision(18, 2);
             b.Property(p => p.RowVersion).IsRowVersion();
             b.HasIndex(p => new { p.TenantId, p.Barcode }).IsUnique(); // barkod kiracı içinde tekil

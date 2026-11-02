@@ -89,6 +89,7 @@ export interface Product {
   channels: ProductChannel[]
   /** B2B bayi sitesinde görünür mü. */
   visibleOnB2B: boolean
+  visibleOnB2C?: boolean
 }
 
 export interface ProductImage {

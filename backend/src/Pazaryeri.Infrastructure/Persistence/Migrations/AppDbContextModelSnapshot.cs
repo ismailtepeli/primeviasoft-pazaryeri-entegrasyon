@@ -318,6 +318,9 @@ namespace Pazaryeri.Infrastructure.Persistence.Migrations
                     b.Property<bool>("B2BHidden")
                         .HasColumnType("bit");
 
+                    b.Property<bool>("B2CHidden")
+                        .HasColumnType("bit");
+
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("datetime2");
 
@@ -1484,6 +1487,13 @@ namespace Pazaryeri.Infrastructure.Persistence.Migrations
                         .HasColumnType("uniqueidentifier");
 
                     b.Property<bool>("B2BVisible")
+                        .HasColumnType("bit");
+
+                    b.Property<decimal?>("B2CSalePrice")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<bool>("B2CVisible")
                         .HasColumnType("bit");
 
                     b.Property<string>("Barcode")

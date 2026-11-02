@@ -26,7 +26,7 @@ const chips: { value: ProductFilter; label: string }[] = [
 
 type Detail = { product: Product; listing: ProductChannel }
 
-function makeColumns(onDetail: (d: Detail) => void, withChannels: boolean, withB2B: boolean, onPrice: (id: string, price: number) => void): Column<Product>[] { return [
+function makeColumns(onDetail: (d: Detail) => void, withChannels: boolean, withB2B: boolean, withB2C: boolean, onPrice: (id: string, price: number) => void): Column<Product>[] { return [
   {
     key: 'product', header: 'Ürün',
     render: (p) => (
@@ -54,6 +54,10 @@ function makeColumns(onDetail: (d: Detail) => void, withChannels: boolean, withB
   ...(!withB2B ? [] : [{
     key: 'b2b', header: 'B2B sitesi',
     render: (p: Product) => <StatusBadge variant={p.visibleOnB2B ? 'success' : 'inactive'}>{p.visibleOnB2B ? 'Görünür' : 'Gizli'}</StatusBadge>,
+  }]),
+  ...(!withB2C ? [] : [{
+    key: 'b2c', header: 'B2C mağaza',
+    render: (p: Product) => <StatusBadge variant={p.visibleOnB2C ? 'success' : 'inactive'}>{p.visibleOnB2C ? 'Görünür' : 'Gizli'}</StatusBadge>,
   }]),
   ...(!withChannels ? [] : [{
     key: 'channels', header: 'Kanallar',
@@ -96,7 +100,8 @@ export default function Products() {
   const { enabled } = useModules()
   const marketplaceOn = isModuleEnabled('marketplace', enabled)
   const b2bOn = isModuleEnabled('b2b-store', enabled)
-  const columns = useMemo(() => makeColumns(setDetail, marketplaceOn, b2bOn, (id, price) => setData((d) => ({ ...d, items: d.items.map((p) => (p.id === id ? { ...p, price } : p)) }))), [marketplaceOn, b2bOn])
+  const b2cOn = enabled !== null && enabled.has('b2c-store') // yüklenmeden açık sayılmaz: B2C henüz yalnızca geliştirmede açılır
+  const columns = useMemo(() => makeColumns(setDetail, marketplaceOn, b2bOn, b2cOn, (id, price) => setData((d) => ({ ...d, items: d.items.map((p) => (p.id === id ? { ...p, price } : p)) }))), [marketplaceOn, b2bOn, b2cOn])
 
   useEffect(() => { api<Category[]>('/categories').then(setCategories).catch(() => setCategories([])) }, [reloadKey, categoriesOpen])
 
@@ -111,6 +116,13 @@ export default function Products() {
   async function setB2BVisible(visible: boolean) {
     try {
       await api('/b2b/products/visibility', { method: 'PUT', body: JSON.stringify({ productIds: selected, visible }) })
+      setSelected([]); setError(undefined); setReloadKey((k) => k + 1)
+    } catch (e) { setError((e as Error).message) }
+  }
+
+  async function setB2CVisible(visible: boolean) {
+    try {
+      await api('/b2c/products/visibility', { method: 'PUT', body: JSON.stringify({ productIds: selected, visible }) })
       setSelected([]); setError(undefined); setReloadKey((k) => k + 1)
     } catch (e) { setError((e as Error).message) }
   }
@@ -181,6 +193,10 @@ export default function Products() {
         ...(b2bOn ? [
           { label: 'B2B sitesinde göster', onClick: () => setB2BVisible(true) },
           { label: 'B2B sitesinden kaldır', onClick: () => setB2BVisible(false) },
+        ] : []),
+        ...(b2cOn ? [
+          { label: 'B2C mağazada göster', onClick: () => setB2CVisible(true) },
+          { label: 'B2C mağazadan kaldır', onClick: () => setB2CVisible(false) },
         ] : []),
       ]} />
       {moving && selected.length > 0 && (

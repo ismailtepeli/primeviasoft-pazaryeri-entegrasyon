@@ -36,6 +36,7 @@ public class SecurityReviewTests
             "ImagesController.Get",                  // tahmin edilemez Guid, salt okunur görsel
             "StoreAuthController.Apply", "StoreAuthController.ForgotPassword", "StoreAuthController.Info",
             "StoreAuthController.Login", "StoreAuthController.ResetPassword", // bayi sitesi kimlik doğrulaması
+            "ShopController.Categories", "ShopController.Info", "ShopController.Product", "ShopController.Products", // B2C vitrini: salt okunur, modül ve kiracı slug ile doğrulanır
             "WebhooksController.Receive",            // gizli anahtarla doğrulanan pazaryeri bildirimi
         }.OrderBy(x => x).ToList();
         Assert.Equal(expected, anonymous);

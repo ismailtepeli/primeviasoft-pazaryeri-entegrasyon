@@ -71,3 +71,12 @@ Yönetici panelinde (üst çubukta zil) ve bayi sitesinde (üst çubukta "Bildir
 - **Kiracı yalıtımı:** `ITenantEntity` olan her tablo otomatik kiracı filtresi taşır. Kiracısız tablolar yalnızca kiracının kendisi ve paylaşımlı kanal kataloğudur (`CatalogSyncRun`, `ChannelAttribute`, `ChannelAttributeValue`, `ChannelBrand`, `ChannelCategory`); katalog yalnızca `ChannelCatalogService` (iş/handler) tarafından yazılır, API yalnızca okur. `IgnoreQueryFilters` yalnızca arka plan işlerinde, giriş aramasında ve anonim görsel sunumunda kullanılır.
 - **Yüklemeler:** görsel adı diskte yalnızca `{kiracı Guid}/{görsel Guid}{beyaz liste uzantı}`; istemci dosya adı yola girmez. İçerik imzasıyla doğrulanır; görsel istek boyutu sınırlı, Excel içe aktarma ve fiyat listesi 5 MB.
 - **Bağımlılıklar:** `dotnet list package --vulnerable --include-transitive` ve `npm audit --omit=dev` (panel ve bayi sitesi) açık bulmadı (1 Kasım 2026).
+
+## B2C vitrini (api/shop) — #96
+Herkese açık, oturumsuz, salt okunur ürün vitrini. Kiracı her istekte `slug` sorgu parametresiyle verilir; `ShopCatalogService.ResolveAsync` kiracının etkin olduğunu ve **B2C mağaza** (`b2c-store`) modülünün açık olduğunu doğrular, değilse 404 döner (modül kapısı kiracıyı oturumdan bilemediği için serviste uygulanır).
+- **Uçlar:** `GET api/shop/info`, `categories`, `products` (arama, kategori, marka, fiyat aralığı, stokta olanlar, sıralama, sayfalama), `products/{id}`. IP başına dakikada 240 istek.
+- **Görünürlük:** ürünün `B2CVisible` bayrağı açık, kategorisi (ya da üst kategorisi) `B2CHidden`/pasif değil. B2B görünürlüğünden bağımsızdır; bayi fiyat listeleri B2C'de geçerli değildir.
+- **Fiyat:** KDV dahil `Price`; `B2CSalePrice` doluysa ve normal fiyattan düşükse vitrinde o geçerlidir, normal fiyat `listPrice` olarak (üstü çizili) döner. Süzme ve sıralama etkin fiyata göre veritabanında yapılır.
+- **Stok:** kesin adet sızdırılmaz; yalnızca Stokta var / Az kaldı (5 ve altı) / Tükendi. Güvenlik stoğu düşülür.
+- **Yönetici:** `PUT api/b2c/products/visibility`, `PUT api/b2c/products/{id}/sale-price`, `PUT api/b2c/categories/{id}/hidden`; Ürünler listesinde (B2C modülü açıkken) "B2C mağazada göster/kaldır".
+- **Durum:** B2C modülü kiracılar için hâlâ "yakında"dır (Ayarlar'dan açılamaz). Geliştirmede `seed-demo` kendi kiracısında açar. Mağaza arayüzü (vitrin sayfaları) sonraki adımdır.

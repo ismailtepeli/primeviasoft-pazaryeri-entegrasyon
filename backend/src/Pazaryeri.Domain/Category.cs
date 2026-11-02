@@ -9,6 +9,8 @@ public class Category : TenantEntity
     public Guid? ParentId { get; set; }
     /// <summary>B2B bayi sitesinde bu kategori (ve alt kategorileri) gizli mi.</summary>
     public bool B2BHidden { get; set; }
+    /// <summary>B2C mağazada bu kategori (ve alt kategorileri) gizli mi.</summary>
+    public bool B2CHidden { get; set; }
     /// <summary>Aynı üst kategorideki kardeşler arasında sıra (0'dan başlar).</summary>
     public int SortOrder { get; set; }
     /// <summary>Pasif kategori bayi sitesinde ve kategori gezintisinde görünmez; ürünleri silinmez.</summary>

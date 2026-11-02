@@ -71,6 +71,7 @@ public static class DependencyInjection
         services.AddMemoryCache();
         services.AddScoped<IModuleService, ModuleService>();
         services.AddScoped<ISetupService, SetupService>();
+        services.AddScoped<Shop.ShopCatalogService>();
         services.AddScoped<ISyncJobHandler, OrderSyncHandler>();
         services.AddScoped<OrderIngestService>();
         services.AddScoped<OrderFulfillmentService>();
