@@ -19,9 +19,10 @@ docker compose up -d
 # 2. API (http://localhost:5284); açılışta veritabanını oluşturur/günceller ve tohum kullanıcıyı ekler
 cd backend && dotnet run --project src/Pazaryeri.Api --launch-profile http
 
-# 3. Yönetici paneli (http://localhost:5173) ve bayi sitesi (http://localhost:5174/t/demo)
+# 3. Yönetici paneli (http://localhost:5173), bayi sitesi (http://localhost:5174/t/demo) ve B2C mağaza (http://localhost:5176/t/demo)
 npm install && npm run dev
 npm --prefix storefront install && npm --prefix storefront run dev
+npm --prefix shop install && npm --prefix shop run dev
 ```
 
 Vite sunucuları `/api` isteklerini API'ye yönlendirir; API kapalıysa 502 görürsünüz.
@@ -36,7 +37,7 @@ Tekrarlanabilir ve güvenle yeniden çalıştırılabilir: ne eksikse ekler, var
 cd backend && dotnet run --project src/Pazaryeri.Api -- seed-demo
 ```
 
-Dört kategori, `DEMO-` barkodlu on ürün, bir bayi grubu, bir bayi (`bayi@demo.local` / `Seed:DemoDealerPassword`) ve bayi sitesi modüllerini hazırlar. Sıfırdan başlamak için veritabanını silin; API açılışta yeniden kurar:
+Dört kategori, `DEMO-` barkodlu on ürün (B2B ve B2C'de görünür, biri kampanyalı), bir bayi grubu, bir bayi (`bayi@demo.local` / `Seed:DemoDealerPassword`) ve bayi sitesi ile B2C mağaza modüllerini hazırlar. Sıfırdan başlamak için veritabanını silin; API açılışta yeniden kurar:
 
 ```bash
 cd backend && dotnet ef database drop -f -p src/Pazaryeri.Infrastructure -s src/Pazaryeri.Api
@@ -61,6 +62,7 @@ cd backend && dotnet ef database drop -f -p src/Pazaryeri.Infrastructure -s src/
 cd backend && dotnet test tests/Pazaryeri.Tests   # önce docker compose up -d (RabbitMQ/Redis testleri için)
 npx tsc -b && npm test                            # yönetici paneli
 cd storefront && npx tsc -b && npm test           # bayi sitesi
+cd shop && npx tsc -b && npm test                 # B2C mağaza
 ```
 Backend testlerini çalıştırmadan önce çalışan API'yi kapatın (derleme çıktısını kilitler). Docker kapalıysa yalnızca `QueueIntegrationTests` ve `RateLimiterTests` düşer.
 
