@@ -7,6 +7,7 @@ import {
   parseListParams, sortOptions, stockTone, toSearchParams,
   type ListParams, type ShopCategory, type ShopFacets, type ShopProduct, type ShopProductDetail, type ShopProductPage,
 } from './shop'
+import { metaDescription, productDescriptionFallback, productIdFromParam, productJsonLd, productPath, usePageMeta } from './seo'
 import { useShop } from './ShopContext'
 
 /** Mağaza açılamadığında (adres yok, mağaza kapalı, hata) tam sayfa durum ekranı. */
@@ -133,13 +134,13 @@ function ProductCard({ p }: { p: ShopProduct }) {
   const discount = discountPercent(p.price, p.listPrice)
   return (
     <li className="store-card">
-      <Link to={`/urun/${p.id}`} className="store-card__media" tabIndex={-1} aria-hidden>
+      <Link to={productPath(p.id, p.name)} className="store-card__media" tabIndex={-1} aria-hidden>
         <Thumb url={p.coverUrl} name={p.name} />
         {discount !== null && <span className="store-card__ribbon">%{discount}</span>}
       </Link>
       <div className="store-card__body">
         {p.brand && <span className="store-card__brand">{p.brand}</span>}
-        <Link to={`/urun/${p.id}`} className="store-card__name">{p.name}</Link>
+        <Link to={productPath(p.id, p.name)} className="store-card__name">{p.name}</Link>
         <Price price={p.price} listPrice={p.listPrice} currency={p.currency} />
         <div className="store-card__meta"><StockBadge inStock={p.inStock} label={p.stockLabel} /></div>
       </div>
@@ -152,7 +153,7 @@ function Skeleton() {
 }
 
 export function ProductsPage() {
-  const { api, categories, categoriesLoaded } = useShop()
+  const { api, categories, categoriesLoaded, info, tenant } = useShop()
   const { '*': slug = '' } = useParams()
   const [search, setSearch] = useSearchParams()
   const navigate = useNavigate()
@@ -192,6 +193,17 @@ export function ProductsPage() {
     ...(params.inStock ? [{ key: 'stock', label: 'Stokta olanlar', remove: () => update({ inStock: false }) }] : []),
     ...(params.q ? [{ key: 'q', label: `Arama: ${params.q}`, remove: () => update({ q: '' }) }] : []),
   ]
+
+  // Kategori/ana liste dizinlenir; arama, süzgeç ve 2. sayfa sonrası dizinlenmez ve kanonik adres süzgeçsiz sayfadır.
+  const listPath = category ? categoryHref(category.slugPath) : '/'
+  usePageMeta(missing ? null : {
+    title: params.q ? `"${params.q}" araması | ${info.name}` : `${title} | ${info.name}`,
+    description: category
+      ? `${info.name} mağazasında ${category.name} kategorisindeki ${category.productCount} ürünü inceleyin; fiyatlar KDV dahildir.`
+      : `${info.name} mağazasının tüm ürünleri; kategori, marka ve fiyata göre filtreleyin. Fiyatlar KDV dahildir.`,
+    canonical: `${window.location.origin}${tenant.basePath}${listPath === '/' ? '' : listPath}`,
+    noindex: !!params.q || filters > 0 || params.page > 1 || params.sort !== 'name',
+  })
 
   if (missing) {
     return <div className="store-empty"><Folder size={40} aria-hidden /><h1>Kategori bulunamadı</h1><p className="store-note">Bu kategori kaldırılmış ya da mağazada yok.</p><Link to="/" className="ps-btn">Tüm ürünlere dön</Link></div>
@@ -282,8 +294,10 @@ export function ProductsPage() {
 }
 
 export function ProductDetailPage() {
-  const { id } = useParams()
-  const { api } = useShop()
+  const { slug } = useParams()
+  const id = productIdFromParam(slug)
+  const { api, info, tenant } = useShop()
+  const navigate = useNavigate()
   const [p, setP] = useState<ShopProductDetail>()
   const [error, setError] = useState<string>()
   const [image, setImage] = useState(0)
@@ -291,11 +305,28 @@ export function ProductDetailPage() {
   useEffect(() => {
     let current = true
     setP(undefined); setError(undefined); setImage(0)
+    if (!id) { setError('Ürün bulunamadı.'); return }
     api<ShopProductDetail>(`/products/${id}`)
       .then((d) => { if (current) setP(d) })
       .catch((e: unknown) => { if (current) setError(e instanceof ShopApiError && e.status === 404 ? 'Ürün bulunamadı.' : (e as Error).message) })
     return () => { current = false }
   }, [id, api])
+
+  // Eski ya da adı değişmiş adresler güncel okunur adrese yönlenir (geçmişe eklenmeden).
+  const canonicalPath = p ? productPath(p.id, p.name) : null
+  useEffect(() => {
+    if (canonicalPath && slug && canonicalPath !== `/urun/${slug}`) navigate(canonicalPath, { replace: true })
+  }, [canonicalPath, slug, navigate])
+
+  const url = canonicalPath ? `${window.location.origin}${tenant.basePath}${canonicalPath}` : ''
+  usePageMeta(p ? {
+    title: `${p.name} | ${info.name}`,
+    description: metaDescription(p.description, productDescriptionFallback(info.name, p.name, p.price, p.currency)),
+    canonical: url,
+    image: p.images[0] ?? null,
+    type: 'product',
+    jsonLd: productJsonLd({ name: p.name, description: p.description, images: p.images, brand: p.brand, price: p.price, currency: p.currency, inStock: p.inStock, url }),
+  } : error ? { title: `Ürün bulunamadı | ${info.name}`, description: 'Aradığınız ürün bulunamadı.', noindex: true } : null)
 
   if (error) return <div className="store-empty"><CircleOff size={40} aria-hidden /><h1>{error}</h1><Link to="/" className="ps-btn">Ürünlere dön</Link></div>
   if (!p) return <div className="store-detail" aria-busy="true"><span className="skel skel--img" /><div><span className="skel" /><span className="skel skel--short" /></div></div>
@@ -330,7 +361,7 @@ export function ProductDetailPage() {
               <ul className="store-variants">
                 {p.variants.map((v) => (
                   <li key={v.id}>
-                    {v.id === p.id ? <strong className="store-chip">{v.variant ?? 'Bu ürün'}</strong> : <Link to={`/urun/${v.id}`} className="store-chip">{v.variant ?? 'Diğer'}</Link>}
+                    {v.id === p.id ? <strong className="store-chip">{v.variant ?? 'Bu ürün'}</strong> : <Link to={productPath(v.id, p.name)} className="store-chip">{v.variant ?? 'Diğer'}</Link>}
                     {!v.inStock && <span className="store-note"> tükendi</span>}
                   </li>
                 ))}

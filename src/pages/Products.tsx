@@ -11,6 +11,7 @@ import CategoryManager from './CategoryManager'
 import { indentedLabel } from './categoryTree'
 import ProductImport from './ProductImport'
 import BulkPrice from './BulkPrice'
+import BulkSale from './BulkSale'
 import PriceImport from './PriceImport'
 import { PriceCell } from './PriceCell'
 import SendToChannel from './SendToChannel'
@@ -50,7 +51,12 @@ function makeColumns(onDetail: (d: Detail) => void, withChannels: boolean, withB
       : '—',
   },
   { key: 'stock', header: 'Stok', render: (p) => p.stock },
-  { key: 'price', header: 'Fiyat', render: (p) => <PriceCell productId={p.id} name={p.name} price={p.price} onSaved={(price) => onPrice(p.id, price)} /> },
+  { key: 'price', header: 'Fiyat', render: (p) => (
+    <div className="product-cell">
+      <PriceCell productId={p.id} name={p.name} price={p.price} onSaved={(price) => onPrice(p.id, price)} />
+      {withB2C && p.b2cSalePrice != null && <span className="product-cell__barcode">B2C kampanya: {new Intl.NumberFormat('tr-TR', { style: 'currency', currency: 'TRY' }).format(p.b2cSalePrice)}</span>}
+    </div>
+  ) },
   ...(!withB2B ? [] : [{
     key: 'b2b', header: 'B2B sitesi',
     render: (p: Product) => <StatusBadge variant={p.visibleOnB2B ? 'success' : 'inactive'}>{p.visibleOnB2B ? 'Görünür' : 'Gizli'}</StatusBadge>,
@@ -90,6 +96,7 @@ export default function Products() {
   const [importing, setImporting] = useState(false)
   const [priceImporting, setPriceImporting] = useState(false)
   const [pricing, setPricing] = useState(false)
+  const [sale, setSale] = useState(false)
   const [categoriesOpen, setCategoriesOpen] = useState(false)
   const [sending, setSending] = useState(false)
   const [reloadKey, setReloadKey] = useState(0)
@@ -197,6 +204,7 @@ export default function Products() {
         ...(b2cOn ? [
           { label: 'B2C mağazada göster', onClick: () => setB2CVisible(true) },
           { label: 'B2C mağazadan kaldır', onClick: () => setB2CVisible(false) },
+          { label: 'B2C kampanya', onClick: () => { setSale(true); setPricing(false); setMoving(false); setNotice(undefined) } },
         ] : []),
       ]} />
       {moving && selected.length > 0 && (
@@ -211,6 +219,10 @@ export default function Products() {
       {pricing && selected.length > 0 && (
         <BulkPrice productIds={selected} sample={data.items.find((p) => selected.includes(p.id))} onClose={() => setPricing(false)}
           onApplied={(message) => { setPricing(false); setSelected([]); setError(undefined); setNotice(message); setReloadKey((k) => k + 1) }} />
+      )}
+      {sale && selected.length > 0 && (
+        <BulkSale productIds={selected} sample={data.items.find((p) => selected.includes(p.id))} onClose={() => setSale(false)}
+          onApplied={(message) => { setSale(false); setSelected([]); setError(undefined); setNotice(message); setReloadKey((k) => k + 1) }} />
       )}
       {sending && selected.length > 0 && <SendToChannel productIds={selected} onClose={() => setSending(false)} onSent={() => setReloadKey((k) => k + 1)} />}
       <DataTable columns={columns} rows={data.items} rowKey={(p) => p.id} pageSize={PRODUCT_PAGE_SIZE}

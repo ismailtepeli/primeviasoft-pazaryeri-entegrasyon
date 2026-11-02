@@ -197,6 +197,49 @@ public class ShopCatalogTests : IAsyncLifetime
         Assert.Null((await db.Products.AsNoTracking().SingleAsync(p => p.Id == w.Tee)).B2CSalePrice);
     }
 
+    [Fact]
+    public async Task Toplu_kampanya_yuzde_ve_sabit_fiyat_uygular_kuralsizlari_atlar_ve_kaldirir()
+    {
+        var w = await SeedAsync("kampanya");
+        await using var db = NewDb(w.Tenant);
+        var c = new B2CController(db);
+
+        var pct = (await c.SetSale(new BulkSaleInput([w.Tee, w.Notebook], "percent", 25), default)).Value!;
+        Assert.Equal((2, 0, 0), (pct.Updated, pct.Cleared, pct.Skipped.Count));
+        Assert.Equal((75m, 30m), (await SaleOf(db, w.Tee), await SaleOf(db, w.Notebook))); // 100 -> 75, 40 -> 30
+
+        var fixedPrice = (await c.SetSale(new BulkSaleInput([w.Tee, w.Polo], "price", 150), default)).Value!;
+        Assert.Equal(1, fixedPrice.Updated); // Polo normal 200, 150 geçerli; Tişört normal 100 < 150: atlanır
+        Assert.Equal(["Tişört"], fixedPrice.Skipped.ToArray());
+        Assert.Equal(75m, await SaleOf(db, w.Tee)); // atlanan ürünün eski kampanyası korunur
+        Assert.Equal(150m, await SaleOf(db, w.Polo));
+
+        var cleared = (await c.SetSale(new BulkSaleInput([w.Tee, w.Notebook, w.Out], "clear", 0), default)).Value!;
+        Assert.Equal((0, 2), (cleared.Updated, cleared.Cleared)); // kampanyası olmayan sayılmaz
+        Assert.Null(await SaleOf(db, w.Tee));
+    }
+
+    [Fact]
+    public async Task Toplu_kampanya_girdisini_dogrular_ve_B2C_kategorileri_listelenir_gizlenir()
+    {
+        var w = await SeedAsync("kampanyadogrula");
+        await using var db = NewDb(w.Tenant);
+        var c = new B2CController(db);
+        Assert.IsType<BadRequestObjectResult>((await c.SetSale(new BulkSaleInput([], "percent", 10), default)).Result);
+        Assert.IsType<BadRequestObjectResult>((await c.SetSale(new BulkSaleInput([w.Tee], "bilinmeyen", 10), default)).Result);
+        Assert.IsType<BadRequestObjectResult>((await c.SetSale(new BulkSaleInput([w.Tee], "percent", 0), default)).Result);
+        Assert.IsType<BadRequestObjectResult>((await c.SetSale(new BulkSaleInput([w.Tee], "percent", 95), default)).Result);
+        Assert.IsType<BadRequestObjectResult>((await c.SetSale(new BulkSaleInput([w.Tee], "price", 0), default)).Result);
+
+        var categories = await c.Categories(default);
+        Assert.Equal(("Giyim", false, 2), (categories.Single(x => x.Path == "Giyim").Path, categories.Single(x => x.Path == "Giyim").Hidden, categories.Single(x => x.Path == "Giyim").ProductCount));
+        Assert.True(categories.Single(x => x.Path == "Gizli Kat").Hidden);
+        await c.SetCategoryHidden(w.HiddenCat, new CategoryHiddenInput(false), default);
+        Assert.False((await c.Categories(default)).Single(x => x.Path == "Gizli Kat").Hidden);
+    }
+
+    private static async Task<decimal?> SaleOf(AppDbContext db, Guid id) => (await db.Products.AsNoTracking().SingleAsync(p => p.Id == id)).B2CSalePrice;
+
     private static object? Unwrap(ActionResult<object> r) => r.Result ?? new OkObjectResult(r.Value);
 }
 

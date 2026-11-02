@@ -23,7 +23,7 @@ export default function App() {
           <Route element={<Layout />}>
             <Route index element={<ProductsPage />} />
             <Route path="kategori/*" element={<ProductsPage />} />
-            <Route path="urun/:id" element={<ProductDetailPage />} />
+            <Route path="urun/:slug" element={<ProductDetailPage />} />
             <Route path="*" element={<Navigate to="/" replace />} />
           </Route>
         </Routes>

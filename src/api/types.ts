@@ -90,6 +90,8 @@ export interface Product {
   /** B2B bayi sitesinde görünür mü. */
   visibleOnB2B: boolean
   visibleOnB2C?: boolean
+  /** B2C kampanya fiyatı (KDV dahil); yoksa null. */
+  b2cSalePrice?: number | null
 }
 
 export interface ProductImage {
