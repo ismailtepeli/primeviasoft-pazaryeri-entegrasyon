@@ -24,6 +24,9 @@ public record ShopProductDetail(Guid Id, string Name, string? Brand, string? Des
 
 public record ShopInfo(string Name);
 
+/// <summary>Sepetteki ürünün sunucuda doğrulanmış hâli (<see cref="ShopCatalogService.CartProductsAsync"/>).</summary>
+public record ShopCartProduct(Guid Id, string Name, string Barcode, decimal UnitPrice, decimal? ListPrice, int VatRate, int Available, string? CoverUrl);
+
 public record ShopQuery(string? Search, Guid? CategoryId, string? Sort, int Page, int PageSize,
     IReadOnlyList<string>? Brands = null, decimal? MinPrice = null, decimal? MaxPrice = null, bool InStock = false);
 
@@ -150,6 +153,21 @@ public class ShopCatalogService(AppDbContext db, IModuleService modules)
         var price = Effective(p);
         return new ShopProductDetail(p.Id, p.Name, p.Brand, p.Description, crumbs, images.Select(i => ImageUrl(i.Id, i.Kind, i.ExternalUrl)).ToList(),
             price, price < p.Price ? p.Price : null, "TRY", p.VatRate, inStock, label, variants);
+    }
+
+    /// <summary>Sepet fiyatlaması için görünür ürünler: etkin (kampanyalı) birim fiyat, satılabilir stok, barkod ve kapak. Görünmeyen ürün dönmez.</summary>
+    public async Task<IReadOnlyList<ShopCartProduct>> CartProductsAsync(Guid tenantId, IReadOnlyCollection<Guid> ids, CancellationToken ct = default)
+    {
+        using var _ = AmbientTenant.Use(tenantId);
+        var visible = await VisibleAsync(ct);
+        var products = await visible.Where(p => ids.Contains(p.Id)).ToListAsync(ct);
+        var covers = await db.ProductImages.AsNoTracking().Where(i => ids.Contains(i.ProductId) && i.Position == 0).Select(i => new { i.ProductId, i.Id, i.Kind, i.ExternalUrl }).ToListAsync(ct);
+        var coverBy = covers.GroupBy(c => c.ProductId).ToDictionary(g => g.Key, g => ImageUrl(g.First().Id, g.First().Kind, g.First().ExternalUrl));
+        return products.Select(p =>
+        {
+            var price = Effective(p);
+            return new ShopCartProduct(p.Id, p.Name, p.Barcode, price, price < p.Price ? p.Price : null, p.VatRate, StockDisplay.Available(p.Stock, p.SafetyStock), coverBy.GetValueOrDefault(p.Id));
+        }).ToList();
     }
 
     /// <summary>Görünür ürünü olan kategoriler (üst kategorileri de dahil); ürün sayıları alt kategorileri kapsar.</summary>

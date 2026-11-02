@@ -31,7 +31,7 @@ export const emptyAddress: AddressForm = { title: '', fullName: '', phone: '', c
 
 export const MAX_ADDRESSES = 10
 
-export interface OrderRow { id: string; orderNumber: string; orderDate: string; status: string; total: number; currency: string; itemCount: number; firstItemName: string | null; coverUrl: string | null }
+export interface OrderRow { id: string; orderNumber: string; orderDate: string; status: string; total: number; currency: string; itemCount: number; firstItemName: string | null; coverUrl: string | null; paymentStatus: string | null }
 
 export interface OrderLine { productId: string | null; name: string; quantity: number; unitPrice: number; coverUrl: string | null }
 
@@ -50,6 +50,13 @@ export interface OrderDetail {
   statusNote: string | null
   canCancel: boolean
   lines: OrderLine[]
+  paymentMethod: string | null
+  paymentStatus: string | null
+  shippingFee: number | null
+  paymentFee: number | null
+  /** Ödemesi beklenen havale siparişinde müşteriye gösterilen banka bilgisi. */
+  paymentInfo: string | null
+  paymentExpiresAt: string | null
 }
 
 export interface OrderPage { items: OrderRow[]; total: number; pageSize: number }

@@ -191,6 +191,51 @@ namespace Pazaryeri.Infrastructure.Persistence.Migrations
                     b.ToTable("B2BSettings");
                 });
 
+            modelBuilder.Entity("Pazaryeri.Domain.B2CSettings", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<bool>("BankTransferEnabled")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("BankTransferInfo")
+                        .HasMaxLength(1000)
+                        .HasColumnType("nvarchar(1000)");
+
+                    b.Property<bool>("CardEnabled")
+                        .HasColumnType("bit");
+
+                    b.Property<bool>("CashOnDeliveryEnabled")
+                        .HasColumnType("bit");
+
+                    b.Property<decimal>("CashOnDeliveryFee")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<decimal?>("FreeShippingThreshold")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<decimal>("ShippingFee")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("TenantId")
+                        .IsUnique();
+
+                    b.ToTable("B2CSettings");
+                });
+
             modelBuilder.Entity("Pazaryeri.Domain.Cart", b =>
                 {
                     b.Property<Guid>("Id")
@@ -1269,6 +1314,21 @@ namespace Pazaryeri.Infrastructure.Persistence.Migrations
                         .HasMaxLength(100)
                         .HasColumnType("nvarchar(100)");
 
+                    b.Property<DateTime?>("PaymentExpiresAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<decimal?>("PaymentFee")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<string>("PaymentMethod")
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
+
+                    b.Property<string>("PaymentStatus")
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
+
                     b.Property<string>("ShipmentCarrier")
                         .HasMaxLength(100)
                         .HasColumnType("nvarchar(100)");
@@ -1279,6 +1339,10 @@ namespace Pazaryeri.Infrastructure.Persistence.Migrations
                     b.Property<string>("ShippingAddress")
                         .HasMaxLength(1000)
                         .HasColumnType("nvarchar(1000)");
+
+                    b.Property<decimal?>("ShippingFee")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("decimal(18,2)");
 
                     b.Property<string>("Status")
                         .IsRequired()
@@ -2342,6 +2406,15 @@ namespace Pazaryeri.Infrastructure.Persistence.Migrations
                 });
 
             modelBuilder.Entity("Pazaryeri.Domain.B2BSettings", b =>
+                {
+                    b.HasOne("Pazaryeri.Domain.Tenant", null)
+                        .WithMany()
+                        .HasForeignKey("TenantId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("Pazaryeri.Domain.B2CSettings", b =>
                 {
                     b.HasOne("Pazaryeri.Domain.Tenant", null)
                         .WithMany()

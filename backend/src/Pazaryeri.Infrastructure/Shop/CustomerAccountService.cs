@@ -121,13 +121,13 @@ public class CustomerAccountService(AppDbContext db)
         var rows = await q.OrderByDescending(o => o.OrderDate).ThenByDescending(o => o.Id).Skip((page - 1) * OrderPageSize).Take(OrderPageSize)
             .Select(o => new
             {
-                o.Id, o.OrderNumber, o.OrderDate, o.Status, o.TotalPrice, o.Currency,
+                o.Id, o.OrderNumber, o.OrderDate, o.Status, o.TotalPrice, o.Currency, o.PaymentStatus,
                 Lines = o.Packages.SelectMany(p => p.Lines).OrderBy(l => l.LineId).Select(l => new { l.Name, l.Quantity, l.ProductId }).ToList(),
             }).ToListAsync(ct);
         var firstProducts = rows.Select(r => r.Lines.FirstOrDefault()?.ProductId).OfType<Guid>().ToList();
         var covers = await Covers(firstProducts, ct);
         var items = rows.Select(r => new CustomerOrderRow(r.Id, r.OrderNumber, r.OrderDate, r.Status.ToString(), r.TotalPrice, r.Currency ?? "TRY", r.Lines.Sum(l => l.Quantity),
-            r.Lines.FirstOrDefault()?.Name, r.Lines.FirstOrDefault()?.ProductId is { } pid ? covers.GetValueOrDefault(pid) : null)).ToList();
+            r.Lines.FirstOrDefault()?.Name, r.Lines.FirstOrDefault()?.ProductId is { } pid ? covers.GetValueOrDefault(pid) : null, r.PaymentStatus?.ToString())).ToList();
         return new CustomerOrderPage(items, total, OrderPageSize);
     }
 
@@ -137,9 +137,14 @@ public class CustomerAccountService(AppDbContext db)
             ?? throw new CustomerException(404, "Sipariş bulunamadı.");
         var lines = o.Packages.SelectMany(p => p.Lines).OrderBy(l => int.TryParse(l.LineId, out var n) ? n : 0).ToList();
         var covers = await Covers(lines.Select(l => l.ProductId).OfType<Guid>().Distinct().ToList(), ct);
+        // Havale bilgisi, ödemesi beklenen havale siparişinde müşteriye yeniden gösterilir (güncel ayardan).
+        var info = o.PaymentMethod == PaymentMethod.BankTransfer && o.PaymentStatus == PaymentStatus.Pending && o.Status == OrderStatus.New
+            ? (await db.B2CSettings.AsNoTracking().FirstOrDefaultAsync(ct))?.BankTransferInfo : null;
         return new CustomerOrderDetail(o.Id, o.OrderNumber, o.OrderDate, o.Status.ToString(), o.TotalPrice, o.Currency ?? "TRY", o.ShippingAddress, o.Note,
-            o.ShipmentCarrier, o.TrackingNumber, o.ShippedAt, o.StatusNote, CanCancel: false, // müşteri iptali sipariş akışıyla birlikte gelir (#98, #100)
-            lines.Select(l => new CustomerOrderLine(l.ProductId, l.Name, l.Quantity, l.Price, l.ProductId is { } pid ? covers.GetValueOrDefault(pid) : null)).ToList());
+            o.ShipmentCarrier, o.TrackingNumber, o.ShippedAt, o.StatusNote, CheckoutService.CanCancel(o),
+            lines.Select(l => new CustomerOrderLine(l.ProductId, l.Name, l.Quantity, l.Price, l.ProductId is { } pid ? covers.GetValueOrDefault(pid) : null)).ToList(),
+            o.PaymentMethod?.ToString(), o.PaymentStatus?.ToString(), o.ShippingFee, o.PaymentFee, info,
+            o.PaymentMethod == PaymentMethod.Card && o.PaymentStatus == PaymentStatus.Pending ? o.PaymentExpiresAt : null);
     }
 
     private async Task<Dictionary<Guid, string?>> Covers(List<Guid> productIds, CancellationToken ct)

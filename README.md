@@ -54,6 +54,7 @@ cd backend && dotnet ef database drop -f -p src/Pazaryeri.Infrastructure -s src/
 | `Storage:ImagesPath` | Yüklenen görsellerin klasörü | Boşsa uygulama klasörü altı |
 | `Storage:PublicBaseUrl` | Pazaryerlerinin görseli çekeceği herkese açık adres | Yerelde boş; pazaryerine ürün göndermek için gerekir |
 | `Amazon:Lwa:*` | Amazon yetkilendirme (istemci kimliği, sırrı, uygulama kimliği, dönüş adresi) | Boşsa Amazon bağlanamaz |
+| `Payments:Provider` | B2C kart ödemesi sağlayıcısı | Yalnızca geliştirmede `fake` (deneme sayfası, gerçek para geçmez); üretimde boş bırakın, kart ödemesi kapalı kalır |
 | `Google:ClientId` | B2C mağazada "Google ile devam et" için OAuth web istemci kimliği | Boşsa düğme görünmez; kurulum için geliştirici notlarına bakın |
 | `Webhooks:PublicBaseUrl` | Pazaryeri webhook kaydı için herkese açık API adresi | Yerelde boş; kayıt 409 döner |
 | `Store:LoginUrl`, `Store:ResetUrl` | Bayi e-postalarındaki bağlantılar | Bkz. B2B rehberi |

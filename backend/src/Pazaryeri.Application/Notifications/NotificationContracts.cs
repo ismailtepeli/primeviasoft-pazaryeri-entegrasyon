@@ -4,6 +4,8 @@ public static class NotificationKinds
 {
     public const string B2BOrderNew = "b2b-order-new";
     public const string B2BOrderCancelled = "b2b-order-cancelled";
+    public const string B2COrderNew = "b2c-order-new";
+    public const string B2COrderCancelled = "b2c-order-cancelled";
     public const string B2BOrderLost = "b2b-order-lost";
     public const string MarketplaceOrderNew = "marketplace-order-new";
     public const string DealerApplication = "dealer-application";

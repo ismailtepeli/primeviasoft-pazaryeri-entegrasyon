@@ -39,6 +39,7 @@ public class AppDbContext(DbContextOptions<AppDbContext> options, ITenantProvide
     public DbSet<OrderSyncState> OrderSyncStates => Set<OrderSyncState>();
     public DbSet<Notification> Notifications => Set<Notification>();
     public DbSet<Customer> Customers => Set<Customer>();
+    public DbSet<B2CSettings> B2CSettings => Set<B2CSettings>();
     public DbSet<CustomerAddress> CustomerAddresses => Set<CustomerAddress>();
     public DbSet<WebhookEndpoint> WebhookEndpoints => Set<WebhookEndpoint>();
     public DbSet<WebhookEvent> WebhookEvents => Set<WebhookEvent>();
@@ -296,6 +297,16 @@ public class AppDbContext(DbContextOptions<AppDbContext> options, ITenantProvide
             b.HasOne<Tenant>().WithMany().HasForeignKey(s => s.TenantId).OnDelete(DeleteBehavior.Restrict);
         });
 
+        builder.Entity<B2CSettings>(b =>
+        {
+            b.Property(s => s.ShippingFee).HasPrecision(18, 2);
+            b.Property(s => s.FreeShippingThreshold).HasPrecision(18, 2);
+            b.Property(s => s.CashOnDeliveryFee).HasPrecision(18, 2);
+            b.Property(s => s.BankTransferInfo).HasMaxLength(Pazaryeri.Domain.B2CSettings.MaxInfoLength);
+            b.HasIndex(s => s.TenantId).IsUnique();
+            b.HasOne<Tenant>().WithMany().HasForeignKey(s => s.TenantId).OnDelete(DeleteBehavior.Restrict);
+        });
+
         builder.Entity<GroupVisibilityRule>(b =>
         {
             b.HasIndex(r => new { r.TenantId, r.GroupId, r.ProductId, r.CategoryId }).IsUnique();
@@ -366,6 +377,10 @@ public class AppDbContext(DbContextOptions<AppDbContext> options, ITenantProvide
             b.Property(o => o.OrderNumber).HasMaxLength(100).IsRequired();
             b.Property(o => o.CustomerName).HasMaxLength(200);
             b.Property(o => o.Status).HasConversion<string>().HasMaxLength(20);
+            b.Property(o => o.PaymentMethod).HasConversion<string>().HasMaxLength(20);
+            b.Property(o => o.PaymentStatus).HasConversion<string>().HasMaxLength(20);
+            b.Property(o => o.ShippingFee).HasPrecision(18, 2);
+            b.Property(o => o.PaymentFee).HasPrecision(18, 2);
             b.Property(o => o.TotalPrice).HasPrecision(18, 2);
             b.Property(o => o.TotalNet).HasPrecision(18, 2);
             b.Property(o => o.ShippingAddress).HasMaxLength(1000);

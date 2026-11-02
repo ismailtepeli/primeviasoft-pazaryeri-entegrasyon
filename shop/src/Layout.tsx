@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, type FormEvent, type ReactNode } from 'react'
 import { Link, NavLink, Outlet, useNavigate } from 'react-router-dom'
-import { LayoutGrid, LogIn, Menu, Monitor, Moon, Package, Search, Sun, User, UserPlus, X } from 'lucide-react'
+import { LayoutGrid, LogIn, Menu, Monitor, Moon, Package, Search, ShoppingCart, Sun, User, UserPlus, X } from 'lucide-react'
+import { useCart } from './CartContext'
 import { useCustomer } from './CustomerContext'
 import { categoryHref, childrenOf, type ShopCategory } from './shop'
 import { useShop } from './ShopContext'
@@ -76,6 +77,7 @@ function CategoryMenu({ categories, onClose }: { categories: ShopCategory[]; onC
 export default function Layout({ children }: { children?: ReactNode }) {
   const { info, categories } = useShop()
   const { token, profile } = useCustomer()
+  const { count } = useCart()
   const navigate = useNavigate()
   const [q, setQ] = useState('')
   const [menuOpen, setMenuOpen] = useState(false)
@@ -113,6 +115,10 @@ export default function Layout({ children }: { children?: ReactNode }) {
           <input className="ps-input" type="search" placeholder="Ürün adı ya da marka ara" aria-label="Ürün ara" value={q} onChange={(e) => setQ(e.target.value)} />
         </form>
         <nav className="store-account" aria-label="Hesap">
+          <Link to="/sepet" className="store-action store-cart" aria-label={count > 0 ? `Sepetim, ${count} ürün` : 'Sepetim'}>
+            <span className="store-cart__icon"><ShoppingCart size={20} aria-hidden />{count > 0 && <span className="store-cart__badge" aria-hidden>{count > 99 ? '99+' : count}</span>}</span>
+            <span>Sepetim</span>
+          </Link>
           {token ? (
             <>
               <Link to="/hesap/siparisler" className="store-action"><Package size={20} aria-hidden /><span>Siparişlerim</span></Link>

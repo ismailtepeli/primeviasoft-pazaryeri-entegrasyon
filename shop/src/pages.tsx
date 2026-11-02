@@ -8,6 +8,7 @@ import {
   type ListParams, type ShopCategory, type ShopFacets, type ShopProduct, type ShopProductDetail, type ShopProductPage,
 } from './shop'
 import { metaDescription, productDescriptionFallback, productIdFromParam, productJsonLd, productPath, usePageMeta } from './seo'
+import { AddToCartButton } from './cartPages'
 import { useShop } from './ShopContext'
 
 /** Mağaza açılamadığında (adres yok, mağaza kapalı, hata) tam sayfa durum ekranı. */
@@ -143,6 +144,7 @@ function ProductCard({ p }: { p: ShopProduct }) {
         <Link to={productPath(p.id, p.name)} className="store-card__name">{p.name}</Link>
         <Price price={p.price} listPrice={p.listPrice} currency={p.currency} />
         <div className="store-card__meta"><StockBadge inStock={p.inStock} label={p.stockLabel} /></div>
+        <div className="store-card__cta"><AddToCartButton productId={p.id} disabled={!p.inStock} /></div>
       </div>
     </li>
   )
@@ -355,6 +357,7 @@ export function ProductDetailPage() {
           <Price price={p.price} listPrice={p.listPrice} currency={p.currency} large />
           <p className="store-note">KDV dahil (%{p.vatRate})</p>
           <div className="store-card__meta"><StockBadge inStock={p.inStock} label={p.stockLabel} /></div>
+          <div className="store-detail__cta"><AddToCartButton productId={p.id} disabled={!p.inStock} primary /></div>
           {p.variants.length > 1 && (
             <div>
               <h2 className="store-h2">Seçenekler</h2>
