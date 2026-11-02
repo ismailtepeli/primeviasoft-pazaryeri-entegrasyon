@@ -50,3 +50,28 @@ export function ordersQuery(tab: OrderTab, search: string, page: number, channel
   if (channel) qs.set('channel', channel)
   return qs.toString()
 }
+
+export type FulfillmentKind = 'picking' | 'invoice'
+
+/**
+ * Pazaryeri siparişinde kanala bildirilebilecek sıradaki adım: Created → hazırlanıyor, Picking → faturalandı.
+ * Kargoya verildi/teslim kanaldan gelir; B2B siparişleri kendi panelinden yönetilir.
+ */
+export function fulfillmentAction(channel: string, channelStatus: string): { kind: FulfillmentKind; label: string } | null {
+  if (channel === 'B2B') return null
+  switch (channelStatus.trim().toLowerCase()) {
+    case 'created': return { kind: 'picking', label: 'Toplamaya al' }
+    case 'picking': return { kind: 'invoice', label: 'Faturalandı olarak bildir' }
+    default: return null
+  }
+}
+
+export const MAX_INVOICE_NUMBER_LENGTH = 64
+
+/** Fatura numarası boş ya da çok uzunsa hata metni, geçerliyse undefined. */
+export function invoiceNumberError(value: string): string | undefined {
+  const v = value.trim()
+  if (!v) return 'Fatura numarası zorunlu.'
+  if (v.length > MAX_INVOICE_NUMBER_LENGTH) return `En fazla ${MAX_INVOICE_NUMBER_LENGTH} karakter olabilir.`
+  return undefined
+}

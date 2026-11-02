@@ -21,3 +21,5 @@
 .stepper__step--active { color: var(--ink); font-weight: 600; }
 .stepper__step--done { color: var(--ink); }
 .visually-hidden { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+.order-detail__action { display: flex; flex-wrap: wrap; align-items: end; gap: var(--space-3); }
+.order-detail__action .order-detail__note { flex-basis: 100%; font-size: 13px; }

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { initialTab, nextStep, orderStatusBadge, orderTabs, ordersQuery } from './orderView'
+import { fulfillmentAction, initialTab, invoiceNumberError, nextStep, orderStatusBadge, orderTabs, ordersQuery } from './orderView'
 
 describe('orderView', () => {
   it('beş sekmeyi sayaçlarıyla sıralar', () => {
@@ -25,5 +25,21 @@ describe('orderView', () => {
   it('sorgu dizesini sekme, sayfa ve kırpılmış aramayla kurar', () => {
     expect(ordersQuery('new', '  ', 1)).toBe('tab=new&page=1&pageSize=20')
     expect(ordersQuery('shipped', ' TY-1 ', 3)).toBe('tab=shipped&page=3&pageSize=20&q=TY-1')
+  })
+
+  it('pazaryeri siparişinde sıradaki bildirim: Created → toplamaya al, Picking → faturalandı', () => {
+    expect(fulfillmentAction('Trendyol', 'Created')).toEqual({ kind: 'picking', label: 'Toplamaya al' })
+    expect(fulfillmentAction('Trendyol', ' picking ')?.kind).toBe('invoice')
+  })
+
+  it('faturalanmış, kargodaki ve B2B siparişlerde bildirim adımı yoktur', () => {
+    for (const s of ['Invoiced', 'Shipped', 'Delivered', 'Cancelled', '']) expect(fulfillmentAction('Trendyol', s)).toBeNull()
+    expect(fulfillmentAction('B2B', 'Created')).toBeNull()
+  })
+
+  it('fatura numarası boş ya da 64 karakterden uzunsa hata verir', () => {
+    expect(invoiceNumberError('  ')).toBe('Fatura numarası zorunlu.')
+    expect(invoiceNumberError('x'.repeat(65))).toContain('64')
+    expect(invoiceNumberError(' FTR2026000000001 ')).toBeUndefined()
   })
 })
