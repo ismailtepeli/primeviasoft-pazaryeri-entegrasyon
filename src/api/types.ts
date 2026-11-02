@@ -613,3 +613,9 @@ export interface B2BAdminOrderLine {
   previousDate: string | null
   previousChangePercent: number | null
 }
+
+export interface PriceChangeResult { updated: number; unchanged: number; skipped: { name: string; reason: string }[] }
+
+export interface ProductPriceImportError { row: number; barcode: string; message: string }
+
+export interface ProductPriceImportResult { updated: number; unchanged: number; errors: ProductPriceImportError[] }

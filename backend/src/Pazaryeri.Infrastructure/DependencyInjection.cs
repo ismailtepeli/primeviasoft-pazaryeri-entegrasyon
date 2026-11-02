@@ -64,6 +64,7 @@ public static class DependencyInjection
         services.AddScoped<Orders.DealerAccountService>();
         services.AddScoped<Pricing.PriceListImportService>();
         services.AddScoped<IProductImportService, ProductImportService>();
+        services.AddScoped<IProductPriceService, ProductPriceService>();
         services.AddScoped<IProductImageService, ProductImageService>();
         services.AddScoped<ProductChannelPreparer>();
         services.AddScoped<StockPriceDeltaPlanner>();

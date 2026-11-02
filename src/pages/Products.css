@@ -27,3 +27,12 @@
   .products-layout { grid-template-columns: minmax(0, 1fr); }
   .products-layout__side { position: static; }
 }
+
+/* Satır içi fiyat düzenleme: hücre tıklanabilir, düzenlerken giriş alanı aynı genişlikte kalır (satır yüksekliği değişmez) */
+.price-cell { display: inline-flex; align-items: center; gap: var(--space-2); padding: 4px 10px; margin: -4px -10px; border: 1px solid transparent; border-radius: var(--radius-pill); background: none; color: inherit; font: inherit; cursor: pointer; white-space: nowrap; }
+.price-cell:hover, .price-cell:focus-visible { border-color: var(--line); background: var(--surface-alt); }
+.price-cell svg { color: var(--ink-muted); }
+.price-cell--editing { flex-direction: column; align-items: flex-start; gap: 2px; cursor: default; padding: 0; margin: 0; }
+.price-cell__input { width: 120px; padding-block: 6px; }
+.price-cell__error { color: var(--danger); font-size: 12px; }
+.products__bulk-price { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: var(--space-4); align-items: start; }

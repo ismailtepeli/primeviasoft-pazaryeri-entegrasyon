@@ -10,6 +10,9 @@ import CategoryFilter from './CategoryFilter'
 import CategoryManager from './CategoryManager'
 import { indentedLabel } from './categoryTree'
 import ProductImport from './ProductImport'
+import BulkPrice from './BulkPrice'
+import PriceImport from './PriceImport'
+import { PriceCell } from './PriceCell'
 import SendToChannel from './SendToChannel'
 import { RECOMMENDED_IMAGES } from './imageOrder'
 import { PRODUCT_PAGE_SIZE, productsQuery, type ProductFilter } from './productFilters'
@@ -21,11 +24,9 @@ const chips: { value: ProductFilter; label: string }[] = [
   { value: 'pending', label: 'Onay bekliyor' },
 ]
 
-const money = new Intl.NumberFormat('tr-TR', { style: 'currency', currency: 'TRY' })
-
 type Detail = { product: Product; listing: ProductChannel }
 
-function makeColumns(onDetail: (d: Detail) => void, withChannels: boolean, withB2B: boolean): Column<Product>[] { return [
+function makeColumns(onDetail: (d: Detail) => void, withChannels: boolean, withB2B: boolean, onPrice: (id: string, price: number) => void): Column<Product>[] { return [
   {
     key: 'product', header: 'Ürün',
     render: (p) => (
@@ -49,7 +50,7 @@ function makeColumns(onDetail: (d: Detail) => void, withChannels: boolean, withB
       : '—',
   },
   { key: 'stock', header: 'Stok', render: (p) => p.stock },
-  { key: 'price', header: 'Fiyat', render: (p) => money.format(p.price) },
+  { key: 'price', header: 'Fiyat', render: (p) => <PriceCell productId={p.id} name={p.name} price={p.price} onSaved={(price) => onPrice(p.id, price)} /> },
   ...(!withB2B ? [] : [{
     key: 'b2b', header: 'B2B sitesi',
     render: (p: Product) => <StatusBadge variant={p.visibleOnB2B ? 'success' : 'inactive'}>{p.visibleOnB2B ? 'Görünür' : 'Gizli'}</StatusBadge>,
@@ -83,6 +84,8 @@ export default function Products() {
   const [detail, setDetail] = useState<Detail>()
   const [selected, setSelected] = useState<string[]>([])
   const [importing, setImporting] = useState(false)
+  const [priceImporting, setPriceImporting] = useState(false)
+  const [pricing, setPricing] = useState(false)
   const [categoriesOpen, setCategoriesOpen] = useState(false)
   const [sending, setSending] = useState(false)
   const [reloadKey, setReloadKey] = useState(0)
@@ -93,7 +96,7 @@ export default function Products() {
   const { enabled } = useModules()
   const marketplaceOn = isModuleEnabled('marketplace', enabled)
   const b2bOn = isModuleEnabled('b2b-store', enabled)
-  const columns = useMemo(() => makeColumns(setDetail, marketplaceOn, b2bOn), [marketplaceOn, b2bOn])
+  const columns = useMemo(() => makeColumns(setDetail, marketplaceOn, b2bOn, (id, price) => setData((d) => ({ ...d, items: d.items.map((p) => (p.id === id ? { ...p, price } : p)) }))), [marketplaceOn, b2bOn])
 
   useEffect(() => { api<Category[]>('/categories').then(setCategories).catch(() => setCategories([])) }, [reloadKey, categoriesOpen])
 
@@ -143,11 +146,13 @@ export default function Products() {
       <div className="products__toolbar">
         <input className="ps-input products__search" type="search" placeholder="Ürün adı veya barkod ara"
           aria-label="Ürün adı veya barkod ara" value={input} onChange={(e) => setInput(e.target.value)} />
-        <Button onClick={() => setImporting((v) => !v)}>Excel ile yükle</Button>
+        <Button onClick={() => { setImporting((v) => !v); setPriceImporting(false) }}>Excel ile yükle</Button>
+        <Button onClick={() => { setPriceImporting((v) => !v); setImporting(false) }}>Excel ile fiyat güncelle</Button>
         <Button onClick={() => setCategoriesOpen((v) => !v)}>Kategoriler</Button>
         {marketplaceOn && <FilterChips items={chips} value={filter} onChange={(v) => { setFilter(v as ProductFilter); setPage(1); setSelected([]) }} />}
       </div>
       {categoriesOpen && <CategoryManager onClose={() => setCategoriesOpen(false)} />}
+      {priceImporting && <PriceImport onClose={() => setPriceImporting(false)} onImported={() => setReloadKey((k) => k + 1)} />}
       {importing && <ProductImport onClose={() => setImporting(false)} onImported={() => { setPage(1); setReloadKey((k) => k + 1) }} />}
       {detail && (
         <section className="ps-card listing-detail" aria-label="Kanal durumu ayrıntısı">
@@ -167,7 +172,8 @@ export default function Products() {
       {error && <p role="alert" style={{ color: 'var(--danger)' }}>{error}</p>}
       {notice && <p role="status" style={{ color: 'var(--success)' }}>{notice}</p>}
       <BulkBar count={selected.length} onClear={() => setSelected([])} actions={[
-        { label: 'Kategori değiştir', onClick: () => { setMoving(true); setNotice(undefined) } },
+        { label: 'Kategori değiştir', onClick: () => { setMoving(true); setPricing(false); setNotice(undefined) } },
+        { label: 'Fiyat değiştir', onClick: () => { setPricing(true); setMoving(false); setNotice(undefined) } },
         ...(marketplaceOn ? [
           { label: 'Kanala gönder', onClick: () => setSending(true) },
           { label: 'Kural uygula', disabledReason: 'Yakında' },
@@ -185,6 +191,10 @@ export default function Products() {
           </Select>
           <div className="products__move-actions"><Button onClick={moveToCategory}>Uygula</Button><Button onClick={() => setMoving(false)}>Vazgeç</Button></div>
         </section>
+      )}
+      {pricing && selected.length > 0 && (
+        <BulkPrice productIds={selected} sample={data.items.find((p) => selected.includes(p.id))} onClose={() => setPricing(false)}
+          onApplied={(message) => { setPricing(false); setSelected([]); setError(undefined); setNotice(message); setReloadKey((k) => k + 1) }} />
       )}
       {sending && selected.length > 0 && <SendToChannel productIds={selected} onClose={() => setSending(false)} onSent={() => setReloadKey((k) => k + 1)} />}
       <DataTable columns={columns} rows={data.items} rowKey={(p) => p.id} pageSize={PRODUCT_PAGE_SIZE}

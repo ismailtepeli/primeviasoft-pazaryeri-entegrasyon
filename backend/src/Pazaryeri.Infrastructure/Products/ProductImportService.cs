@@ -264,7 +264,7 @@ public class ProductImportService(AppDbContext db) : IProductImportService
         return (int)value;
     }
 
-    private static decimal ParsePrice(IXLCell cell, out string? error)
+    internal static decimal ParsePrice(IXLCell cell, out string? error)
     {
         error = null;
         if (!TryDecimal(cell, out var value)) { error = "Fiyat sayı olmalı."; return 0; }
