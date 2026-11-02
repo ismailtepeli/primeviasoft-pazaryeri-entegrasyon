@@ -37,6 +37,7 @@ public class SecurityReviewTests
             "StoreAuthController.Apply", "StoreAuthController.ForgotPassword", "StoreAuthController.Info",
             "StoreAuthController.Login", "StoreAuthController.ResetPassword", // bayi sitesi kimlik doğrulaması
             "ShopController.Categories", "ShopController.Info", "ShopController.Product", "ShopController.Products", // B2C vitrini: salt okunur, modül ve kiracı slug ile doğrulanır
+            "ShopAuthController.Config", "ShopAuthController.Google", "ShopAuthController.Login", "ShopAuthController.Register", // B2C müşteri girişi: hız sınırlı, kiracı slug ile doğrulanır
             "WebhooksController.Receive",            // gizli anahtarla doğrulanan pazaryeri bildirimi
         }.OrderBy(x => x).ToList();
         Assert.Equal(expected, anonymous);

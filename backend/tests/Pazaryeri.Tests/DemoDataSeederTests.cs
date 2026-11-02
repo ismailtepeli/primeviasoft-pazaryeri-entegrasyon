@@ -95,6 +95,25 @@ public class DemoDataSeederTests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task Demo_B2C_musterisi_adres_ve_uc_siparisle_olusur_tekrarda_cogalmaz()
+    {
+        var config = new ConfigurationBuilder().AddInMemoryCollection(new Dictionary<string, string?>
+        {
+            ["Seed:TenantName"] = "Demo Firma", ["Seed:DemoCustomerEmail"] = "Musteri@Demo.local", ["Seed:DemoCustomerPassword"] = "Demo12345",
+        }).Build();
+        Assert.Equal(1, (await RunAsync(config)).Customers);
+        Assert.Equal(1, (await RunAsync(config)).Customers);
+
+        await using var db = NewDb(await TenantIdAsync());
+        var customer = await db.Customers.Include(c => c.Addresses).SingleAsync();
+        Assert.Equal(("musteri@demo.local", 1, true), (customer.Email, customer.Addresses.Count, customer.Addresses[0].IsDefault));
+        var orders = await db.Orders.Where(o => o.CustomerId == customer.Id && o.Channel == "B2C").Include(o => o.Packages).ThenInclude(p => p.Lines).ToListAsync();
+        Assert.Equal(3, orders.Count);
+        Assert.Equal(["B2C-DEMO-001", "B2C-DEMO-002", "B2C-DEMO-003"], orders.Select(o => o.OrderNumber).Order().ToArray());
+        Assert.All(orders, o => Assert.Equal(o.TotalPrice, o.Packages.Single().Lines.Sum(l => l.Price * l.Quantity)));
+    }
+
+    [Fact]
     public async Task Bayi_parolasi_verilmezse_bayi_olusturulmaz_ve_kiracisiz_calismaz()
     {
         var r = await RunAsync(Config(dealerPassword: null));

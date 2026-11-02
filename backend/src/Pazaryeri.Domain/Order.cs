@@ -27,6 +27,8 @@ public class Order : TenantEntity
     public DateTime LastModifiedAt { get; set; }
     /// <summary>B2B siparişlerinde siparişi veren bayi; pazaryeri siparişlerinde boş.</summary>
     public Guid? DealerId { get; set; }
+    /// <summary>B2C siparişlerinde siparişi veren müşteri (misafir siparişinde boş); diğer kanallarda boş.</summary>
+    public Guid? CustomerId { get; set; }
     public string? ShippingAddress { get; set; }
     public string? Note { get; set; }
     /// <summary>B2B: KDV hariç toplam (TotalPrice KDV dahildir). Pazaryeri siparişlerinde boş.</summary>

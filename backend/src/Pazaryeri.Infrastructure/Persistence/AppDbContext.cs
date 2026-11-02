@@ -38,6 +38,8 @@ public class AppDbContext(DbContextOptions<AppDbContext> options, ITenantProvide
     public DbSet<OrderLine> OrderLines => Set<OrderLine>();
     public DbSet<OrderSyncState> OrderSyncStates => Set<OrderSyncState>();
     public DbSet<Notification> Notifications => Set<Notification>();
+    public DbSet<Customer> Customers => Set<Customer>();
+    public DbSet<CustomerAddress> CustomerAddresses => Set<CustomerAddress>();
     public DbSet<WebhookEndpoint> WebhookEndpoints => Set<WebhookEndpoint>();
     public DbSet<WebhookEvent> WebhookEvents => Set<WebhookEvent>();
     public DbSet<SentBodyHash> SentBodyHashes => Set<SentBodyHash>();
@@ -239,6 +241,33 @@ public class AppDbContext(DbContextOptions<AppDbContext> options, ITenantProvide
             b.HasOne<Tenant>().WithMany().HasForeignKey(u => u.TenantId).OnDelete(DeleteBehavior.Restrict);
         });
 
+        builder.Entity<Customer>(b =>
+        {
+            b.Property(c => c.Email).HasMaxLength(254).IsRequired();
+            b.Property(c => c.FullName).HasMaxLength(200).IsRequired();
+            b.Property(c => c.Phone).HasMaxLength(30);
+            b.Property(c => c.PasswordHash).HasMaxLength(500);
+            b.Property(c => c.GoogleSubject).HasMaxLength(100);
+            b.Property(c => c.AvatarUrl).HasMaxLength(500);
+            b.HasIndex(c => new { c.TenantId, c.Email }).IsUnique(); // e-posta kiracı içinde tekil
+            b.HasIndex(c => new { c.TenantId, c.GoogleSubject }).IsUnique().HasFilter("[GoogleSubject] IS NOT NULL");
+            b.HasOne<Tenant>().WithMany().HasForeignKey(c => c.TenantId).OnDelete(DeleteBehavior.Restrict);
+            b.HasMany(c => c.Addresses).WithOne().HasForeignKey(a => a.CustomerId).OnDelete(DeleteBehavior.Cascade);
+        });
+
+        builder.Entity<CustomerAddress>(b =>
+        {
+            b.Property(a => a.Title).HasMaxLength(60).IsRequired();
+            b.Property(a => a.FullName).HasMaxLength(200).IsRequired();
+            b.Property(a => a.Phone).HasMaxLength(30).IsRequired();
+            b.Property(a => a.City).HasMaxLength(100).IsRequired();
+            b.Property(a => a.District).HasMaxLength(100).IsRequired();
+            b.Property(a => a.AddressLine).HasMaxLength(500).IsRequired();
+            b.Property(a => a.PostalCode).HasMaxLength(10);
+            b.HasIndex(a => new { a.TenantId, a.CustomerId });
+            b.HasOne<Tenant>().WithMany().HasForeignKey(a => a.TenantId).OnDelete(DeleteBehavior.Restrict);
+        });
+
         builder.Entity<Notification>(b =>
         {
             b.Property(n => n.Kind).HasMaxLength(60).IsRequired();
@@ -344,6 +373,7 @@ public class AppDbContext(DbContextOptions<AppDbContext> options, ITenantProvide
             b.Property(o => o.Currency).HasMaxLength(3);
             b.Property(o => o.ShipmentCarrier).HasMaxLength(100);
             b.Property(o => o.TrackingNumber).HasMaxLength(100);
+            b.HasIndex(o => new { o.TenantId, o.CustomerId });
             b.Property(o => o.StatusNote).HasMaxLength(500);
             b.HasIndex(o => new { o.TenantId, o.DealerId, o.OrderDate });
             b.HasIndex(o => new { o.TenantId, o.Channel, o.OrderNumber }).IsUnique();

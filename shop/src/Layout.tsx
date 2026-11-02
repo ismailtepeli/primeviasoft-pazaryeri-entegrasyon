@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, type FormEvent, type ReactNode } from 'react'
 import { Link, NavLink, Outlet, useNavigate } from 'react-router-dom'
-import { LayoutGrid, Menu, Monitor, Moon, Search, Sun, X } from 'lucide-react'
+import { LayoutGrid, LogIn, Menu, Monitor, Moon, Package, Search, Sun, User, UserPlus, X } from 'lucide-react'
+import { useCustomer } from './CustomerContext'
 import { categoryHref, childrenOf, type ShopCategory } from './shop'
 import { useShop } from './ShopContext'
 import { applyTheme, readPreference, savePreference, themeOptions, type ThemePreference } from './theme'
@@ -74,6 +75,7 @@ function CategoryMenu({ categories, onClose }: { categories: ShopCategory[]; onC
 /** Sayfa iskeleti: üst çubuk (logo, arama), kategori çubuğu ve mega menü, içerik, alt bilgi. Sepet ve hesap sonraki adımlarda (#97, #98). */
 export default function Layout({ children }: { children?: ReactNode }) {
   const { info, categories } = useShop()
+  const { token, profile } = useCustomer()
   const navigate = useNavigate()
   const [q, setQ] = useState('')
   const [menuOpen, setMenuOpen] = useState(false)
@@ -110,6 +112,19 @@ export default function Layout({ children }: { children?: ReactNode }) {
           <Search size={18} aria-hidden className="store-search__icon" />
           <input className="ps-input" type="search" placeholder="Ürün adı ya da marka ara" aria-label="Ürün ara" value={q} onChange={(e) => setQ(e.target.value)} />
         </form>
+        <nav className="store-account" aria-label="Hesap">
+          {token ? (
+            <>
+              <Link to="/hesap/siparisler" className="store-action"><Package size={20} aria-hidden /><span>Siparişlerim</span></Link>
+              <Link to="/hesap" className="store-action" title={profile?.email}><User size={20} aria-hidden /><span className="store-user">{profile?.fullName ?? 'Hesabım'}</span></Link>
+            </>
+          ) : (
+            <>
+              <Link to="/giris" className="store-action"><LogIn size={20} aria-hidden /><span>Giriş yap</span></Link>
+              <Link to="/kayit" className="ps-btn"><UserPlus size={16} aria-hidden /> Kayıt ol</Link>
+            </>
+          )}
+        </nav>
       </header>
       {roots.length > 0 && (
         <div className="store-catbar" ref={menuRef}>

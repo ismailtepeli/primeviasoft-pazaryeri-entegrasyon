@@ -1,4 +1,7 @@
 import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom'
+import { AccountLayout, AddressesPage, OrderDetailPage, OrdersPage, ProfilePage } from './accountPages'
+import { LoginPage, RegisterPage, RequireLogin } from './authPages'
+import { CustomerProvider } from './CustomerContext'
 import Layout from './Layout'
 import { ProductDetailPage, ProductsPage, StatusPage } from './pages'
 import { ShopProvider } from './ShopContext'
@@ -19,14 +22,24 @@ export default function App() {
         if (problem === 'notfound') return <StatusPage title="Mağaza bulunamadı" text="Bu adreste açık bir mağaza yok. Adresi kontrol edin." />
         return <StatusPage title="Mağaza açılamadı" text={problem.error} action={{ label: 'Tekrar dene', onClick: retry }} />
       }}>
+        <CustomerProvider>
         <Routes>
           <Route element={<Layout />}>
             <Route index element={<ProductsPage />} />
             <Route path="kategori/*" element={<ProductsPage />} />
             <Route path="urun/:slug" element={<ProductDetailPage />} />
+            <Route path="giris" element={<LoginPage />} />
+            <Route path="kayit" element={<RegisterPage />} />
+            <Route path="hesap" element={<RequireLogin><AccountLayout /></RequireLogin>}>
+              <Route index element={<ProfilePage />} />
+              <Route path="adresler" element={<AddressesPage />} />
+              <Route path="siparisler" element={<OrdersPage />} />
+              <Route path="siparisler/:id" element={<OrderDetailPage />} />
+            </Route>
             <Route path="*" element={<Navigate to="/" replace />} />
           </Route>
         </Routes>
+        </CustomerProvider>
       </ShopProvider>
     </BrowserRouter>
   )

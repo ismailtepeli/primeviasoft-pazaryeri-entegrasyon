@@ -37,7 +37,7 @@ Tekrarlanabilir ve güvenle yeniden çalıştırılabilir: ne eksikse ekler, var
 cd backend && dotnet run --project src/Pazaryeri.Api -- seed-demo
 ```
 
-Dört kategori, `DEMO-` barkodlu on ürün (B2B ve B2C'de görünür, biri kampanyalı), bir bayi grubu, bir bayi (`bayi@demo.local` / `Seed:DemoDealerPassword`) ve bayi sitesi ile B2C mağaza modüllerini hazırlar. Sıfırdan başlamak için veritabanını silin; API açılışta yeniden kurar:
+Dört kategori, `DEMO-` barkodlu on ürün (B2B ve B2C'de görünür, biri kampanyalı), bir bayi grubu, bir bayi (`bayi@demo.local` / `Seed:DemoDealerPassword`) ve bayi sitesi ile B2C mağaza modüllerini hazırlar. B2C demo müşterisi: `musteri@demo.local` / `Seed:DemoCustomerPassword` (adres defteri ve üç sipariş: teslim edildi, hazırlanıyor, yeni). Sıfırdan başlamak için veritabanını silin; API açılışta yeniden kurar:
 
 ```bash
 cd backend && dotnet ef database drop -f -p src/Pazaryeri.Infrastructure -s src/Pazaryeri.Api
@@ -53,6 +53,7 @@ cd backend && dotnet ef database drop -f -p src/Pazaryeri.Infrastructure -s src/
 | `Storage:ImagesPath` | Yüklenen görsellerin klasörü | Boşsa uygulama klasörü altı |
 | `Storage:PublicBaseUrl` | Pazaryerlerinin görseli çekeceği herkese açık adres | Yerelde boş; pazaryerine ürün göndermek için gerekir |
 | `Amazon:Lwa:*` | Amazon yetkilendirme (istemci kimliği, sırrı, uygulama kimliği, dönüş adresi) | Boşsa Amazon bağlanamaz |
+| `Google:ClientId` | B2C mağazada "Google ile devam et" için OAuth web istemci kimliği | Boşsa düğme görünmez; kurulum için geliştirici notlarına bakın |
 | `Webhooks:PublicBaseUrl` | Pazaryeri webhook kaydı için herkese açık API adresi | Yerelde boş; kayıt 409 döner |
 | `Store:LoginUrl`, `Store:ResetUrl` | Bayi e-postalarındaki bağlantılar | Bkz. B2B rehberi |
 | `Security:TrustForwardedHeaders` | Ters vekil arkasında gerçek istemci IP'si | Yalnızca uygulamaya sadece vekil üzerinden ulaşılıyorsa |

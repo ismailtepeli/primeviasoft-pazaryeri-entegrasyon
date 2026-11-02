@@ -72,6 +72,10 @@ public static class DependencyInjection
         services.AddScoped<IModuleService, ModuleService>();
         services.AddScoped<ISetupService, SetupService>();
         services.AddScoped<Shop.ShopCatalogService>();
+        services.Configure<Shop.GoogleOptions>(config.GetSection(Shop.GoogleOptions.Section));
+        services.AddHttpClient<Pazaryeri.Application.Shop.IGoogleIdTokenVerifier, Shop.GoogleIdTokenVerifier>();
+        services.AddScoped<Shop.CustomerAuthService>();
+        services.AddScoped<Shop.CustomerAccountService>();
         services.AddScoped<ISyncJobHandler, OrderSyncHandler>();
         services.AddScoped<OrderIngestService>();
         services.AddScoped<OrderFulfillmentService>();

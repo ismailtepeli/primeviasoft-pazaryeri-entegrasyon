@@ -7,7 +7,7 @@ using Pazaryeri.Domain;
 
 namespace Pazaryeri.Infrastructure.Persistence;
 
-public record DemoSeedResult(int Categories, int Products, int Dealers);
+public record DemoSeedResult(int Categories, int Products, int Dealers, int Customers = 0);
 
 /// <summary>
 /// Geliştirme ortamı için tekrarlanabilir demo veri (<c>dotnet run --project src/Pazaryeri.Api -- seed-demo</c>): birkaç kategori,
@@ -44,7 +44,8 @@ public class DemoDataSeeder(AppDbContext db, IConfiguration config)
         var products = await EnsureProductsAsync(tenant.Id, categories, ct);
         var dealers = await EnsureDealerAsync(tenant.Id, ct);
         await EnsureModulesAsync(tenant.Id, ct);
-        return new DemoSeedResult(categories.Count, products, dealers);
+        var customers = await EnsureCustomerAsync(tenant.Id, ct);
+        return new DemoSeedResult(categories.Count, products, dealers, customers);
     }
 
     private async Task<Dictionary<string, Category>> EnsureCategoriesAsync(Guid tenantId, CancellationToken ct)
@@ -105,6 +106,56 @@ public class DemoDataSeeder(AppDbContext db, IConfiguration config)
         }
         await db.SaveChangesAsync(ct);
         return await db.Dealers.CountAsync(ct);
+    }
+
+    /// <summary>B2C mağaza demo müşterisi (adres defteri ve üç sipariş: teslim edildi, hazırlanıyor, yeni); parola yoksa oluşturulmaz.</summary>
+    private async Task<int> EnsureCustomerAsync(Guid tenantId, CancellationToken ct)
+    {
+        var email = (config["Seed:DemoCustomerEmail"] ?? "musteri@demo.local").Trim().ToLowerInvariant();
+        var password = config["Seed:DemoCustomerPassword"];
+        if (string.IsNullOrEmpty(password)) return await db.Customers.CountAsync(ct);
+
+        var customer = await db.Customers.FirstOrDefaultAsync(c => c.Email == email, ct);
+        if (customer is null)
+        {
+            customer = new Customer { TenantId = tenantId, Email = email, FullName = "Demo Müşteri", Phone = "0555 111 22 33", EmailVerified = true, TermsAcceptedAt = DateTime.UtcNow };
+            customer.PasswordHash = new PasswordHasher<Customer>().HashPassword(customer, password);
+            db.Customers.Add(customer);
+            db.CustomerAddresses.Add(new CustomerAddress
+            {
+                TenantId = tenantId, CustomerId = customer.Id, Title = "Ev", FullName = "Demo Müşteri", Phone = "0555 111 22 33", City = "İstanbul", District = "Kadıköy",
+                AddressLine = "Moda Cad. No:5 Daire:3", PostalCode = "34710", IsDefault = true,
+            });
+            await db.SaveChangesAsync(ct);
+        }
+
+        var products = await db.Products.AsNoTracking().Where(p => p.Barcode.StartsWith(BarcodePrefix)).OrderBy(p => p.Barcode).Take(4).ToListAsync(ct);
+        (string Number, OrderStatus Status, int DaysAgo, int[] Items)[] orders =
+        [
+            ("B2C-DEMO-001", OrderStatus.Delivered, 21, [0, 2]),
+            ("B2C-DEMO-002", OrderStatus.Preparing, 3, [1]),
+            ("B2C-DEMO-003", OrderStatus.New, 0, [3, 0]),
+        ];
+        foreach (var (number, status, daysAgo, items) in orders)
+        {
+            if (products.Count <= items.Max() || await db.Orders.AnyAsync(o => o.Channel == "B2C" && o.OrderNumber == number, ct)) continue;
+            var date = DateTime.UtcNow.AddDays(-daysAgo);
+            var lines = items.Select((idx, n) => new OrderLine
+            {
+                TenantId = tenantId, LineId = (n + 1).ToString(), Barcode = products[idx].Barcode, Name = products[idx].Name, Quantity = n + 1, Price = products[idx].Price,
+                PriceIncludesVat = true, VatRate = 20, ProductId = products[idx].Id,
+            }).ToList();
+            var total = lines.Sum(l => l.Price * l.Quantity);
+            db.Orders.Add(new Order
+            {
+                TenantId = tenantId, Channel = "B2C", OrderNumber = number, Status = status, OrderDate = date, LastModifiedAt = date, CustomerId = customer.Id, CustomerName = customer.FullName,
+                TotalPrice = total, TotalNet = decimal.Round(total / 1.2m, 2), Currency = "TRY", ShippingAddress = "Demo Müşteri · Moda Cad. No:5 Daire:3, Kadıköy / İstanbul",
+                ShipmentCarrier = status == OrderStatus.Delivered ? "Yurtiçi Kargo" : null, TrackingNumber = status == OrderStatus.Delivered ? "YK123456789" : null, ShippedAt = status == OrderStatus.Delivered ? date.AddDays(1) : null,
+                Packages = [new OrderPackage { TenantId = tenantId, Channel = "B2C", PackageId = number, ChannelStatus = status.ToString(), Status = status, LastModifiedAt = date, TotalPrice = total, Lines = lines }],
+            });
+        }
+        await db.SaveChangesAsync(ct);
+        return await db.Customers.CountAsync(ct);
     }
 
     /// <summary>Demo siteler için gereken modülleri açar (kiracının mevcut seçimi bozulmaz, yalnızca eksikler açılır). B2C mağaza hazır olana dek kiracılar bunu Ayarlar'dan açamaz; geliştirme için doğrudan açılır.</summary>

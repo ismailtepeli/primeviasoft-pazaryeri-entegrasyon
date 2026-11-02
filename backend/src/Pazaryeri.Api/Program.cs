@@ -29,7 +29,7 @@ builder.Services
         o.TokenValidationParameters = new TokenValidationParameters
         {
             ValidIssuer = jwt.Issuer,
-            ValidAudiences = [jwt.Audience, jwt.DealerAudience],
+            ValidAudiences = [jwt.Audience, jwt.DealerAudience, jwt.CustomerAudience],
             IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwt.Key)),
             NameClaimType = System.Security.Claims.ClaimTypes.Name,
             ClockSkew = TimeSpan.FromMinutes(1),
@@ -65,7 +65,7 @@ if (app.Environment.IsDevelopment())
     if (args.Contains("seed-demo"))
     {
         var r = await scope.ServiceProvider.GetRequiredService<DemoDataSeeder>().SeedAsync();
-        Console.WriteLine($"Demo veri hazır: {r.Categories} kategori, {r.Products} demo ürün, {r.Dealers} bayi.");
+        Console.WriteLine($"Demo veri hazır: {r.Categories} kategori, {r.Products} demo ürün, {r.Dealers} bayi, {r.Customers} B2C müşteri.");
         return;
     }
 }

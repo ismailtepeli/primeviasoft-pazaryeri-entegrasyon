@@ -15,20 +15,41 @@ public static class AppClaims
 {
     public const string TenantId = "tenant_id";
     public const string DealerId = "dealer_id";
+    public const string CustomerId = "customer_id";
     /// <summary>"admin" ya da "dealer"; eski yönetici token'larında yoktur ve yönetici sayılır.</summary>
     public const string Principal = "principal";
     public const string PrincipalAdmin = "admin";
     public const string PrincipalDealer = "dealer";
+    public const string PrincipalCustomer = "customer";
 }
 
 public static class AuthPolicies
 {
     public const string Dealer = "Dealer";
+    public const string Customer = "Customer";
 }
 
 public class JwtTokenService(IOptions<JwtOptions> options) : ITokenService
 {
     public (string Token, DateTime ExpiresAt) CreateForDealer(DealerUser user, Dealer dealer) => DealerTokenFactory.Create(options.Value, user, dealer);
+
+    public (string Token, DateTime ExpiresAt) CreateForCustomer(Customer customer)
+    {
+        var o = options.Value;
+        var expires = DateTime.UtcNow.AddMinutes(o.ExpiryMinutes);
+        var claims = new[]
+        {
+            new Claim(JwtRegisteredClaimNames.Sub, customer.Id.ToString()),
+            new Claim(JwtRegisteredClaimNames.Email, customer.Email),
+            new Claim(ClaimTypes.Name, customer.FullName),
+            new Claim(AppClaims.TenantId, customer.TenantId.ToString()),
+            new Claim(AppClaims.CustomerId, customer.Id.ToString()),
+            new Claim(AppClaims.Principal, AppClaims.PrincipalCustomer),
+        };
+        var creds = new SigningCredentials(new SymmetricSecurityKey(Encoding.UTF8.GetBytes(o.Key)), SecurityAlgorithms.HmacSha256);
+        var jwt = new JwtSecurityToken(o.Issuer, o.CustomerAudience, claims, expires: expires, signingCredentials: creds);
+        return (new JwtSecurityTokenHandler().WriteToken(jwt), expires);
+    }
 
     public (string Token, DateTime ExpiresAt) Create(User user)
     {
