@@ -77,6 +77,15 @@ Bayi, üst çubuktaki **Hızlı sipariş** sayfasında ürün kodu (barkod) ve a
 
 Bayi düzenleme panelindeki Cari hesap bölümünde: toplam sipariş, ödemeler, bakiye (pozitif = bayi borçlu), vadesi geçen tutar. Ödemeleri elle girersiniz; en eski siparişten başlayarak kapatılır. Vade günü (0–365) bayi bazında verilir.
 
+## 7. Ürün listesinde fiyat güncelleme
+**Ürünler** sayfasında ürünlerin satış fiyatını üç yoldan güncelleyebilirsiniz. Fiyat, kanallara bir sonraki stok-fiyat senkronunda yansır; anında gönderilmez.
+
+- **Satır içi:** Tablodaki fiyatın üstüne tıklayın, yeni fiyatı yazın, **Enter** ile kaydedin (**Esc** vazgeçer). `12,5` ya da `1.250,50` gibi yazabilirsiniz.
+- **Seçili ürünlere toplu:** Ürünleri işaretleyin, çıkan çubukta **Fiyat değiştir**'i seçin. Yüzde artır/azalt (ör. `10` ya da `-5`), tutar ekle/çıkar ya da sabit fiyat belirleyebilirsiniz. Uygulamadan önce seçili bir ürün üzerinde sonuç önizlemesi görünür. Yeni fiyatı sıfır ya da eksi çıkan ürün atlanır ve bildirilir, diğerleri güncellenir. Tek seferde en fazla 1000 ürün seçilebilir.
+- **Excel ile:** **Excel ile fiyat güncelle** > **Fiyat dosyasını indir** mevcut barkod, ürün adı ve fiyatlarla dolu bir dosya verir. Yalnızca **Fiyat** sütununu değiştirip **Yükle** ile geri yükleyin. Yalnızca Barkod ve Fiyat okunur; kayıtlı olmayan barkodlar, boş ya da hatalı fiyatlar ve dosyada tekrarlanan barkodlar satır numarasıyla raporlanır, geçerli satırlar yine kaydedilir. Bu yolla yeni ürün eklenmez (yeni ürün için **Excel ile yükle**). Barkodlar metin olarak saklanır, baştaki sıfırlar bozulmaz. Dosya en fazla 5 MB olabilir.
+
+Bu güncelleme ürünün genel satış fiyatını değiştirir. Bayiye özel fiyatlar için bkz. bölüm 3 (fiyat listeleri); bayi fiyat listesinde fiyatı olan ürünlerde bayi o fiyatı görmeye devam eder.
+
 ## Bilinen sınırlar
 
 Online ödeme, kredi limiti, sipariş durumu e-postaları ve sevk sonrası iade henüz yok; e-postalar gerçek sağlayıcı bağlanana kadar yalnızca günlüğe yazılır (bkz. açık görevler #73–#79).
