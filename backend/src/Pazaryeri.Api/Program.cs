@@ -60,6 +60,19 @@ if (app.Environment.IsDevelopment())
     using var scope = app.Services.CreateScope();
     await scope.ServiceProvider.GetRequiredService<AppDbContext>().Database.MigrateAsync();
     await scope.ServiceProvider.GetRequiredService<DevDataSeeder>().SeedAsync();
+
+    // Tekrarlanabilir demo veri: dotnet run --project src/Pazaryeri.Api -- seed-demo (ne eksikse ekler, çalıştırınca çıkar).
+    if (args.Contains("seed-demo"))
+    {
+        var r = await scope.ServiceProvider.GetRequiredService<DemoDataSeeder>().SeedAsync();
+        Console.WriteLine($"Demo veri hazır: {r.Categories} kategori, {r.Products} demo ürün, {r.Dealers} bayi.");
+        return;
+    }
+}
+else if (args.Contains("seed-demo"))
+{
+    Console.Error.WriteLine("seed-demo yalnızca Development ortamında çalışır.");
+    return;
 }
 
 if (trustForwarded) app.UseForwardedHeaders();

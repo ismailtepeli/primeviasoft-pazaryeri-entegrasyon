@@ -87,6 +87,7 @@ public static class DependencyInjection
             : Path.Combine(Directory.GetCurrentDirectory(), "App_Data", "images");
         services.AddSingleton<IImageStore>(new LocalImageStore(imagesPath));
         services.AddScoped<DevDataSeeder>();
+        services.AddScoped<DemoDataSeeder>();
 
         // API bilgileri AES-256-GCM ile şifrelenir; anahtar yapılandırmadan (üretimde Key Vault/ortam değişkeni) gelir.
         services.AddSingleton<ICredentialProtector>(AesGcmCredentialProtector.FromBase64(config[$"{CredentialEncryptionOptions.Section}:Key"]));
