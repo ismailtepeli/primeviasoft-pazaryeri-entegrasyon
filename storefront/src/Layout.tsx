@@ -94,7 +94,7 @@ export default function Layout() {
     storeApi<StoreCategory[]>('/catalog/categories', {}, token).then(setCategories).catch(() => setCategories([])).finally(() => setLoaded(true))
   }, [token])
 
-  useEffect(() => { document.title = info.name }, [info.name])
+  useEffect(() => { document.title = (import.meta.env.DEV ? '[B2B] ' : '') + info.name }, [info.name])
 
   useEffect(() => {
     if (!menuOpen) return
@@ -121,6 +121,7 @@ export default function Layout() {
             <circle cx="46" cy="46" r="4" fill="var(--amber)" />
           </svg>
           <span className="store-brand__name">{info.name}</span>
+          {import.meta.env.DEV && <span className="dev-badge dev-badge--b2b" title="Yalnızca geliştirme sunucusunda görünür">B2B bayi sitesi</span>}
         </Link>
         {token && (
           <form className="store-search" role="search" onSubmit={search}>

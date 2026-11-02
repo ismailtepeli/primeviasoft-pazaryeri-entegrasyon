@@ -97,11 +97,14 @@ function setLink(rel: string, href: string | null) {
 const JSONLD_ID = 'shop-jsonld'
 
 /** Sayfa başlığı, açıklama, kanonik adres, Open Graph ve yapılandırılmış veriyi belgeye yazar; sayfadan çıkınca temizler. */
+/** Geliştirme sunucusunda sekme başlığına eklenir; B2B ve B2C siteleri birbirine çok benzediği için hangisinde olunduğu hemen anlaşılsın. Üretim derlemesinde boştur. */
+export const devTitleTag = import.meta.env.DEV ? '[B2C] ' : ''
+
 export function usePageMeta(meta: PageMeta | null): void {
   const key = meta ? JSON.stringify(meta) : ''
   useEffect(() => {
     if (!meta) return
-    document.title = meta.title
+    document.title = devTitleTag + meta.title
     setMeta('name', 'description', meta.description)
     setMeta('name', 'robots', meta.noindex ? 'noindex, follow' : null)
     setMeta('property', 'og:title', meta.title)

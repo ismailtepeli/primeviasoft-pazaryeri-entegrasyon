@@ -58,7 +58,7 @@ export function ShopProvider({ tenant, children, renderState }: Props) {
   }, [tenant.slug, attempt])
 
   const info = phase.kind === 'ready' ? phase.info : undefined
-  useEffect(() => { if (info) document.title = info.name }, [info])
+  useEffect(() => { if (info) document.title = (import.meta.env.DEV ? '[B2C] ' : '') + info.name }, [info])
 
   const retry = () => setAttempt((a) => a + 1)
   if (phase.kind === 'loading') return <>{renderState('loading', retry)}</>

@@ -104,6 +104,7 @@ export default function Layout({ children }: { children?: ReactNode }) {
             <circle cx="46" cy="46" r="4" fill="var(--amber)" />
           </svg>
           <span className="store-brand__name">{info.name}</span>
+          {import.meta.env.DEV && <span className="dev-badge dev-badge--b2c" title="Yalnızca geliştirme sunucusunda görünür">B2C mağaza</span>}
         </Link>
         <form className="store-search" role="search" onSubmit={search}>
           <Search size={18} aria-hidden className="store-search__icon" />
