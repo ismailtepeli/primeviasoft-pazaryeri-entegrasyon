@@ -129,6 +129,30 @@ public class DemoDataSeeder(AppDbContext db, IConfiguration config)
             await db.SaveChangesAsync(ct);
         }
 
+        if (!await db.B2CSettings.AnyAsync(ct))
+        {
+            // Demo ödeme ayarları: havale ve kapıda ödeme açık; kart yalnızca deneme sağlayıcısı (Payments:Provider=fake) açıkken sunulur.
+            db.B2CSettings.Add(new B2CSettings
+            {
+                TenantId = tenantId, ShippingFee = 39.90m, FreeShippingThreshold = 500m, BankTransferEnabled = true, CardEnabled = config["Payments:Provider"] == "fake",
+                BankTransferInfo = "Demo Bank · Hesap sahibi: Demo Firma A.Ş.\nIBAN: TR00 0000 0000 0000 0000 0000 00\nAçıklamaya sipariş numaranızı yazın.", CashOnDeliveryEnabled = true, CashOnDeliveryFee = 15m,
+            });
+            await db.SaveChangesAsync(ct);
+        }
+
+        if (!await db.ShippingCarriers.AnyAsync(ct))
+        {
+            // Demo kargo firmaları: biri desi aralıklı ve takip bağlantılı, biri sabit ücretli.
+            db.ShippingCarriers.AddRange(
+                new ShippingCarrier
+                {
+                    TenantId = tenantId, Name = "Yurtiçi Kargo", SortOrder = 0, TrackingUrlTemplate = "https://www.yurticikargo.com/tr/online-servisler/gonderi-sorgula?code={takipNo}",
+                    Rates = [new ShippingRate { TenantId = tenantId, UpToDesi = 5, Fee = 39.90m }, new ShippingRate { TenantId = tenantId, UpToDesi = 15, Fee = 64.90m }, new ShippingRate { TenantId = tenantId, UpToDesi = 30, Fee = 99.90m }],
+                },
+                new ShippingCarrier { TenantId = tenantId, Name = "Aras Kargo", SortOrder = 1, FlatFee = 44.90m });
+            await db.SaveChangesAsync(ct);
+        }
+
         var products = await db.Products.AsNoTracking().Where(p => p.Barcode.StartsWith(BarcodePrefix)).OrderBy(p => p.Barcode).Take(4).ToListAsync(ct);
         (string Number, OrderStatus Status, int DaysAgo, int[] Items)[] orders =
         [

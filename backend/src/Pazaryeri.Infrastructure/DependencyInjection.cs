@@ -76,6 +76,14 @@ public static class DependencyInjection
         services.AddHttpClient<Pazaryeri.Application.Shop.IGoogleIdTokenVerifier, Shop.GoogleIdTokenVerifier>();
         services.AddScoped<Shop.CustomerAuthService>();
         services.AddScoped<Shop.CustomerAccountService>();
+        services.Configure<Shop.PaymentOptions>(config.GetSection(Shop.PaymentOptions.Section));
+        services.AddSingleton<Shop.FakePaymentProvider>();
+        services.AddSingleton<Pazaryeri.Application.Shop.IPaymentProvider>(sp => sp.GetRequiredService<Shop.FakePaymentProvider>());
+        services.AddSingleton<Pazaryeri.Application.Shop.IPaymentProviderInfo>(sp => sp.GetRequiredService<Shop.FakePaymentProvider>());
+        services.AddScoped<Shop.CheckoutService>();
+        services.Configure<Feeds.FeedFetcherOptions>(config.GetSection(Feeds.FeedFetcherOptions.Section));
+        services.AddSingleton<Feeds.FeedFetcher>();
+        services.AddScoped<Feeds.ProductFeedService>();
         services.AddScoped<ISyncJobHandler, OrderSyncHandler>();
         services.AddScoped<OrderIngestService>();
         services.AddScoped<OrderFulfillmentService>();
@@ -118,6 +126,14 @@ public static class DependencyInjection
             // Değişen stok-fiyatı kanala gönderir (5 dk) ve gönderilen toplu işlemlerin sonucunu okur (1 dk).
             q.ScheduleJob<StockPriceSyncScheduler>(t => t
                 .WithIdentity("stock-price-sync-scheduler")
+                .WithSimpleSchedule(s => s.WithInterval(TimeSpan.FromMinutes(5)).RepeatForever()));
+            // Süresi dolan bekleyen B2C kart siparişlerini iptal edip stoğu geri ekler.
+            // Dropshipping XML beslemeleri: her besleme kendi aralığında (en az 15 dk) çalışır; zamanı gelenler 10 dakikada bir kontrol edilir.
+            q.ScheduleJob<Feeds.ProductFeedSyncJob>(t => t
+                .WithIdentity("product-feed-sync")
+                .WithSimpleSchedule(s => s.WithInterval(TimeSpan.FromMinutes(10)).RepeatForever()));
+            q.ScheduleJob<Shop.B2CPaymentExpiryJob>(t => t
+                .WithIdentity("b2c-payment-expiry")
                 .WithSimpleSchedule(s => s.WithInterval(TimeSpan.FromMinutes(5)).RepeatForever()));
             // Kanaldan değişen siparişleri çeker (3 dk); webhook (#30) anlık bildirim ekler.
             q.ScheduleJob<OrderSyncScheduler>(t => t

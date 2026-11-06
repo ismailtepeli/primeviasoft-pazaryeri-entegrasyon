@@ -30,6 +30,12 @@ public class Order : TenantEntity
     /// <summary>B2C siparişlerinde siparişi veren müşteri (misafir siparişinde boş); diğer kanallarda boş.</summary>
     public Guid? CustomerId { get; set; }
     public string? ShippingAddress { get; set; }
+    /// <summary>B2C: ödeme yöntemi/durumu, kargo ve kapıda ödeme ücreti (TotalPrice bunları içerir) ve kart ödemesinin son geçerlilik zamanı.</summary>
+    public PaymentMethod? PaymentMethod { get; set; }
+    public PaymentStatus? PaymentStatus { get; set; }
+    public decimal? ShippingFee { get; set; }
+    public decimal? PaymentFee { get; set; }
+    public DateTime? PaymentExpiresAt { get; set; }
     public string? Note { get; set; }
     /// <summary>B2B: KDV hariç toplam (TotalPrice KDV dahildir). Pazaryeri siparişlerinde boş.</summary>
     public decimal? TotalNet { get; set; }
@@ -37,6 +43,8 @@ public class Order : TenantEntity
     /// <summary>B2B: sevk bilgisi (bayiye görünür).</summary>
     public string? ShipmentCarrier { get; set; }
     public string? TrackingNumber { get; set; }
+    /// <summary>B2C: kargo firmasının takip sayfası (sevk anında firma şablonundan üretilir).</summary>
+    public string? TrackingUrl { get; set; }
     public DateTime? ShippedAt { get; set; }
     public DateTime? ApprovedAt { get; set; }
     /// <summary>B2B: ret/iptal gerekçesi (bayiye görünür).</summary>

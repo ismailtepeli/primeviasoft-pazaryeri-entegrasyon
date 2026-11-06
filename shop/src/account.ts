@@ -31,7 +31,7 @@ export const emptyAddress: AddressForm = { title: '', fullName: '', phone: '', c
 
 export const MAX_ADDRESSES = 10
 
-export interface OrderRow { id: string; orderNumber: string; orderDate: string; status: string; total: number; currency: string; itemCount: number; firstItemName: string | null; coverUrl: string | null }
+export interface OrderRow { id: string; orderNumber: string; orderDate: string; status: string; total: number; currency: string; itemCount: number; firstItemName: string | null; coverUrl: string | null; paymentStatus: string | null }
 
 export interface OrderLine { productId: string | null; name: string; quantity: number; unitPrice: number; coverUrl: string | null }
 
@@ -46,10 +46,18 @@ export interface OrderDetail {
   note: string | null
   shipmentCarrier: string | null
   trackingNumber: string | null
+  trackingUrl: string | null
   shippedAt: string | null
   statusNote: string | null
   canCancel: boolean
   lines: OrderLine[]
+  paymentMethod: string | null
+  paymentStatus: string | null
+  shippingFee: number | null
+  paymentFee: number | null
+  /** Ödemesi beklenen havale siparişinde müşteriye gösterilen banka bilgisi. */
+  paymentInfo: string | null
+  paymentExpiresAt: string | null
 }
 
 export interface OrderPage { items: OrderRow[]; total: number; pageSize: number }
@@ -136,6 +144,12 @@ export function orderSteps(status: string): { label: string; state: 'done' | 'cu
 export function formatDate(iso: string): string {
   const utc = /(Z|[+-]\d{2}:?\d{2})$/.test(iso) ? iso : iso + 'Z' // sunucu saat dilimi eki olmadan UTC gönderir
   return new Date(utc).toLocaleDateString('tr-TR', { day: 'numeric', month: 'long', year: 'numeric' })
+}
+
+/** Ödeme son tarihi gibi saat gereken yerler için "2 Kasım 2026 14:30". */
+export function formatDateTime(iso: string): string {
+  const utc = /(Z|[+-]\d{2}:?\d{2})$/.test(iso) ? iso : iso + 'Z'
+  return new Date(utc).toLocaleString('tr-TR', { day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' })
 }
 
 /** Giriş sonrası dönülecek adres: yalnızca uygulama içi göreli yol kabul edilir (açık yönlendirme engeli). */

@@ -15,6 +15,7 @@ function headerAction(path: string, label: string) {
   if (path === '/bayiler') return null // bayi ekleme eylemi sayfanın içinde
   if (path === '/fiyat-listeleri') return null // liste ekleme eylemi sayfanın içinde
   if (path === '/stok-fiyat') return null // kural kaydetme/uygulama eylemleri sayfanın içinde
+  if (path === '/xml-aktarim') return null // besleme ekleme eylemi sayfanın içinde
   if (path === '/esleme') return null // eşleme düzenleme eylemleri #22+ ile gelecek
   if (path === '/urunler') return <Link to="/urunler/yeni" className="ps-btn ps-btn--primary">Ürün ekle</Link>
   if (path === '/') return <SyncNowButton />

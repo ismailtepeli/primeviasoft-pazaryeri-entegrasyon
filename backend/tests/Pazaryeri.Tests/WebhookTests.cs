@@ -399,7 +399,7 @@ public class WebhookTests : IAsyncLifetime
         Assert.Contains("\"authenticationType\":\"BASIC_AUTHENTICATION\"", handler.Body);
         Assert.Contains("\"url\":\"https://x.test/webhooks/trendyol/t1\"", handler.Body);
         Assert.Contains("\"username\":\"pazaryeri\"", handler.Body);
-        Assert.Contains("\"subscribedStatuses\":[\"Created\",\"Shipped\"]", handler.Body);
+        Assert.Contains("\"subscribedStatuses\":[\"CREATED\",\"SHIPPED\"]", handler.Body);
 
         var empty = new TrendyolClient(new HttpClient(new CapturingHandler("{}")), new MarketplaceCredentials("Trendyol", "1", "k", "s", "A"));
         Assert.Null((await empty.CreateWebhookAsync(new WebhookRegistration("u", "n", "p", []))).WebhookId);

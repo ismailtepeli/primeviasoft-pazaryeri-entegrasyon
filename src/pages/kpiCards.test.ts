@@ -23,7 +23,7 @@ describe('kpiCards', () => {
   })
 
   it('kartlar ilgili listeye filtreli bağlanır', () => {
-    expect(kpiCards(undefined).map((c) => c.to)).toEqual(['/siparisler?tab=new', '/siparisler?tab=preparing', '/senkron-hatalari', '/urunler', '/siparisler?tab=new&channel=B2B'])
+    expect(kpiCards(undefined).map((c) => c.to)).toEqual(['/siparisler?tab=all&period=today', '/siparisler?tab=preparing', '/senkron-hatalari', '/urunler', '/siparisler?tab=new&channel=B2B'])
   })
 
   it('kapalı modülün kartlarını göstermez', () => {

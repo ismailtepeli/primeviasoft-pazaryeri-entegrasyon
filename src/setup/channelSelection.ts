@@ -29,5 +29,5 @@ export function closingNote(closing: SalesChannel[]): string {
 export const channelHint: Record<string, string> = {
   marketplace: 'Mağazalar, eşleme, stok-fiyat ve siparişler menüde görünür.',
   b2b: 'Bayiler, fiyat listeleri ve bayi sitesi açılır.',
-  b2c: 'Herkese açık mağaza; yakında.',
+  b2c: 'Ürün vitrini, sepet, ödeme, kargo ve müşteri hesapları açılır.',
 }

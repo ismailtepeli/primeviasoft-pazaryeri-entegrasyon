@@ -191,6 +191,54 @@ namespace Pazaryeri.Infrastructure.Persistence.Migrations
                     b.ToTable("B2BSettings");
                 });
 
+            modelBuilder.Entity("Pazaryeri.Domain.B2CSettings", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<bool>("BankTransferEnabled")
+                        .HasColumnType("bit");
+
+                    b.Property<int>("BankTransferHoldHours")
+                        .HasColumnType("int");
+
+                    b.Property<string>("BankTransferInfo")
+                        .HasMaxLength(1000)
+                        .HasColumnType("nvarchar(1000)");
+
+                    b.Property<bool>("CardEnabled")
+                        .HasColumnType("bit");
+
+                    b.Property<bool>("CashOnDeliveryEnabled")
+                        .HasColumnType("bit");
+
+                    b.Property<decimal>("CashOnDeliveryFee")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<decimal?>("FreeShippingThreshold")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<decimal>("ShippingFee")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("TenantId")
+                        .IsUnique();
+
+                    b.ToTable("B2CSettings");
+                });
+
             modelBuilder.Entity("Pazaryeri.Domain.Cart", b =>
                 {
                     b.Property<Guid>("Id")
@@ -1269,6 +1317,21 @@ namespace Pazaryeri.Infrastructure.Persistence.Migrations
                         .HasMaxLength(100)
                         .HasColumnType("nvarchar(100)");
 
+                    b.Property<DateTime?>("PaymentExpiresAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<decimal?>("PaymentFee")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<string>("PaymentMethod")
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
+
+                    b.Property<string>("PaymentStatus")
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
+
                     b.Property<string>("ShipmentCarrier")
                         .HasMaxLength(100)
                         .HasColumnType("nvarchar(100)");
@@ -1279,6 +1342,10 @@ namespace Pazaryeri.Infrastructure.Persistence.Migrations
                     b.Property<string>("ShippingAddress")
                         .HasMaxLength(1000)
                         .HasColumnType("nvarchar(1000)");
+
+                    b.Property<decimal?>("ShippingFee")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("decimal(18,2)");
 
                     b.Property<string>("Status")
                         .IsRequired()
@@ -1303,6 +1370,10 @@ namespace Pazaryeri.Infrastructure.Persistence.Migrations
                     b.Property<string>("TrackingNumber")
                         .HasMaxLength(100)
                         .HasColumnType("nvarchar(100)");
+
+                    b.Property<string>("TrackingUrl")
+                        .HasMaxLength(400)
+                        .HasColumnType("nvarchar(400)");
 
                     b.HasKey("Id");
 
@@ -1654,6 +1725,9 @@ namespace Pazaryeri.Infrastructure.Persistence.Migrations
                         .HasMaxLength(5000)
                         .HasColumnType("nvarchar(max)");
 
+                    b.Property<Guid?>("FeedId")
+                        .HasColumnType("uniqueidentifier");
+
                     b.Property<string>("MainId")
                         .HasMaxLength(100)
                         .HasColumnType("nvarchar(100)");
@@ -1699,10 +1773,14 @@ namespace Pazaryeri.Infrastructure.Persistence.Migrations
 
                     b.HasIndex("CategoryId");
 
+                    b.HasIndex("FeedId");
+
                     b.HasIndex("TenantId");
 
                     b.HasIndex("TenantId", "Barcode")
                         .IsUnique();
+
+                    b.HasIndex("TenantId", "FeedId");
 
                     b.HasIndex("TenantId", "MainId");
 
@@ -1753,6 +1831,111 @@ namespace Pazaryeri.Infrastructure.Persistence.Migrations
                         .IsUnique();
 
                     b.ToTable("ProductChannelData", (string)null);
+                });
+
+            modelBuilder.Entity("Pazaryeri.Domain.ProductFeed", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<int>("AvailableStock")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int>("DefaultVatRate")
+                        .HasColumnType("int");
+
+                    b.Property<bool>("Enabled")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("Format")
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<int>("IntervalMinutes")
+                        .HasColumnType("int");
+
+                    b.Property<string>("ItemPath")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<int>("LastCreated")
+                        .HasColumnType("int");
+
+                    b.Property<string>("LastError")
+                        .HasMaxLength(1000)
+                        .HasColumnType("nvarchar(1000)");
+
+                    b.Property<string>("LastErrorsJson")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<int>("LastFailed")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime?>("LastRunAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int>("LastSkipped")
+                        .HasColumnType("int");
+
+                    b.Property<string>("LastStatus")
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
+
+                    b.Property<int>("LastUpdated")
+                        .HasColumnType("int");
+
+                    b.Property<string>("MappingJson")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<decimal>("MarkupPercent")
+                        .HasPrecision(9, 2)
+                        .HasColumnType("decimal(9,2)");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<bool>("PriceIncludesVat")
+                        .HasColumnType("bit");
+
+                    b.Property<bool>("PublishB2B")
+                        .HasColumnType("bit");
+
+                    b.Property<bool>("PublishB2C")
+                        .HasColumnType("bit");
+
+                    b.Property<DateTime?>("RunningSince")
+                        .HasColumnType("datetime2");
+
+                    b.Property<bool>("SyncPrice")
+                        .HasColumnType("bit");
+
+                    b.Property<bool>("SyncStock")
+                        .HasColumnType("bit");
+
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("Url")
+                        .IsRequired()
+                        .HasMaxLength(2000)
+                        .HasColumnType("nvarchar(2000)");
+
+                    b.Property<bool>("ZeroMissing")
+                        .HasColumnType("bit");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("TenantId");
+
+                    b.ToTable("ProductFeeds");
                 });
 
             modelBuilder.Entity("Pazaryeri.Domain.ProductImage", b =>
@@ -1866,6 +2049,78 @@ namespace Pazaryeri.Infrastructure.Persistence.Migrations
                     b.HasIndex("Channel", "Hash");
 
                     b.ToTable("SentBodyHashes");
+                });
+
+            modelBuilder.Entity("Pazaryeri.Domain.ShippingCarrier", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<bool>("Enabled")
+                        .HasColumnType("bit");
+
+                    b.Property<decimal>("FlatFee")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(60)
+                        .HasColumnType("nvarchar(60)");
+
+                    b.Property<int>("SortOrder")
+                        .HasColumnType("int");
+
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("TrackingUrlTemplate")
+                        .HasMaxLength(300)
+                        .HasColumnType("nvarchar(300)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("TenantId");
+
+                    b.HasIndex("TenantId", "SortOrder");
+
+                    b.ToTable("ShippingCarriers");
+                });
+
+            modelBuilder.Entity("Pazaryeri.Domain.ShippingRate", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("CarrierId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<decimal>("Fee")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<decimal>("UpToDesi")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("decimal(18,2)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CarrierId");
+
+                    b.HasIndex("TenantId");
+
+                    b.ToTable("ShippingRates");
                 });
 
             modelBuilder.Entity("Pazaryeri.Domain.StockMovement", b =>
@@ -2350,6 +2605,15 @@ namespace Pazaryeri.Infrastructure.Persistence.Migrations
                         .IsRequired();
                 });
 
+            modelBuilder.Entity("Pazaryeri.Domain.B2CSettings", b =>
+                {
+                    b.HasOne("Pazaryeri.Domain.Tenant", null)
+                        .WithMany()
+                        .HasForeignKey("TenantId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+                });
+
             modelBuilder.Entity("Pazaryeri.Domain.Cart", b =>
                 {
                     b.HasOne("Pazaryeri.Domain.Dealer", null)
@@ -2693,6 +2957,11 @@ namespace Pazaryeri.Infrastructure.Persistence.Migrations
                         .HasForeignKey("CategoryId")
                         .OnDelete(DeleteBehavior.Restrict);
 
+                    b.HasOne("Pazaryeri.Domain.ProductFeed", null)
+                        .WithMany()
+                        .HasForeignKey("FeedId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
                     b.HasOne("Pazaryeri.Domain.Tenant", null)
                         .WithMany()
                         .HasForeignKey("TenantId")
@@ -2708,6 +2977,15 @@ namespace Pazaryeri.Infrastructure.Persistence.Migrations
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
+                    b.HasOne("Pazaryeri.Domain.Tenant", null)
+                        .WithMany()
+                        .HasForeignKey("TenantId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("Pazaryeri.Domain.ProductFeed", b =>
+                {
                     b.HasOne("Pazaryeri.Domain.Tenant", null)
                         .WithMany()
                         .HasForeignKey("TenantId")
@@ -2747,6 +3025,30 @@ namespace Pazaryeri.Infrastructure.Persistence.Migrations
 
             modelBuilder.Entity("Pazaryeri.Domain.SentBodyHash", b =>
                 {
+                    b.HasOne("Pazaryeri.Domain.Tenant", null)
+                        .WithMany()
+                        .HasForeignKey("TenantId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("Pazaryeri.Domain.ShippingCarrier", b =>
+                {
+                    b.HasOne("Pazaryeri.Domain.Tenant", null)
+                        .WithMany()
+                        .HasForeignKey("TenantId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("Pazaryeri.Domain.ShippingRate", b =>
+                {
+                    b.HasOne("Pazaryeri.Domain.ShippingCarrier", null)
+                        .WithMany("Rates")
+                        .HasForeignKey("CarrierId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
                     b.HasOne("Pazaryeri.Domain.Tenant", null)
                         .WithMany()
                         .HasForeignKey("TenantId")
@@ -2881,6 +3183,11 @@ namespace Pazaryeri.Infrastructure.Persistence.Migrations
                     b.Navigation("Images");
 
                     b.Navigation("Listings");
+                });
+
+            modelBuilder.Entity("Pazaryeri.Domain.ShippingCarrier", b =>
+                {
+                    b.Navigation("Rates");
                 });
 #pragma warning restore 612, 618
         }

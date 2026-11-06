@@ -49,6 +49,8 @@ public class Product : TenantEntity
     public byte[] RowVersion { get; set; } = [];
     /// <summary>Birim maliyet (TL); kanal fiyat kuralları satış fiyatını bundan hesaplar. Bilinmiyorsa null.</summary>
     public decimal? Cost { get; set; }
+    /// <summary>Dropshipping: ürünü ekleyen/güncel tutan XML beslemesi; elle eklenen ürünlerde boş. Barkod, tedarikçideki ürün kodudur.</summary>
+    public Guid? FeedId { get; set; }
     /// <summary>Görseller; <see cref="ProductImage.Position"/> sırasına göre, ilki kapak.</summary>
     public List<ProductImage> Images { get; set; } = [];
     public List<ProductListing> Listings { get; set; } = [];

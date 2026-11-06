@@ -81,8 +81,36 @@ public class TrendyolClientTests
         var req = Assert.Single(server.Requests);
         Assert.StartsWith(expectedPrefix + "integration/product/sellers/12345/v2/products", req.Url);
         Assert.Contains("\"barcode\":\"bc1\"", req.Body);
-        Assert.Contains("\"attributeValueIds\":[20]", req.Body);
+        Assert.Contains("\"attributeValueId\":20", req.Body);
+        Assert.DoesNotContain("attributeValueIds", req.Body);
+        Assert.DoesNotContain("currencyType", req.Body);
     }
+
+    [Fact]
+    public async Task Serbest_metinli_ozellik_customAttributeValue_olarak_gider()
+    {
+        var (client, server, _, _) = Build(Creds(), Json(HttpStatusCode.OK, """{"batchRequestId":"b-1"}"""));
+
+        await client.SendProductsAsync([new ProductItem("bc1", "Ürün", "main", "sku", 1, 2, "açıklama", 3, 100, 90, 20, ["https://x/i.jpg"], [new ProductAttribute(910, null, "Pamuk")])]);
+
+        Assert.Contains("\"customAttributeValue\":\"Pamuk\"", server.Requests[0].Body);
+        Assert.DoesNotContain("attributeValueId", server.Requests[0].Body);
+    }
+
+    [Theory]
+    [InlineData("Acme", "12345 - Acme")]
+    [InlineData("Acme Yazılım A.Ş.", "12345 - AcmeYazlmA")]
+    [InlineData("", "12345 - SelfIntegration")]
+    [InlineData("1234567890123456789012345678901234", "12345 - 123456789012345678901234567890")]
+    public void UserAgent_belgedeki_bicimde_olusur(string company, string expected) =>
+        Assert.Equal(expected, TrendyolClient.UserAgent("12345", company));
+
+    [Theory]
+    [InlineData("Created", "CREATED")]
+    [InlineData("AtCollectionPoint", "AT_COLLECTION_POINT")]
+    [InlineData("UnDelivered", "UN_DELIVERED")]
+    public void Webhook_durumlari_belgedeki_adlara_cevrilir(string status, string expected) =>
+        Assert.Equal(expected, TrendyolClient.WebhookStatus(status));
 
     [Fact]
     public async Task Batch_sonucu_okunur_ve_hatali_kalem_nedenleri_gelir()
@@ -116,12 +144,13 @@ public class TrendyolClientTests
     {
         const string body = """
         {"page":0,"totalPages":3,"content":[{"orderNumber":"7001","shipmentPackageId":9001,"status":"Created",
-         "orderDate":1730000000000,"lastModifiedDate":1730000600000,"totalPrice":250.5,"customerFirstName":"Ayşe","customerLastName":"Yılmaz",
-         "lines":[{"id":55,"barcode":"bc1","productName":"Ürün","quantity":2,"amount":125.25}]}]}
+         "orderDate":1730000000000,"lastModifiedDate":1730000600000,"packageTotalPrice":250.5,"customerFirstName":"Ayşe","customerLastName":"Yılmaz",
+         "lines":[{"lineId":55,"barcode":"bc1","productName":"Ürün","quantity":2,"lineGrossAmount":125.25}]}]}
         """;
         var (client, server, _, _) = Build(Creds(), Json(HttpStatusCode.OK, body));
+        var since = DateTime.UtcNow.AddDays(-1);
 
-        var page = await client.GetOrdersAsync(new OrderQuery(Status: "Created", Page: 0, Size: 50, ModifiedFrom: DateTimeOffset.FromUnixTimeMilliseconds(1730000000000).UtcDateTime));
+        var page = await client.GetOrdersAsync(new OrderQuery(Status: "Created", Page: 0, Size: 50, ModifiedFrom: since));
 
         Assert.Equal(3, page.TotalPages);
         var order = Assert.Single(page.Orders);
@@ -133,7 +162,9 @@ public class TrendyolClientTests
         Assert.Equal("55", line.LineId);
         Assert.Equal(2, line.Quantity);
         Assert.Contains("status=Created", server.Requests[0].Url);
-        Assert.Contains("lastModifiedStartDate=1730000000000", server.Requests[0].Url);
+        Assert.Contains("/v2/orders?", server.Requests[0].Url);
+        Assert.Contains($"startDate={new DateTimeOffset(DateTime.SpecifyKind(since, DateTimeKind.Utc)).ToUnixTimeMilliseconds()}", server.Requests[0].Url);
+        Assert.DoesNotContain("lastModifiedStartDate", server.Requests[0].Url);
         Assert.Equal(DateTimeOffset.FromUnixTimeMilliseconds(1730000600000).UtcDateTime, order.LastModified);
     }
 

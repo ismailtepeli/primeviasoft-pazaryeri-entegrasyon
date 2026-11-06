@@ -22,12 +22,13 @@ public record AddressInput(string? Title, string? FullName, string? Phone, strin
 
 public record AddressDto(Guid Id, string Title, string FullName, string Phone, string City, string District, string AddressLine, string? PostalCode, bool IsDefault);
 
-public record CustomerOrderRow(Guid Id, string OrderNumber, DateTime OrderDate, string Status, decimal Total, string Currency, int ItemCount, string? FirstItemName, string? CoverUrl);
+public record CustomerOrderRow(Guid Id, string OrderNumber, DateTime OrderDate, string Status, decimal Total, string Currency, int ItemCount, string? FirstItemName, string? CoverUrl, string? PaymentStatus = null);
 
 public record CustomerOrderLine(Guid? ProductId, string Name, int Quantity, decimal UnitPrice, string? CoverUrl);
 
 public record CustomerOrderDetail(Guid Id, string OrderNumber, DateTime OrderDate, string Status, decimal Total, string Currency, string? ShippingAddress, string? Note,
-    string? ShipmentCarrier, string? TrackingNumber, DateTime? ShippedAt, string? StatusNote, bool CanCancel, IReadOnlyList<CustomerOrderLine> Lines);
+    string? ShipmentCarrier, string? TrackingNumber, DateTime? ShippedAt, string? StatusNote, bool CanCancel, IReadOnlyList<CustomerOrderLine> Lines,
+    string? PaymentMethod = null, string? PaymentStatus = null, decimal? ShippingFee = null, decimal? PaymentFee = null, string? PaymentInfo = null, DateTime? PaymentExpiresAt = null, string? TrackingUrl = null);
 
 public record CustomerOrderPage(IReadOnlyList<CustomerOrderRow> Items, int Total, int PageSize);
 

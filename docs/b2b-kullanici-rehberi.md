@@ -9,7 +9,7 @@ Proje üç satış kanalını destekler: **Pazaryerleri**, **B2B (bayi sitesi)**
 |---|---|
 | Pazaryerleri | Pazaryeri entegrasyonu, Stok ve fiyat senkronu, Siparişler |
 | B2B | Bayi yönetimi, Fiyat listeleri, B2B bayi sitesi, Siparişler |
-| B2C | B2C mağaza, Siparişler (**yakında**; şimdilik seçilemez) |
+| B2C | B2C mağaza, Siparişler |
 
 - **İlk giriş:** Yeni kurulan bir hesapta ilk girişte kurulum sihirbazı çıkar: "Nerede satış yapacaksınız?" Kanalları seçip **Kurulumu tamamla**'ya basarsınız; yalnızca seçilen kanalların menüleri ve arka plan işleri açılır. Hiç kanal seçilmezse ürün, kategori ve stok yönetimi açık kalır. Sihirbaz bir kez çıkar.
 - **Sonradan değiştirme:** **Ayarlar > Satış kanalları**'ndan kanalları istediğiniz zaman açıp kapatabilirsiniz. Bir kanalı kapatırken onay istenir: menüsü gizlenir, arka plan işleri durur, verileriniz silinmez; yeniden açınca kaldığı yerden devam eder.

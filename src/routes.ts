@@ -30,6 +30,7 @@ export const routes: RouteDef[] = [
   { path: '/', label: 'Genel bakış', title: 'Genel bakış', subtitle: 'Mağaza, stok ve sipariş durumunuza tek bakışta ulaşın.', action: 'Şimdi senkronla' },
   { path: '/magazalar', label: 'Mağazalar', title: 'Mağazalar', subtitle: 'Pazaryeri bağlantılarınızı yönetin.', action: '+ Kanal ekle', module: 'marketplace' },
   { path: '/urunler', label: 'Ürünler', title: 'Ürünler', subtitle: 'Kataloğunuzu ve kanal durumlarını izleyin.', action: 'Ürün ekle' },
+  { path: '/xml-aktarim', label: 'XML aktarım', title: 'XML ile ürün aktarımı', subtitle: 'Dropshipping tedarikçinizin XML adresinden ürünleri ekleyin, stok ve fiyatı güncel tutun.', action: '' },
   { path: '/esleme', label: 'Eşleme', title: 'Eşleme', subtitle: 'Kategori, özellik ve değerleri kanallarla eşleyin.', action: 'Eşlemeyi kaydet', module: 'marketplace' },
   { path: '/stok-fiyat', label: 'Stok ve fiyat', title: 'Stok ve fiyat', subtitle: 'Kanal bazlı stok dağıtımı ve fiyat kurallarını belirleyin.', action: 'Kuralı kaydet', module: 'stock-price' },
   { path: '/bayiler', label: 'Bayiler', title: 'Bayiler', subtitle: 'Bayi başvurularını onaylayın, bayileri ve gruplarını yönetin.', action: '', module: 'dealers' },

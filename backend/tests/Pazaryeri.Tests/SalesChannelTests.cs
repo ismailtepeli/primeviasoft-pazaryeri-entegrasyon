@@ -81,12 +81,12 @@ public class SalesChannelTests : IAsyncLifetime
     }
 
     [Fact]
-    public void Plan_cekirdege_ve_kanal_disi_modullere_dokunmaz_ve_B2C_henuz_secilemez()
+    public void Plan_cekirdege_ve_kanal_disi_modullere_dokunmaz_ve_B2C_secilebilir()
     {
         var plan = SalesChannelCatalog.Plan([], Defaults());
         Assert.DoesNotContain(ModuleIds.Core, plan.Disable);
-        Assert.False(SalesChannelCatalog.Find(SalesChannelIds.B2C)!.Available);
-        Assert.False(ModuleCatalog.Find(ModuleIds.B2CStore)!.Available);
+        Assert.True(SalesChannelCatalog.Find(SalesChannelIds.B2C)!.Available);
+        Assert.True(ModuleCatalog.Find(ModuleIds.B2CStore)!.Available);
     }
 
     // --- servis ---
@@ -133,7 +133,7 @@ public class SalesChannelTests : IAsyncLifetime
     }
 
     [Fact]
-    public async Task Bilinmeyen_ve_hazir_olmayan_kanal_reddedilir_hicbir_modul_degismez()
+    public async Task Bilinmeyen_kanal_reddedilir_hicbir_modul_degismez()
     {
         var tenant = await TenantAsync("Red");
         await using var db = NewDb(tenant);
@@ -141,21 +141,21 @@ public class SalesChannelTests : IAsyncLifetime
         var before = (await Modules(db, tenant).EnabledAsync()).OrderBy(x => x).ToList();
 
         Assert.Equal(SetupResult.UnknownChannel, (await setup.ApplyAsync(["marketplace", "yok"])).Result);
-        Assert.Equal(SetupResult.ChannelNotAvailable, (await setup.ApplyAsync([SalesChannelIds.B2B, SalesChannelIds.B2C])).Result);
 
         Assert.Equal(before, (await Modules(db, tenant).EnabledAsync()).OrderBy(x => x).ToList());
         Assert.False((await setup.GetAsync()).Completed); // reddedilen istek kurulumu tamamlamaz
     }
 
     [Fact]
-    public async Task Hazir_olmayan_modul_tek_basina_da_acilamaz_ve_kiracilar_birbirini_etkilemez()
+    public async Task B2C_kanali_sihirbazdan_acilir_kapanir_ve_kiracilar_birbirini_etkilemez()
     {
         var a = await TenantAsync("A");
         var b = await TenantAsync("B");
         await using var db = NewDb(a);
-        Assert.Equal(ModuleChangeResult.NotAvailable, (await Modules(db, a).SetAsync(ModuleIds.B2CStore, true)).Result);
-
+        Assert.Equal(SetupResult.Applied, (await Setup(db, a).ApplyAsync([SalesChannelIds.B2B, SalesChannelIds.B2C])).Result);
+        Assert.Contains(ModuleIds.B2CStore, await Modules(db, a).EnabledAsync());
         await Setup(db, a).ApplyAsync([SalesChannelIds.B2B]);
+        Assert.DoesNotContain(ModuleIds.B2CStore, await Modules(db, a).EnabledAsync());
         await using var dbB = NewDb(b);
         Assert.DoesNotContain(ModuleIds.B2BStore, await Modules(dbB, b).EnabledAsync());
         Assert.False((await Setup(dbB, b).GetAsync()).Completed);

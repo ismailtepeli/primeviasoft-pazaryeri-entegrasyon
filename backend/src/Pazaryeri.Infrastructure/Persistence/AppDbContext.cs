@@ -39,6 +39,10 @@ public class AppDbContext(DbContextOptions<AppDbContext> options, ITenantProvide
     public DbSet<OrderSyncState> OrderSyncStates => Set<OrderSyncState>();
     public DbSet<Notification> Notifications => Set<Notification>();
     public DbSet<Customer> Customers => Set<Customer>();
+    public DbSet<B2CSettings> B2CSettings => Set<B2CSettings>();
+    public DbSet<ShippingCarrier> ShippingCarriers => Set<ShippingCarrier>();
+    public DbSet<ProductFeed> ProductFeeds => Set<ProductFeed>();
+    public DbSet<ShippingRate> ShippingRates => Set<ShippingRate>();
     public DbSet<CustomerAddress> CustomerAddresses => Set<CustomerAddress>();
     public DbSet<WebhookEndpoint> WebhookEndpoints => Set<WebhookEndpoint>();
     public DbSet<WebhookEvent> WebhookEvents => Set<WebhookEvent>();
@@ -130,6 +134,8 @@ public class AppDbContext(DbContextOptions<AppDbContext> options, ITenantProvide
             b.HasMany(p => p.Images).WithOne().HasForeignKey(i => i.ProductId).OnDelete(DeleteBehavior.Cascade);
             b.Property(p => p.Variant).HasMaxLength(500);
             b.HasIndex(p => new { p.TenantId, p.MainId });
+            b.HasIndex(p => new { p.TenantId, p.FeedId });
+            b.HasOne<ProductFeed>().WithMany().HasForeignKey(p => p.FeedId).OnDelete(DeleteBehavior.Restrict);
             b.Property(p => p.Price).HasPrecision(18, 2);
             b.Property(p => p.B2CSalePrice).HasPrecision(18, 2);
             b.Property(p => p.Cost).HasPrecision(18, 2);
@@ -296,6 +302,45 @@ public class AppDbContext(DbContextOptions<AppDbContext> options, ITenantProvide
             b.HasOne<Tenant>().WithMany().HasForeignKey(s => s.TenantId).OnDelete(DeleteBehavior.Restrict);
         });
 
+        builder.Entity<ProductFeed>(b =>
+        {
+            b.Property(f => f.Name).HasMaxLength(ProductFeed.MaxNameLength).IsRequired();
+            b.Property(f => f.Url).HasMaxLength(ProductFeed.MaxUrlLength).IsRequired();
+            b.Property(f => f.ItemPath).HasMaxLength(500);
+            b.Property(f => f.Format).HasMaxLength(200);
+            b.Property(f => f.MarkupPercent).HasPrecision(9, 2);
+            b.Property(f => f.LastStatus).HasMaxLength(20);
+            b.Property(f => f.LastError).HasMaxLength(1000);
+            b.HasOne<Tenant>().WithMany().HasForeignKey(f => f.TenantId).OnDelete(DeleteBehavior.Restrict);
+        });
+
+        builder.Entity<ShippingCarrier>(b =>
+        {
+            b.Property(c => c.Name).HasMaxLength(ShippingCarrier.MaxNameLength);
+            b.Property(c => c.FlatFee).HasPrecision(18, 2);
+            b.Property(c => c.TrackingUrlTemplate).HasMaxLength(ShippingCarrier.MaxUrlLength);
+            b.HasMany(c => c.Rates).WithOne().HasForeignKey(r => r.CarrierId).OnDelete(DeleteBehavior.Cascade);
+            b.HasIndex(c => new { c.TenantId, c.SortOrder });
+            b.HasOne<Tenant>().WithMany().HasForeignKey(c => c.TenantId).OnDelete(DeleteBehavior.Restrict);
+        });
+
+        builder.Entity<ShippingRate>(b =>
+        {
+            b.Property(r => r.UpToDesi).HasPrecision(18, 2);
+            b.Property(r => r.Fee).HasPrecision(18, 2);
+            b.HasOne<Tenant>().WithMany().HasForeignKey(r => r.TenantId).OnDelete(DeleteBehavior.Restrict);
+        });
+
+        builder.Entity<B2CSettings>(b =>
+        {
+            b.Property(s => s.ShippingFee).HasPrecision(18, 2);
+            b.Property(s => s.FreeShippingThreshold).HasPrecision(18, 2);
+            b.Property(s => s.CashOnDeliveryFee).HasPrecision(18, 2);
+            b.Property(s => s.BankTransferInfo).HasMaxLength(Pazaryeri.Domain.B2CSettings.MaxInfoLength);
+            b.HasIndex(s => s.TenantId).IsUnique();
+            b.HasOne<Tenant>().WithMany().HasForeignKey(s => s.TenantId).OnDelete(DeleteBehavior.Restrict);
+        });
+
         builder.Entity<GroupVisibilityRule>(b =>
         {
             b.HasIndex(r => new { r.TenantId, r.GroupId, r.ProductId, r.CategoryId }).IsUnique();
@@ -366,6 +411,10 @@ public class AppDbContext(DbContextOptions<AppDbContext> options, ITenantProvide
             b.Property(o => o.OrderNumber).HasMaxLength(100).IsRequired();
             b.Property(o => o.CustomerName).HasMaxLength(200);
             b.Property(o => o.Status).HasConversion<string>().HasMaxLength(20);
+            b.Property(o => o.PaymentMethod).HasConversion<string>().HasMaxLength(20);
+            b.Property(o => o.PaymentStatus).HasConversion<string>().HasMaxLength(20);
+            b.Property(o => o.ShippingFee).HasPrecision(18, 2);
+            b.Property(o => o.PaymentFee).HasPrecision(18, 2);
             b.Property(o => o.TotalPrice).HasPrecision(18, 2);
             b.Property(o => o.TotalNet).HasPrecision(18, 2);
             b.Property(o => o.ShippingAddress).HasMaxLength(1000);
@@ -373,6 +422,7 @@ public class AppDbContext(DbContextOptions<AppDbContext> options, ITenantProvide
             b.Property(o => o.Currency).HasMaxLength(3);
             b.Property(o => o.ShipmentCarrier).HasMaxLength(100);
             b.Property(o => o.TrackingNumber).HasMaxLength(100);
+            b.Property(o => o.TrackingUrl).HasMaxLength(ShippingCarrier.MaxUrlLength + 100);
             b.HasIndex(o => new { o.TenantId, o.CustomerId });
             b.Property(o => o.StatusNote).HasMaxLength(500);
             b.HasIndex(o => new { o.TenantId, o.DealerId, o.OrderDate });

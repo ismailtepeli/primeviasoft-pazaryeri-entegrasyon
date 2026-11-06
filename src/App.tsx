@@ -14,6 +14,7 @@ import { SetupProvider } from './setup/SetupContext'
 import SetupWizard from './setup/SetupWizard'
 import Settings from './pages/Settings'
 import ProductEdit from './pages/ProductEdit'
+import FeedImport from './pages/FeedImport'
 import Products from './pages/Products'
 import StockPrice from './pages/StockPrice'
 import Stores from './pages/Stores'
@@ -24,6 +25,7 @@ function pageFor(path: string, label: string) {
   if (path === '/') return <Overview />
   if (path === '/magazalar') return <Stores />
   if (path === '/urunler') return <Products />
+  if (path === '/xml-aktarim') return <FeedImport />
   if (path === '/esleme') return <Mapping />
   if (path === '/stok-fiyat') return <StockPrice />
   if (path === '/siparisler') return <Orders />

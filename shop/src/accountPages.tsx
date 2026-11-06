@@ -2,11 +2,12 @@ import { useCallback, useEffect, useState, type FormEvent } from 'react'
 import { Link, NavLink, Outlet, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { ChevronRight, Home, MapPin, Package, Pencil, Plus, ShoppingBag, Star, Trash2, Truck, User } from 'lucide-react'
 import {
-  MAX_ADDRESSES, addressSummary, emptyAddress, formatDate, orderStatusLabel, orderStatusTone, orderSteps, pageCount, validateAddress, validateName, validatePassword, validatePhone,
+  MAX_ADDRESSES, addressSummary, emptyAddress, formatDate, formatDateTime, orderStatusLabel, orderStatusTone, orderSteps, pageCount, validateAddress, validateName, validatePassword, validatePhone,
   type Address, type AddressForm, type FormErrors, type OrderDetail, type OrderPage,
 } from './account'
 import { Field } from './authPages'
 import { useCustomer } from './CustomerContext'
+import { paymentMethodLabel, paymentStatusLabel } from './cart'
 import { formatMoney } from './shop'
 import { usePageMeta } from './seo'
 import { useShop } from './ShopContext'
@@ -288,6 +289,43 @@ export function OrdersPage() {
   )
 }
 
+/** Müşteri iptali: tek tıkla değil, önce onay ister; iptalden sonra güncel sipariş yüklenir. */
+function CancelOrder({ id, onDone }: { id: string; onDone: (o: OrderDetail) => void }) {
+  const { api } = useCustomer()
+  const [confirming, setConfirming] = useState(false)
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState<string>()
+
+  async function cancel() {
+    setBusy(true); setError(undefined)
+    try {
+      await api(`/me/orders/${id}/cancel`, { method: 'POST' })
+      onDone(await api<OrderDetail>(`/me/orders/${id}`))
+    } catch (e) { setError((e as Error).message); setBusy(false) }
+  }
+
+  return (
+    <section className="ps-card store-panel account-card" aria-labelledby="iptal-baslik">
+      <h2 id="iptal-baslik">Siparişi iptal et</h2>
+      {!confirming ? (
+        <>
+          <p className="store-note">Sipariş hazırlanmaya başlamadan önce iptal edebilirsiniz.</p>
+          <div><button type="button" className="ps-btn" onClick={() => setConfirming(true)}>Siparişi iptal et</button></div>
+        </>
+      ) : (
+        <>
+          <p>Bu siparişi iptal etmek istediğinize emin misiniz? Bu işlem geri alınamaz.</p>
+          {error && <p role="alert" className="store-error">{error}</p>}
+          <div className="done__actions">
+            <button type="button" className="ps-btn" disabled={busy} onClick={() => void cancel()}>{busy ? 'İptal ediliyor…' : 'Evet, iptal et'}</button>
+            <button type="button" className="ps-btn" disabled={busy} onClick={() => setConfirming(false)}>Vazgeç</button>
+          </div>
+        </>
+      )}
+    </section>
+  )
+}
+
 export function OrderDetailPage() {
   const { id } = useParams()
   const { api } = useCustomer()
@@ -310,6 +348,11 @@ export function OrderDetailPage() {
       <nav className="store-crumbs" aria-label="Yol"><Link to="/hesap/siparisler">Siparişlerim</Link><span><ChevronRight size={14} aria-hidden /> <strong>{order.orderNumber}</strong></span></nav>
       <div className="account-head"><h1 className="account-title">{order.orderNumber}</h1><StatusChip status={order.status} /></div>
       <p className="store-note">{formatDate(order.orderDate)} tarihinde verildi</p>
+      {order.paymentMethod && (
+        <p className="order-pay"><span>{paymentMethodLabel[order.paymentMethod] ?? order.paymentMethod}</span>{order.paymentStatus && !(order.status === 'Cancelled' && order.paymentStatus === 'Failed') && <span className={`order-status order-status--${order.paymentStatus === 'Paid' ? 'success' : order.paymentStatus === 'Failed' || order.paymentStatus === 'Expired' ? 'danger' : 'progress'}`}>{paymentStatusLabel[order.paymentStatus] ?? order.paymentStatus}</span>}</p>
+      )}
+      {order.paymentExpiresAt && order.status !== 'Cancelled' && order.paymentStatus === 'Pending' && <p className="store-note">Son ödeme zamanı: <strong>{formatDateTime(order.paymentExpiresAt)}</strong>. Bu zamana kadar ödeme alınmazsa sipariş iptal edilir.</p>}
+      {order.paymentInfo && <section className="ps-card store-panel account-card"><h2>Havale / EFT bilgileri</h2><p className="done__pre">{order.paymentInfo}</p></section>}
 
       {steps.length > 0 && (
         <ol className="order-steps" aria-label="Sipariş durumu">
@@ -317,7 +360,9 @@ export function OrderDetailPage() {
         </ol>
       )}
       {order.statusNote && <p className="store-note">Not: {order.statusNote}</p>}
-      {order.trackingNumber && <p className="order-track"><Truck size={18} aria-hidden /> {order.shipmentCarrier} · takip no <strong>{order.trackingNumber}</strong></p>}
+      {order.trackingNumber
+        ? <p className="order-track"><Truck size={18} aria-hidden /> {order.shipmentCarrier} · takip no <strong>{order.trackingNumber}</strong>{order.trackingUrl && /^https:\/\//i.test(order.trackingUrl) && <> · <a href={order.trackingUrl} target="_blank" rel="noopener noreferrer">Kargom nerede?</a></>}</p>
+        : order.shipmentCarrier && order.status !== 'Cancelled' && <p className="store-note"><Truck size={14} aria-hidden /> Kargo firması: {order.shipmentCarrier}</p>}
 
       <section className="ps-card store-panel account-card" aria-labelledby="urunler-baslik">
         <h2 id="urunler-baslik">Ürünler</h2>
@@ -330,8 +375,12 @@ export function OrderDetailPage() {
             </li>
           ))}
         </ul>
+        {order.shippingFee !== null && <div className="order-fee"><span>Kargo</span><span>{order.shippingFee === 0 ? 'Ücretsiz' : formatMoney(order.shippingFee, order.currency)}</span></div>}
+        {order.paymentFee ? <div className="order-fee"><span>Kapıda ödeme ücreti</span><span>{formatMoney(order.paymentFee, order.currency)}</span></div> : null}
         <div className="order-total"><span>Genel toplam (KDV dahil)</span><strong>{formatMoney(order.total, order.currency)}</strong></div>
       </section>
+
+      {order.canCancel && <CancelOrder id={order.id} onDone={setOrder} />}
 
       {order.shippingAddress && <section className="ps-card store-panel account-card"><h2>Teslimat adresi</h2><p>{order.shippingAddress}</p></section>}
     </div>

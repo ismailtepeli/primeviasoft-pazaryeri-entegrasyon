@@ -12,6 +12,9 @@ const icons: Record<string, LucideIcon> = {
   'dealer-application': UserPlus,
   'b2b-order-lost': AlertTriangle,
   'b2b-order-cancelled': XCircle,
+  'b2c-order-new': ShoppingBag,
+  'b2c-order-cancelled': XCircle,
+  'order-cancelled': XCircle,
 }
 
 /** Yönetici üst çubuğundaki bildirim zili: okunmamış rozeti düzenli yoklanır, açılınca son bildirimler listelenir. */
@@ -22,6 +25,7 @@ export function NotificationBell() {
   const [open, setOpen] = useState(false)
   const [page, setPage] = useState<NotificationPage | null>(null)
   const [failed, setFailed] = useState(false)
+  const [notice, setNotice] = useState<string | null>(null)
   const box = useRef<HTMLDivElement>(null)
 
   const refreshCount = useCallback(() => {
@@ -41,7 +45,7 @@ export function NotificationBell() {
 
   useEffect(() => {
     if (!open) return
-    setFailed(false)
+    setFailed(false); setNotice(null)
     api<NotificationPage>('/notifications').then((p) => { setPage(p); setUnread(p.unread) }).catch(() => setFailed(true))
     const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') setOpen(false) }
     const onClick = (e: MouseEvent) => { if (box.current && !box.current.contains(e.target as Node)) setOpen(false) }
@@ -54,7 +58,7 @@ export function NotificationBell() {
     const wasUnread = page?.items.find((i) => i.id === id)?.read === false
     setPage((p) => (p ? markRead(p, id) : p))
     if (wasUnread) setUnread((n) => Math.max(0, n - 1))
-    api(`/notifications/${id}/read`, { method: 'POST' }).catch(() => { /* bir sonraki yoklamada düzelir */ })
+    api(`/notifications/${id}/read`, { method: 'POST' }).catch(() => refreshCount()) // olmadıysa rozet gerçek sayıya döner
     setOpen(false)
     if (link) navigate(link)
   }
@@ -62,7 +66,12 @@ export function NotificationBell() {
   function readAll() {
     setPage((p) => (p ? markAllRead(p) : p))
     setUnread(0)
-    api('/notifications/read-all', { method: 'POST' }).catch(() => { /* bir sonraki yoklamada düzelir */ })
+    setNotice(null)
+    // Sunucu işaretlemezse iyimser sıfırlama yanıltıcı olur: gerçek listeyi/sayıyı geri getir ve kullanıcıya söyle.
+    api('/notifications/read-all', { method: 'POST' }).catch(() => {
+      setNotice('Okundu olarak işaretlenemedi; bağlantıyı kontrol edip tekrar deneyin.')
+      api<NotificationPage>('/notifications').then((p) => { setPage(p); setUnread(p.unread) }).catch(() => refreshCount())
+    })
   }
 
   const badge = badgeText(unread)
@@ -78,6 +87,7 @@ export function NotificationBell() {
             <strong>Bildirimler</strong>
             <button type="button" className="notif__readall" onClick={readAll} disabled={!unread}><CheckCheck size={16} aria-hidden /> Tümünü okundu yap</button>
           </div>
+          {notice && <p className="notif__error" role="alert">{notice}</p>}
           {failed ? <p className="notif__empty">Bildirimler yüklenemedi.</p>
             : !page ? <p className="notif__empty">Yükleniyor…</p>
             : page.items.length === 0 ? <p className="notif__empty">Henüz bildirim yok.</p>
