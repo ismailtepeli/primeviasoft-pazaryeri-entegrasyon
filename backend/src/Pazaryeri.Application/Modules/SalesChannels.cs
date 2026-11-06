@@ -27,8 +27,8 @@ public static class SalesChannelCatalog
             ModuleIds.Marketplace, [ModuleIds.Marketplace, ModuleIds.StockPrice, ModuleIds.Orders], true),
         new(SalesChannelIds.B2B, "B2B (bayi sitesi)", "Bayilerin giriş yapıp özel fiyatla sipariş verdiği site; bayi yönetimi ve fiyat listeleri.",
             ModuleIds.B2BStore, [ModuleIds.Dealers, ModuleIds.PriceLists, ModuleIds.B2BStore, ModuleIds.Orders], true),
-        new(SalesChannelIds.B2C, "B2C (son tüketici mağazası)", "Herkese açık mağaza: müşteriler hesapla ya da misafir olarak alışveriş yapar. Yakında.",
-            ModuleIds.B2CStore, [ModuleIds.B2CStore, ModuleIds.Orders], false),
+        new(SalesChannelIds.B2C, "B2C (son tüketici mağazası)", "Herkese açık mağaza: müşteriler hesapla ya da misafir olarak alışveriş yapar.",
+            ModuleIds.B2CStore, [ModuleIds.B2CStore, ModuleIds.Orders], true),
     ];
 
     public static SalesChannelDef? Find(string id) => All.FirstOrDefault(c => string.Equals(c.Id, id, StringComparison.OrdinalIgnoreCase));

@@ -107,7 +107,7 @@ export default function Products() {
   const { enabled } = useModules()
   const marketplaceOn = isModuleEnabled('marketplace', enabled)
   const b2bOn = isModuleEnabled('b2b-store', enabled)
-  const b2cOn = enabled !== null && enabled.has('b2c-store') // yüklenmeden açık sayılmaz: B2C henüz yalnızca geliştirmede açılır
+  const b2cOn = enabled !== null && enabled.has('b2c-store') // yüklenmeden açık sayılmaz
   const columns = useMemo(() => makeColumns(setDetail, marketplaceOn, b2bOn, b2cOn, (id, price) => setData((d) => ({ ...d, items: d.items.map((p) => (p.id === id ? { ...p, price } : p)) }))), [marketplaceOn, b2bOn, b2cOn])
 
   useEffect(() => { api<Category[]>('/categories').then(setCategories).catch(() => setCategories([])) }, [reloadKey, categoriesOpen])

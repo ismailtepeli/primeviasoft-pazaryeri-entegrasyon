@@ -1,6 +1,6 @@
 # Pazaryeri Entegrasyon
 
-Çok kiracılı satış yönetimi: pazaryerleri (Trendyol, Hepsiburada, N11, Amazon), B2B bayi sitesi ve (yakında) B2C mağaza. Satış kanalları ilk girişte kurulum sihirbazından, sonra Ayarlar > Satış kanalları'ndan açılıp kapatılır.
+Çok kiracılı satış yönetimi: pazaryerleri (Trendyol, Hepsiburada, N11, Amazon), B2B bayi sitesi ve B2C mağaza. Satış kanalları ilk girişte kurulum sihirbazından, sonra Ayarlar > Satış kanalları'ndan açılıp kapatılır.
 
 ## Dokümantasyon
 

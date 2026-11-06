@@ -34,7 +34,7 @@ public static class ModuleCatalog
         new(ModuleIds.Dealers, "Bayi yönetimi", "Bayi firmalar, bayi kullanıcıları ve bayi grupları.", false, false, [ModuleIds.Core]),
         new(ModuleIds.PriceLists, "Fiyat listeleri", "Bayi gruplarına özel fiyat, iskonto, minimum ve koli adedi.", false, false, [ModuleIds.Dealers]),
         new(ModuleIds.B2BStore, "B2B bayi sitesi", "Bayilerin ürünleri gördüğü ve sipariş verdiği site.", false, false, [ModuleIds.Dealers, ModuleIds.Orders]),
-        new(ModuleIds.B2CStore, "B2C mağaza", "Son tüketicilerin hesapla ya da misafir olarak alışveriş yaptığı herkese açık mağaza. Yakında.", false, false, [ModuleIds.Orders], false),
+        new(ModuleIds.B2CStore, "B2C mağaza", "Son tüketicilerin hesapla ya da misafir olarak alışveriş yaptığı herkese açık mağaza.", false, false, [ModuleIds.Orders]),
     ];
 
     public static ModuleDef? Find(string id) => All.FirstOrDefault(m => m.Id == id);
