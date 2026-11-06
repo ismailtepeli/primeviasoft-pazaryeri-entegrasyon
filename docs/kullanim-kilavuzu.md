@@ -55,6 +55,8 @@ Açılış ekranı mağaza, stok ve sipariş durumunuzu özetler: kanal durumlar
   4. Yeni ürünlerin B2C/B2B'de hemen görünmesini isteyip istemediğinizi seçin (kapalıysa yalnızca katalogda olur) ve **Kaydet ve ürünleri aktar**'a basın.
   - Sonraki çalışmalarda (seçtiğiniz aralıkta, en sık 15 dk) **stok ve fiyat** güncellenir; ad, açıklama, görsel, marka ve kategori yalnızca ilk eklemede yazılır, sonradan yaptığınız düzenleme ezilmez. Beslemeden kalkan ürünün stoğu sıfırlanır (ürün silinmez).
   - Barkodu elle eklediğiniz bir ürünle ya da başka beslemeyle çakışan ürüne **dokunulmaz**, hata listesinde gösterilir. Beslemeyi silerseniz eklediği ürünler katalogda kalır.
+  - Tedarikçi XML'lerindeki küçük bozukluklar dosyayı reddettirmez: kök öğeden önceki artık metin, kaçışsız `&` (örn. `Health & Beauty`, adreslerde `?a=1&b=2`) ve `&nbsp;` gibi tanınmayan varlıklar düzeltilerek okunur. Etiketleri yanlış kapanmış ya da XML olmayan içerik yine anlaşılır bir hata ile reddedilir.
+  - Birden çok olası alan varsa (örn. Google Merchant'ta `gtin`, `id`; `price`, `sale_price`) tüm ürünlerde dolu olan alan seçilir: yalnızca bazı ürünlerde bulunan `gtin`/`sale_price` ana alan olmaz.
   - Adres, sunucunun iç ağına bağlanamaz (güvenlik); boyut sınırı 150 MB, en çok 50.000 ürün.
 
 ## 5. Pazaryerleri

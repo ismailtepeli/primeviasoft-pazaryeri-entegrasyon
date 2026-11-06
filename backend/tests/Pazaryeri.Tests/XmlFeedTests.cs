@@ -215,17 +215,21 @@ public class XmlFeedTests
         Assert.Equal(2, XmlFeed.Analyze(Xml(withDoctype), null, null, new FeedOptions()).ItemCount); // DOCTYPE tek başına sorun değil
 
         var useEntity = withDoctype.Replace("<UrunAdi>A</UrunAdi>", "<UrunAdi>A &xxe;</UrunAdi>");
-        Assert.Throws<FeedException>(() => XmlFeed.Analyze(Xml(useEntity), null, null, new FeedOptions())); // varlık çözülmez, güvenle reddedilir
+        // Varlık hiçbir zaman çözülmez (dosya okunmaz): başvuru düz metin kalır.
+        var a = XmlFeed.Analyze(Xml(useEntity), null, null, new FeedOptions());
+        Assert.Equal("A &xxe;", a.Preview[0].Name);
+        Assert.DoesNotContain("win.ini", string.Join('|', a.Preview.Select(p => p.Name)).Replace("&xxe;", ""));
     }
 
     [Fact]
     public void Milyar_gulen_varlik_genisletmesi_bellegi_sisirmez()
     {
-        // Her varlık bir öncekinin 10 katını içerir; DTD yok sayıldığı için hiçbiri genişletilmez, başvuru güvenle reddedilir.
+        // Her varlık bir öncekinin 10 katını içerir; DTD yok sayıldığı için hiçbiri genişletilmez, başvuru düz metin kalır.
         var entities = string.Concat(Enumerable.Range(1, 9).Select(i => "<!ENTITY l" + i + " \"" + string.Concat(Enumerable.Repeat("&l" + (i - 1) + ";", 10)) + "\">"));
         var xml = "<?xml version=\"1.0\"?><!DOCTYPE z [<!ENTITY l0 \"lol\">" + entities + "]><Urunler>"
             + "<Urun><Barkod>1</Barkod><UrunAdi>&l9;</UrunAdi><Fiyat>5</Fiyat></Urun><Urun><Barkod>2</Barkod><UrunAdi>B</UrunAdi><Fiyat>6</Fiyat></Urun></Urunler>";
-        Assert.Throws<FeedException>(() => XmlFeed.Analyze(Xml(xml), null, null, new FeedOptions()));
+        var a = XmlFeed.Analyze(Xml(xml), null, null, new FeedOptions());
+        Assert.Equal("&l9;", a.Preview[0].Name);
     }
 
     [Fact]

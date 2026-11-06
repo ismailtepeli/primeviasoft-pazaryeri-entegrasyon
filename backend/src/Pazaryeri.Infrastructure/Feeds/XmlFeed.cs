@@ -34,28 +34,40 @@ public static class XmlFeed
 
     // ---------- okuma ----------
 
-    /// <summary>Akışın başındaki boşluk/BOM artıklarını atlayıp okuyucuyu açar (akış aranabilir olmalı).</summary>
+    private static readonly Regex DeclaredEncoding = new(@"<\?xml[^>]*?encoding\s*=\s*[""']([^""']+)[""']", RegexOptions.Compiled | RegexOptions.IgnoreCase);
+
+    /// <summary>Kodlamayı BOM'dan, yoksa XML bildiriminden (encoding="windows-1254") anlar; bulamazsa UTF-8.</summary>
+    private static Encoding DetectEncoding(byte[] head, int n)
+    {
+        if (n >= 2 && head[0] == '<' && head[1] == 0) return Encoding.Unicode; // BOM'suz UTF-16
+        if (n >= 2 && head[0] == 0 && head[1] == '<') return Encoding.BigEndianUnicode;
+        var m = DeclaredEncoding.Match(Encoding.Latin1.GetString(head, 0, n));
+        if (!m.Success) return Encoding.UTF8;
+        try
+        {
+            var enc = Encoding.GetEncoding(m.Groups[1].Value);
+            return enc.CodePage is 1200 or 1201 or 12000 or 12001 ? Encoding.UTF8 : enc; // bayt örüntüsü UTF-16 değilse bildirime güvenme
+        }
+        catch (ArgumentException) { return Encoding.UTF8; }
+    }
+
+    /// <summary>
+    /// Okuyucuyu açar (akış aranabilir olmalı). Metin, <see cref="XmlRepairReader"/> ile onarılarak okunur: başta artık metin, kaçışsız &amp; ve
+    /// benzeri yaygın bozukluklar dosyayı reddettirmez. DTD yok sayılır, dış varlık çözülmez.
+    /// </summary>
     public static XmlReader Open(Stream stream)
     {
         stream.Seek(0, SeekOrigin.Begin);
-        var head = new byte[64];
-        var n = stream.Read(head, 0, head.Length);
-        var i = 0;
-        var utf16 = n >= 2 && ((head[0] == 0xFF && head[1] == 0xFE) || (head[0] == 0xFE && head[1] == 0xFF));
-        if (!utf16)
-        {
-            var bom = n >= 3 && head[0] == 0xEF && head[1] == 0xBB && head[2] == 0xBF ? 3 : 0;
-            i = bom;
-            while (i < n && head[i] is 0x20 or 0x09 or 0x0A or 0x0D) i++;
-            if (i == bom) i = 0; // boşluk yoksa BOM'u XmlReader'a bırak
-        }
-        stream.Seek(i, SeekOrigin.Begin);
+        var head = new byte[1024];
+        var n = stream.ReadAtLeast(head, head.Length, throwOnEndOfStream: false);
+        stream.Seek(0, SeekOrigin.Begin);
+        var text = new StreamReader(stream, DetectEncoding(head, n), detectEncodingFromByteOrderMarks: true, bufferSize: 16384, leaveOpen: true);
         var settings = new XmlReaderSettings
         {
             DtdProcessing = DtdProcessing.Ignore, XmlResolver = null, CheckCharacters = false, IgnoreComments = true, IgnoreProcessingInstructions = true,
             IgnoreWhitespace = true, MaxCharactersFromEntities = 1024,
         };
-        return XmlReader.Create(stream, settings);
+        return XmlReader.Create(new XmlRepairReader(text), settings);
     }
 
     private static FeedException NotXml(Exception? inner = null) =>
@@ -255,7 +267,7 @@ public static class XmlFeed
             "saleprice", "indirimlifiyat", "indirimlifiyati", "specialprice", "satisfiyati", "satisfiyat", "price", "fiyat", "urunfiyati", "listprice", "listefiyati", "piyasafiyati", "kdvlifiyat", "kdvlisatisfiyati"],
         [FeedRoles.Stock] = ["stok", "stokadedi", "stokmiktari", "stockquantity", "quantity", "stock", "miktar", "adet", "qty", "stocklevel", "inventory", "inventoryquantity", "kalanstok", "stokdurumu", "availability", "instock", "mevcut"],
         [FeedRoles.Brand] = ["marka", "markaadi", "brand", "brandname", "uretici", "manufacturer"],
-        [FeedRoles.Category] = ["kategoriyolu", "categorypath", "kategori", "category", "kategoriadi", "categoryname", "productcategory", "producttype", "anakategori", "kategoriler", "categories"],
+        [FeedRoles.Category] = ["kategoriyolu", "categorypath", "kategori", "category", "kategoriadi", "categoryname", "productcategory", "producttype", "googleproductcategory", "anakategori", "kategoriler", "categories"],
         [FeedRoles.Description] = ["aciklama", "urunaciklamasi", "detay", "description", "longdescription", "detayaciklama", "icerik", "content"],
         [FeedRoles.Vat] = ["kdv", "kdvorani", "kdvoran", "vat", "vatrate", "taxrate", "tax", "kdvyuzde"],
         [FeedRoles.MainId] = ["urunkartiid", "urunkartikodu", "anakod", "anaurunkodu", "grupkodu", "groupid", "itemgroupid", "parentid", "productmainid", "mainid", "modelkodu", "model", "mpn"],
@@ -286,22 +298,29 @@ public static class XmlFeed
     private static bool LooksStock(Stat s) => s.Samples.Count > 0 && s.Samples.All(v => TryParseNumber(v, out _) || StockWord(v) is not null);
     private static bool LooksUrl(Stat s) => s.Samples.Any(v => v.StartsWith("http", StringComparison.OrdinalIgnoreCase) || v.StartsWith("//", StringComparison.Ordinal));
 
-    private static Dictionary<string, List<string>> DetectMapping(IReadOnlyList<Field> fields)
+    /// <summary>Alan öğelerin en az bu kadarında dolu değilse (ör. yalnızca bazı ürünlerde olan sale_price, gtin) rolün asıl alanı sayılmaz.</summary>
+    private const double MinCoverage = 0.9;
+
+    private static Dictionary<string, List<string>> DetectMapping(IReadOnlyList<Field> fields, int itemCount)
     {
         var mapping = new Dictionary<string, List<string>>();
         var used = new HashSet<string>();
         foreach (var role in new[] { FeedRoles.Barcode, FeedRoles.Name, FeedRoles.Price, FeedRoles.Stock, FeedRoles.Brand, FeedRoles.Category, FeedRoles.Description, FeedRoles.Vat, FeedRoles.MainId })
         {
+            // Eş anlamlıları öncelik sırasıyla gez; önce yeterince dolu (≥ %90) ilk alanı seç, hiçbiri o kadar dolu değilse en dolu olanı al.
+            // Aynı adlı alanlarda üst düzeydeki (ör. price) iç içe olana (shipping/price) tercih edilir.
+            var hits = new List<Field>();
             foreach (var syn in Synonyms[role])
             {
-                var hit = fields.Where(f => !used.Contains(f.Rel) && (f.Last == syn || f.Combined == syn))
+                var hit = fields.Where(f => !used.Contains(f.Rel) && !hits.Contains(f) && (f.Last == syn || f.Combined == syn))
                     .Where(f => role switch { FeedRoles.Price or FeedRoles.Vat => LooksNumeric(f.Stat), FeedRoles.Stock => LooksStock(f.Stat), _ => true })
-                    .OrderByDescending(f => f.Last == syn).ThenByDescending(f => f.Stat.Filled).FirstOrDefault();
-                if (hit is null) continue;
-                mapping[role] = [hit.Rel];
-                used.Add(hit.Rel);
-                break;
+                    .OrderByDescending(f => f.Last == syn).ThenBy(f => f.Rel.Count(ch => ch == '/')).ThenByDescending(f => f.Stat.Filled).FirstOrDefault();
+                if (hit is not null) hits.Add(hit);
             }
+            if (hits.Count == 0) continue;
+            var best = hits.FirstOrDefault(f => f.Stat.Filled >= MinCoverage * itemCount) ?? hits.OrderByDescending(f => f.Stat.Filled).First();
+            mapping[role] = [best.Rel];
+            used.Add(best.Rel);
         }
         var images = fields.Where(f => !used.Contains(f.Rel) && LooksUrl(f.Stat) && (ImageName.IsMatch(f.Last) || ImageName.IsMatch(f.Combined)) && !ImageBlock.Any(b => f.Last.Contains(b)))
             .OrderBy(f => f.Rel, StringComparer.Ordinal).Select(f => f.Rel).ToList();
@@ -340,7 +359,7 @@ public static class XmlFeed
             if (!(stat.HasChildren || stat.HasAttributes) || path.Contains("/@", StringComparison.Ordinal) || !path.Contains('/')) continue; // kök öğe ürün olamaz
             var fields = FieldsOf(scan.Stats, path, stat.Count);
             if (fields.Count < 3) continue;
-            var mapping = DetectMapping(fields);
+            var mapping = DetectMapping(fields, stat.Count);
             if (mapping.Count == 0) continue;
             candidates.Add((path, stat.Count, ScoreCandidate(mapping, fields, stat.Count), fields, mapping));
         }
