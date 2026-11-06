@@ -25,7 +25,7 @@ public record ShopProductDetail(Guid Id, string Name, string? Brand, string? Des
 public record ShopInfo(string Name);
 
 /// <summary>Sepetteki ürünün sunucuda doğrulanmış hâli (<see cref="ShopCatalogService.CartProductsAsync"/>).</summary>
-public record ShopCartProduct(Guid Id, string Name, string Barcode, decimal UnitPrice, decimal? ListPrice, int VatRate, int Available, string? CoverUrl);
+public record ShopCartProduct(Guid Id, string Name, string Barcode, decimal UnitPrice, decimal? ListPrice, int VatRate, int Available, string? CoverUrl, decimal? Desi = null);
 
 public record ShopQuery(string? Search, Guid? CategoryId, string? Sort, int Page, int PageSize,
     IReadOnlyList<string>? Brands = null, decimal? MinPrice = null, decimal? MaxPrice = null, bool InStock = false);
@@ -163,10 +163,13 @@ public class ShopCatalogService(AppDbContext db, IModuleService modules)
         var products = await visible.Where(p => ids.Contains(p.Id)).ToListAsync(ct);
         var covers = await db.ProductImages.AsNoTracking().Where(i => ids.Contains(i.ProductId) && i.Position == 0).Select(i => new { i.ProductId, i.Id, i.Kind, i.ExternalUrl }).ToListAsync(ct);
         var coverBy = covers.GroupBy(c => c.ProductId).ToDictionary(g => g.Key, g => ImageUrl(g.First().Id, g.First().Kind, g.First().ExternalUrl));
+        // Desi, ürünün kanal verisindeki desi değerinden (pazaryeri için girilmiş) alınır; birden çok kanalda varsa en büyüğü; girilmemişse 0 sayılır.
+        var desiBy = (await db.ProductChannelData.AsNoTracking().Where(d => ids.Contains(d.ProductId) && d.DimensionalWeight != null).Select(d => new { d.ProductId, d.DimensionalWeight }).ToListAsync(ct))
+            .GroupBy(d => d.ProductId).ToDictionary(g => g.Key, g => g.Max(d => d.DimensionalWeight));
         return products.Select(p =>
         {
             var price = Effective(p);
-            return new ShopCartProduct(p.Id, p.Name, p.Barcode, price, price < p.Price ? p.Price : null, p.VatRate, StockDisplay.Available(p.Stock, p.SafetyStock), coverBy.GetValueOrDefault(p.Id));
+            return new ShopCartProduct(p.Id, p.Name, p.Barcode, price, price < p.Price ? p.Price : null, p.VatRate, StockDisplay.Available(p.Stock, p.SafetyStock), coverBy.GetValueOrDefault(p.Id), desiBy.GetValueOrDefault(p.Id));
         }).ToList();
     }
 

@@ -46,6 +46,7 @@ export interface OrderDetail {
   note: string | null
   shipmentCarrier: string | null
   trackingNumber: string | null
+  trackingUrl: string | null
   shippedAt: string | null
   statusNote: string | null
   canCancel: boolean

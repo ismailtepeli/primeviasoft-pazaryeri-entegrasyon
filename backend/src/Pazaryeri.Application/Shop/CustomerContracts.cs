@@ -28,7 +28,7 @@ public record CustomerOrderLine(Guid? ProductId, string Name, int Quantity, deci
 
 public record CustomerOrderDetail(Guid Id, string OrderNumber, DateTime OrderDate, string Status, decimal Total, string Currency, string? ShippingAddress, string? Note,
     string? ShipmentCarrier, string? TrackingNumber, DateTime? ShippedAt, string? StatusNote, bool CanCancel, IReadOnlyList<CustomerOrderLine> Lines,
-    string? PaymentMethod = null, string? PaymentStatus = null, decimal? ShippingFee = null, decimal? PaymentFee = null, string? PaymentInfo = null, DateTime? PaymentExpiresAt = null);
+    string? PaymentMethod = null, string? PaymentStatus = null, decimal? ShippingFee = null, decimal? PaymentFee = null, string? PaymentInfo = null, DateTime? PaymentExpiresAt = null, string? TrackingUrl = null);
 
 public record CustomerOrderPage(IReadOnlyList<CustomerOrderRow> Items, int Total, int PageSize);
 

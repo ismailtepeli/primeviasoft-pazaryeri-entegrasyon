@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import { api } from '../api/client'
 import type { B2BCategory } from '../api/types'
+import B2CCarrierSettings from './B2CCarrierSettings'
 import B2CCheckoutSettings from './B2CCheckoutSettings'
 import './PriceLists.css'
 
@@ -22,6 +23,7 @@ export default function B2CVisibility() {
     <div className="price-lists">
       {message && <p className={message.ok ? 'price-ok' : 'price-error'} role={message.ok ? 'status' : 'alert'}>{message.text}</p>}
       <B2CCheckoutSettings />
+      <B2CCarrierSettings />
       <section className="ps-card price-editor" aria-labelledby="b2c-cat-title">
         <h2 id="b2c-cat-title" style={{ margin: 0, fontSize: 18 }}>Kategori görünürlüğü</h2>
         <p className="price-cell__meta" style={{ margin: 0 }}>Gizlenen kategori, alt kategorileri ve ürünleriyle B2C mağazada görünmez. B2B bayi sitesi bu ayardan etkilenmez. Ürün sayısı, B2C mağazada görünür olarak işaretli ürünlerdir.</p>

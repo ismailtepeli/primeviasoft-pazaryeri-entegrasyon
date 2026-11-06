@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { MAX_LINES, MAX_QUANTITY, addLine, cartCount, fixedQuantity, parseStored, removeLine, setQuantity, totalWith, type QuoteLine } from './cart'
+import { MAX_LINES, MAX_QUANTITY, addLine, cartCount, fixedQuantity, hasCarrierChoice, parseStored, removeLine, setQuantity, totalWith, type QuoteLine } from './cart'
 
 const A = '11111111-1111-1111-1111-111111111111'
 const B = '22222222-2222-2222-2222-222222222222'
@@ -63,5 +63,13 @@ describe('sunucu fiyatlaması yardımcıları', () => {
     expect(totalWith(quote, 'BankTransfer')).toBe(125.5)
     expect(totalWith(quote, 'CashOnDelivery')).toBe(140.5)
     expect(totalWith(quote, null)).toBe(125.5)
+  })
+})
+
+describe('kargo seçimi', () => {
+  it('firma tanımlıysa seçim gösterilir, firmasız tek seçenekte gösterilmez', () => {
+    expect(hasCarrierChoice({ shippingOptions: [{ carrierId: 'a', name: 'Yurtiçi', fee: 40 }, { carrierId: 'b', name: 'Aras', fee: 35 }] })).toBe(true)
+    expect(hasCarrierChoice({ shippingOptions: [{ carrierId: null, name: 'Kargo', fee: 30 }] })).toBe(false)
+    expect(hasCarrierChoice({ shippingOptions: [] })).toBe(false)
   })
 })

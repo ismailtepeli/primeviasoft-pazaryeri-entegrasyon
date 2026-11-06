@@ -359,7 +359,9 @@ export function OrderDetailPage() {
         </ol>
       )}
       {order.statusNote && <p className="store-note">Not: {order.statusNote}</p>}
-      {order.trackingNumber && <p className="order-track"><Truck size={18} aria-hidden /> {order.shipmentCarrier} · takip no <strong>{order.trackingNumber}</strong></p>}
+      {order.trackingNumber
+        ? <p className="order-track"><Truck size={18} aria-hidden /> {order.shipmentCarrier} · takip no <strong>{order.trackingNumber}</strong>{order.trackingUrl && /^https:\/\//i.test(order.trackingUrl) && <> · <a href={order.trackingUrl} target="_blank" rel="noopener noreferrer">Kargom nerede?</a></>}</p>
+        : order.shipmentCarrier && order.status !== 'Cancelled' && <p className="store-note"><Truck size={14} aria-hidden /> Kargo firması: {order.shipmentCarrier}</p>}
 
       <section className="ps-card store-panel account-card" aria-labelledby="urunler-baslik">
         <h2 id="urunler-baslik">Ürünler</h2>

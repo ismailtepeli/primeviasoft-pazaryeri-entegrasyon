@@ -33,7 +33,7 @@ public class ShopCheckoutController(CheckoutService checkout, ShopCatalogService
     [HttpPost("cart/quote")]
     [AllowAnonymous]
     public Task<IActionResult> Quote([FromQuery] string? slug, CartQuoteRequest input, CancellationToken ct) => Run(async () =>
-        await shop.ResolveAsync(slug, ct) is { } tenant ? Ok(await checkout.QuoteAsync(tenant, input.Lines, ct)) : NotFound(new { error = "Mağaza bulunamadı." }));
+        await shop.ResolveAsync(slug, ct) is { } tenant ? Ok(await checkout.QuoteAsync(tenant, input.Lines, input.CarrierId, ct)) : NotFound(new { error = "Mağaza bulunamadı." }));
 
     [HttpPost("checkout")]
     [Authorize(Policy = AuthPolicies.Customer)]

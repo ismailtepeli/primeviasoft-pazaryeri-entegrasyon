@@ -3,7 +3,7 @@ import { Link, Navigate, useNavigate, useParams } from 'react-router-dom'
 import { ChevronRight, CircleCheck, Minus, Package, Plus, ShoppingCart, Trash2, TriangleAlert } from 'lucide-react'
 import { ShopApiError, shopApi } from './api'
 import { addressSummary, type Address, type OrderDetail } from './account'
-import { fixedQuantity, totalWith, type CartQuote, type CheckoutResult, type QuoteLine } from './cart'
+import { fixedQuantity, hasCarrierChoice, totalWith, type CartQuote, type CheckoutResult, type QuoteLine } from './cart'
 import { useCart } from './CartContext'
 import { useCustomer } from './CustomerContext'
 import { productPath, usePageMeta } from './seo'
@@ -30,20 +30,20 @@ export function AddToCartButton({ productId, disabled, primary = false }: { prod
 }
 
 /** Sepeti sunucuda fiyatlar; satırlar değişince (kısa gecikmeyle) yeniden sorar. */
-function useQuote() {
+function useQuote(carrierId: string | null = null) {
   const { tenant } = useShop()
   const { lines } = useCart()
   const [quote, setQuote] = useState<CartQuote | null>(null)
   const [error, setError] = useState<string>()
   const [loading, setLoading] = useState(lines.length > 0)
-  const key = JSON.stringify(lines)
+  const key = JSON.stringify([lines, carrierId])
 
   const refresh = useCallback(() => {
     if (lines.length === 0) { setQuote(null); setLoading(false); return () => {} }
     let current = true
     setLoading(true)
     const t = window.setTimeout(() => {
-      shopApi<CartQuote>(tenant.slug, '/cart/quote', { method: 'POST', body: JSON.stringify({ lines }) })
+      shopApi<CartQuote>(tenant.slug, '/cart/quote', { method: 'POST', body: JSON.stringify({ lines, carrierId }) })
         .then((q) => { if (current) { setQuote(q); setError(undefined) } })
         .catch((e: Error) => { if (current) setError(e.message) })
         .finally(() => { if (current) setLoading(false) })
@@ -72,7 +72,7 @@ function Summary({ quote, method }: { quote: CartQuote; method?: string | null }
   return (
     <dl className="cart-summary">
       <div><dt>Ara toplam</dt><dd>{formatMoney(quote.subtotal, quote.currency)}</dd></div>
-      <div><dt>Kargo</dt><dd>{quote.shippingFee === 0 ? 'Ücretsiz' : formatMoney(quote.shippingFee, quote.currency)}</dd></div>
+      <div><dt>Kargo{quote.carrierId && hasCarrierChoice(quote) ? ` (${quote.shippingOptions.find((o) => o.carrierId === quote.carrierId)?.name})` : ''}</dt><dd>{quote.shippingFee === 0 ? 'Ücretsiz' : formatMoney(quote.shippingFee, quote.currency)}</dd></div>
       {fee > 0 && <div><dt>Kapıda ödeme ücreti</dt><dd>{formatMoney(fee, quote.currency)}</dd></div>}
       {quote.freeShippingRemaining !== null && quote.freeShippingRemaining > 0 && (
         <p className="store-note">{formatMoney(quote.freeShippingRemaining, quote.currency)} daha ekleyin, kargo ücretsiz olsun.</p>
@@ -143,7 +143,8 @@ export function CheckoutPage() {
   const { lines, clear } = useCart()
   const { api } = useCustomer()
   const navigate = useNavigate()
-  const { quote, error: quoteError, loading } = useQuote()
+  const [carrierId, setCarrierId] = useState<string | null>(null)
+  const { quote, error: quoteError, loading } = useQuote(carrierId)
   const [addresses, setAddresses] = useState<Address[] | null>(null)
   const [addressId, setAddressId] = useState<string>('')
   const [method, setMethod] = useState<string>('')
@@ -164,6 +165,8 @@ export function CheckoutPage() {
   }, [api])
 
   useEffect(() => { if (quote && !quote.paymentOptions.some((o) => o.method === method)) setMethod(quote.paymentOptions[0]?.method ?? '') }, [quote, method])
+  // Seçili firma sepete uymuyorsa (ya da henüz seçilmediyse) sunucunun önerdiği ilk uygun firmaya geçilir; eski teklif seçimi ezmesin diye yalnızca seçeneklerde yoksa.
+  useEffect(() => { if (quote && !quote.shippingOptions.some((o) => o.carrierId === carrierId)) setCarrierId(quote.carrierId) }, [quote, carrierId])
 
   // Sipariş verildikten sonra sepet boşalır; o durumda sepet sayfasına değil, sipariş sonucuna gidilir.
   if (lines.length === 0 && !placed) return <Navigate to="/sepet" replace />
@@ -174,7 +177,7 @@ export function CheckoutPage() {
     if (!method) { setError('Ödeme yöntemi seçin.'); return }
     setBusy(true); setError(undefined)
     try {
-      const result = await api<CheckoutResult>('/checkout', { method: 'POST', body: JSON.stringify({ lines, addressId, paymentMethod: method, note: note.trim() || null }) })
+      const result = await api<CheckoutResult>('/checkout', { method: 'POST', body: JSON.stringify({ lines, addressId, paymentMethod: method, note: note.trim() || null, carrierId }) })
       setPlaced(true)
       navigate(result.paymentUrl ?? `/siparis-tamam/${result.orderId}`, { replace: true })
       clear()
@@ -190,6 +193,7 @@ export function CheckoutPage() {
       <h1 className="account-title">Siparişi tamamla</h1>
       {quoteError && <p role="alert" className="store-error">{quoteError}</p>}
       {!ready && (loading || addresses === null) && <p className="store-note" aria-busy="true">Yükleniyor…</p>}
+      {ready && quote.shippingOptions.length === 0 && <p role="alert" className="store-error">Bu sepet için uygun kargo seçeneği yok. Lütfen mağaza ile iletişime geçin.</p>}
       {ready && quote.hasIssues && <p role="alert" className="store-error">Sepetinizde stokta olmayan ürünler var. <Link to="/sepet">Sepete dönün</Link>.</p>}
       {ready && (
         <form className="cart-layout" onSubmit={submit} noValidate>
@@ -209,6 +213,20 @@ export function CheckoutPage() {
                 </ul>
               )}
             </section>
+
+            {hasCarrierChoice(quote) && (
+              <section className="ps-card store-panel account-card" aria-labelledby="kargo-baslik">
+                <h2 id="kargo-baslik">Kargo firması</h2>
+                <ul className="choice-list">
+                  {quote.shippingOptions.map((o) => (
+                    <li key={o.carrierId}><label className={`choice${carrierId === o.carrierId ? ' choice--on' : ''}`}>
+                      <input type="radio" name="carrier" checked={carrierId === o.carrierId} onChange={() => setCarrierId(o.carrierId)} />
+                      <span><strong>{o.name}</strong> · {o.fee === 0 ? 'Ücretsiz' : formatMoney(o.fee)}</span>
+                    </label></li>
+                  ))}
+                </ul>
+              </section>
+            )}
 
             <section className="ps-card store-panel account-card" aria-labelledby="odeme-baslik">
               <h2 id="odeme-baslik">Ödeme yöntemi</h2>
@@ -238,7 +256,7 @@ export function CheckoutPage() {
             <ul className="cart-mini">{quote.lines.map((l) => <li key={l.productId}><span>{l.quantity} × {l.name}</span><span>{formatMoney(l.lineTotal)}</span></li>)}</ul>
             <Summary quote={quote} method={method} />
             {error && <p role="alert" className="store-error">{error}</p>}
-            <button type="submit" className="ps-btn ps-btn--primary" disabled={busy || quote.hasIssues || !method || !addressId}>{busy ? 'Sipariş veriliyor…' : 'Siparişi onayla'}</button>
+            <button type="submit" className="ps-btn ps-btn--primary" disabled={busy || quote.hasIssues || !method || !addressId || quote.shippingOptions.length === 0}>{busy ? 'Sipariş veriliyor…' : 'Siparişi onayla'}</button>
             <p className="store-note">Siparişi onaylayarak mağazanın satış koşullarını kabul etmiş olursunuz.</p>
           </aside>
         </form>

@@ -65,6 +65,77 @@ public class CheckoutService(AppDbContext db, ShopCatalogService shop, IStockPoo
         return list;
     }
 
+    // ---------- kargo firmaları ----------
+
+    public const int MaxCarriers = 20;
+
+    private static ShippingCarrierDto ToDto(ShippingCarrier c) => new(c.Id, c.Name, c.Enabled, c.FlatFee, c.TrackingUrlTemplate,
+        c.Rates.OrderBy(r => r.UpToDesi).Select(r => new ShippingRateDto(r.UpToDesi, r.Fee)).ToList());
+
+    private Task<List<ShippingCarrier>> LoadCarriersAsync(CancellationToken ct) =>
+        db.ShippingCarriers.AsNoTracking().Include(c => c.Rates).OrderBy(c => c.SortOrder).ThenBy(c => c.Name).ToListAsync(ct);
+
+    public async Task<IReadOnlyList<ShippingCarrierDto>> CarriersAsync(CancellationToken ct) => (await LoadCarriersAsync(ct)).Select(ToDto).ToList();
+
+    public async Task<ShippingCarrierDto> SaveCarrierAsync(Guid? id, ShippingCarrierInput input, CancellationToken ct)
+    {
+        var name = input.Name?.Trim() ?? "";
+        if (name.Length == 0 || name.Length > ShippingCarrier.MaxNameLength) throw new StoreException(400, $"Firma adı 1 ile {ShippingCarrier.MaxNameLength} karakter arasında olmalı.");
+        if (input.FlatFee < 0 || input.FlatFee > 100_000) throw new StoreException(400, "Kargo ücreti 0 ile 100.000 arasında olmalı.");
+        var template = string.IsNullOrWhiteSpace(input.TrackingUrlTemplate) ? null : input.TrackingUrlTemplate.Trim();
+        if (template is not null && (template.Length > ShippingCarrier.MaxUrlLength || !template.StartsWith("https://", StringComparison.OrdinalIgnoreCase)
+            || !template.Contains(ShippingCarrier.TrackingPlaceholder) || !Uri.TryCreate(template.Replace(ShippingCarrier.TrackingPlaceholder, "1"), UriKind.Absolute, out _)))
+            throw new StoreException(400, $"Takip bağlantısı https ile başlamalı ve {ShippingCarrier.TrackingPlaceholder} içermeli (en fazla {ShippingCarrier.MaxUrlLength} karakter).");
+        var rates = (input.Rates ?? []).Select(r => new ShippingRateDto(decimal.Round(r.UpToDesi, 2), decimal.Round(r.Fee, 2))).ToList();
+        if (rates.Count > ShippingCarrier.MaxRates) throw new StoreException(400, $"En fazla {ShippingCarrier.MaxRates} desi aralığı tanımlanabilir.");
+        if (rates.Any(r => r.UpToDesi <= 0 || r.UpToDesi > 100_000 || r.Fee < 0 || r.Fee > 100_000)) throw new StoreException(400, "Desi aralığı sıfırdan büyük, ücret 0 ile 100.000 arasında olmalı.");
+        if (rates.Select(r => r.UpToDesi).Distinct().Count() != rates.Count) throw new StoreException(400, "Aynı desi sınırı iki kez yazılamaz.");
+
+        var all = await db.ShippingCarriers.Include(c => c.Rates).ToListAsync(ct);
+        if (all.Any(c => c.Id != id && string.Equals(c.Name, name, StringComparison.OrdinalIgnoreCase))) throw new StoreException(409, "Bu adda bir kargo firması zaten var.");
+        ShippingCarrier carrier;
+        if (id is null)
+        {
+            if (all.Count >= MaxCarriers) throw new StoreException(409, $"En fazla {MaxCarriers} kargo firması tanımlanabilir.");
+            carrier = new ShippingCarrier { SortOrder = all.Count == 0 ? 0 : all.Max(c => c.SortOrder) + 1 };
+            db.ShippingCarriers.Add(carrier);
+        }
+        else carrier = all.FirstOrDefault(c => c.Id == id) ?? throw new StoreException(404, "Kargo firması bulunamadı.");
+        carrier.Name = name; carrier.Enabled = input.Enabled; carrier.FlatFee = decimal.Round(input.FlatFee, 2); carrier.TrackingUrlTemplate = template;
+        db.ShippingRates.RemoveRange(carrier.Rates);
+        carrier.Rates = rates.Select(r => new ShippingRate { UpToDesi = r.UpToDesi, Fee = r.Fee }).ToList();
+        await db.SaveChangesAsync(ct);
+        return ToDto(carrier);
+    }
+
+    /// <summary>Firmayı siler; verilmiş siparişler firma adını kendi üzerinde taşıdığı için etkilenmez.</summary>
+    public async Task DeleteCarrierAsync(Guid id, CancellationToken ct)
+    {
+        var carrier = await db.ShippingCarriers.FirstOrDefaultAsync(c => c.Id == id, ct) ?? throw new StoreException(404, "Kargo firması bulunamadı.");
+        db.ShippingCarriers.Remove(carrier);
+        await db.SaveChangesAsync(ct);
+    }
+
+    /// <summary>
+    /// Sepete uygun kargo seçenekleri. Firma tanımlı değilse ayarlardaki tek kargo ücreti uygulanır. Ücretsiz kargo eşiği tüm firmalar için geçerlidir.
+    /// Kuralı olan firmada sepet desisi en büyük aralığı aşarsa o firma sunulmaz.
+    /// </summary>
+    public static List<ShippingOption> ShippingOptions(B2CSettings settings, IReadOnlyList<ShippingCarrier> carriers, decimal subtotal, decimal desi)
+    {
+        var free = subtotal == 0 || (settings.FreeShippingThreshold is { } t && subtotal >= t);
+        if (carriers.Count == 0) return [new ShippingOption(null, "Kargo", free ? 0 : settings.ShippingFee)];
+        var options = new List<ShippingOption>();
+        foreach (var c in carriers.Where(c => c.Enabled).OrderBy(c => c.SortOrder).ThenBy(c => c.Name))
+        {
+            decimal fee;
+            if (c.Rates.Count == 0) fee = c.FlatFee;
+            else if (c.Rates.OrderBy(r => r.UpToDesi).FirstOrDefault(r => desi <= r.UpToDesi) is { } rate) fee = rate.Fee;
+            else continue;
+            options.Add(new ShippingOption(c.Id, c.Name, free ? 0 : fee));
+        }
+        return options;
+    }
+
     // ---------- sepet ----------
 
     private static List<CartLineInput> Merge(IReadOnlyList<CartLineInput>? lines)
@@ -77,19 +148,19 @@ public class CheckoutService(AppDbContext db, ShopCatalogService shop, IStockPoo
     }
 
     /// <summary>Herkese açık fiyatlama; kiracı slug çözümünden gelir.</summary>
-    public async Task<CartQuote> QuoteAsync(Guid tenantId, IReadOnlyList<CartLineInput>? input, CancellationToken ct)
+    public async Task<CartQuote> QuoteAsync(Guid tenantId, IReadOnlyList<CartLineInput>? input, Guid? carrierId, CancellationToken ct)
     {
         var lines = Merge(input);
         using var _ = AmbientTenant.Use(tenantId);
         var products = (await shop.CartProductsAsync(tenantId, lines.Select(l => l.ProductId).ToList(), ct)).ToDictionary(p => p.Id);
         var settings = await SettingsAsync(ct);
-        return BuildQuote(lines, products, settings, null);
+        return BuildQuote(lines, products, settings, await LoadCarriersAsync(ct), carrierId, null);
     }
 
-    private CartQuote BuildQuote(List<CartLineInput> lines, Dictionary<Guid, ShopCartProduct> products, B2CSettings settings, PaymentMethod? method)
+    private CartQuote BuildQuote(List<CartLineInput> lines, Dictionary<Guid, ShopCartProduct> products, B2CSettings settings, IReadOnlyList<ShippingCarrier> carriers, Guid? carrierId, PaymentMethod? method)
     {
         var rows = new List<CartQuoteLine>();
-        decimal subtotal = 0;
+        decimal subtotal = 0, desi = 0;
         foreach (var l in lines)
         {
             if (!products.TryGetValue(l.ProductId, out var p))
@@ -101,14 +172,16 @@ public class CheckoutService(AppDbContext db, ShopCatalogService shop, IStockPoo
             if (p.Available <= 0) issue = new CartQuoteIssue("stock", "Stok tükendi.", 0);
             else if (l.Quantity > p.Available) issue = new CartQuoteIssue("stock", $"Stokta yalnızca {p.Available} adet var.", p.Available);
             var total = decimal.Round(p.UnitPrice * l.Quantity, 2);
-            if (issue is null) subtotal += total;
+            if (issue is null) { subtotal += total; desi += (p.Desi ?? 0) * l.Quantity; }
             rows.Add(new CartQuoteLine(p.Id, p.Name, p.CoverUrl, l.Quantity, p.UnitPrice, p.ListPrice, total, issue));
         }
         var free = settings.FreeShippingThreshold is { } t && subtotal >= t;
-        var shipping = free || subtotal == 0 ? 0 : settings.ShippingFee;
+        var options = ShippingOptions(settings, carriers, subtotal, desi);
+        var chosen = options.FirstOrDefault(o => carrierId is not null && o.CarrierId == carrierId) ?? options.FirstOrDefault();
+        var shipping = chosen?.Fee ?? 0;
         decimal? remaining = settings.FreeShippingThreshold is { } th && !free && subtotal > 0 ? decimal.Round(th - subtotal, 2) : null;
         var fee = method == PaymentMethod.CashOnDelivery ? settings.CashOnDeliveryFee : 0;
-        return new CartQuote(rows, subtotal, shipping, remaining, subtotal + shipping + fee, Currency, rows.Any(r => r.Issue is not null), Options(settings));
+        return new CartQuote(rows, subtotal, shipping, remaining, subtotal + shipping + fee, Currency, rows.Any(r => r.Issue is not null), Options(settings), options, chosen?.CarrierId);
     }
 
     // ---------- sipariş ----------
@@ -127,7 +200,11 @@ public class CheckoutService(AppDbContext db, ShopCatalogService shop, IStockPoo
         var products = (await shop.CartProductsAsync(customer.TenantId, lines.Select(l => l.ProductId).ToList(), ct)).ToDictionary(p => p.Id);
         var settings = await SettingsAsync(ct);
         if (!Options(settings).Any(o => o.Method == method.ToString())) throw new StoreException(409, "Bu ödeme yöntemi şu an kullanılamıyor.");
-        var quote = BuildQuote(lines, products, settings, method);
+        var carriers = await LoadCarriersAsync(ct);
+        var quote = BuildQuote(lines, products, settings, carriers, request.CarrierId, method);
+        if (quote.ShippingOptions is not { Count: > 0 }) throw new StoreException(409, "Bu sepet için uygun kargo seçeneği yok; mağaza ile iletişime geçin.");
+        if (request.CarrierId is { } wanted && quote.CarrierId != wanted) throw new StoreException(409, "Seçtiğiniz kargo firması bu sepet için kullanılamıyor; sepeti yenileyin.");
+        var carrierName = quote.ShippingOptions.First(o => o.CarrierId == quote.CarrierId).Name;
         if (quote.HasIssues)
             throw new StoreException(409, "Sepetinizdeki bazı ürünler siparişe uygun değil.", new { issues = quote.Lines.Where(l => l.Issue is not null).Select(l => new { l.ProductId, l.Name, l.Issue }).ToList() });
 
@@ -163,7 +240,7 @@ public class CheckoutService(AppDbContext db, ShopCatalogService shop, IStockPoo
         {
             Channel = Channel, OrderNumber = number, Status = OrderStatus.New, OrderDate = now, LastModifiedAt = now, CustomerName = customer.FullName, CustomerId = customer.Id,
             TotalPrice = quote.Total, TotalNet = decimal.Round(net, 2), Currency = Currency, Note = note, ShippingFee = quote.ShippingFee, PaymentFee = fee > 0 ? fee : null,
-            ShippingAddress = FormatAddress(address), PaymentMethod = method, PaymentStatus = paymentStatus,
+            ShippingAddress = FormatAddress(address), ShipmentCarrier = quote.CarrierId is null ? null : carrierName, PaymentMethod = method, PaymentStatus = paymentStatus,
             PaymentExpiresAt = method == PaymentMethod.Card ? now.AddMinutes(CardMinutes) : null,
             Packages = [new OrderPackage { Channel = Channel, PackageId = number, ChannelStatus = "Created", Status = OrderStatus.New, LastModifiedAt = now, TotalPrice = quote.Total, Lines = orderLines }],
         };
@@ -186,6 +263,48 @@ public class CheckoutService(AppDbContext db, ShopCatalogService shop, IStockPoo
         if (notifier is not null)
             await notifier.NotifyAdminAsync(NotificationKinds.B2COrderNew, $"Yeni B2C siparişi {number}", $"{customer.FullName} · {orderLines.Count} kalem · {quote.Total:0.00} {Currency} · {MethodText(method)}", "/siparisler", $"b2c-new:{order.Id}", ct);
         return new CheckoutResult(order.Id, number, method.ToString(), paymentStatus.ToString(), quote.Total, method == PaymentMethod.BankTransfer ? settings.BankTransferInfo : null, url);
+    }
+
+    // ---------- yönetici: ödeme onayı ve sevk ----------
+
+    private Task<Order?> LoadB2COrderAsync(Guid id, CancellationToken ct) =>
+        db.Orders.FirstOrDefaultAsync(o => o.Id == id && o.Channel == Channel, ct);
+
+    /// <summary>Havale ile verilen siparişin ödemesinin geldiğini onaylar (bekleyen havale → ödendi).</summary>
+    public async Task ApprovePaymentAsync(Guid orderId, CancellationToken ct)
+    {
+        var order = await LoadB2COrderAsync(orderId, ct) ?? throw new StoreException(404, "Sipariş bulunamadı.");
+        if (order.PaymentStatus == PaymentStatus.Paid) return;
+        if (order.PaymentMethod != PaymentMethod.BankTransfer || order.PaymentStatus != PaymentStatus.Pending || order.Status == OrderStatus.Cancelled)
+            throw new StoreException(409, "Yalnızca ödemesi bekleyen havale siparişleri onaylanabilir.");
+        order.PaymentStatus = PaymentStatus.Paid; order.LastModifiedAt = Now();
+        await db.SaveChangesAsync(ct);
+    }
+
+    /// <summary>
+    /// Siparişi kargoya verir: firma ve takip numarası kaydedilir, firma takip şablonu varsa bağlantı üretilir; müşteri bunları sipariş detayında görür.
+    /// Ödemesi alınmamış (bekleyen havale/kart) sipariş sevk edilemez; kapıda ödeme siparişi sevk edilebilir.
+    /// </summary>
+    public async Task ShipAsync(Guid orderId, ShipOrderInput input, CancellationToken ct)
+    {
+        var order = await LoadB2COrderAsync(orderId, ct) ?? throw new StoreException(404, "Sipariş bulunamadı.");
+        if (order.Status is not (OrderStatus.New or OrderStatus.Preparing)) throw new StoreException(409, "Bu sipariş artık kargoya verilemez.");
+        if (order.PaymentStatus is not (PaymentStatus.Paid or PaymentStatus.OnDelivery)) throw new StoreException(409, "Ödemesi alınmamış sipariş kargoya verilemez; havale ise önce ödemeyi onaylayın.");
+        var tracking = input.TrackingNumber?.Trim() ?? "";
+        if (tracking.Length == 0 || tracking.Length > 100 || tracking.Any(char.IsControl)) throw new StoreException(400, "Takip numarası 1 ile 100 karakter arasında olmalı.");
+
+        ShippingCarrier? carrier = null;
+        if (input.CarrierId is { } cid) carrier = await db.ShippingCarriers.AsNoTracking().FirstOrDefaultAsync(c => c.Id == cid, ct) ?? throw new StoreException(400, "Kargo firması bulunamadı.");
+        var name = carrier?.Name ?? (string.IsNullOrWhiteSpace(input.Carrier) ? order.ShipmentCarrier : input.Carrier.Trim());
+        if (string.IsNullOrWhiteSpace(name) || name.Length > ShippingCarrier.MaxNameLength) throw new StoreException(400, "Kargo firmasını seçin ya da yazın.");
+        carrier ??= await db.ShippingCarriers.AsNoTracking().FirstOrDefaultAsync(c => c.Name == name, ct);
+        var url = carrier?.TrackingUrlTemplate?.Replace(ShippingCarrier.TrackingPlaceholder, Uri.EscapeDataString(tracking));
+
+        var now = Now();
+        order.Status = OrderStatus.Shipped; order.ShipmentCarrier = name; order.TrackingNumber = tracking; order.TrackingUrl = url;
+        order.ShippedAt = now; order.LastModifiedAt = now;
+        await db.OrderPackages.Where(p => p.OrderId == orderId).ExecuteUpdateAsync(s => s.SetProperty(p => p.Status, OrderStatus.Shipped).SetProperty(p => p.ChannelStatus, "Shipped").SetProperty(p => p.LastModifiedAt, now), ct);
+        await db.SaveChangesAsync(ct);
     }
 
     public static string MethodText(PaymentMethod m) => m switch { PaymentMethod.BankTransfer => "Havale/EFT", PaymentMethod.CashOnDelivery => "Kapıda ödeme", _ => "Kart" };

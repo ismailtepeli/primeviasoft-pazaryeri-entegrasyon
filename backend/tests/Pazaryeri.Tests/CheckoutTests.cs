@@ -102,7 +102,7 @@ public class CheckoutTests : IAsyncLifetime
         await using var db = NewDb(w.Tenant);
         var svc = Service(db, w.Tenant);
 
-        var q = await svc.QuoteAsync(w.Tenant, [new(w.Tee, 2)], default);
+        var q = await svc.QuoteAsync(w.Tenant, [new(w.Tee, 2)], null, default);
         Assert.Equal(80m, q.Lines[0].UnitPrice);
         Assert.Equal(100m, q.Lines[0].ListPrice);
         Assert.Equal(160m, q.Subtotal);
@@ -111,7 +111,7 @@ public class CheckoutTests : IAsyncLifetime
         Assert.Equal(340m, q.FreeShippingRemaining);
         Assert.False(q.HasIssues);
 
-        var free = await svc.QuoteAsync(w.Tenant, [new(w.Tee, 7)], default); // 560 ≥ 500
+        var free = await svc.QuoteAsync(w.Tenant, [new(w.Tee, 7)], null, default); // 560 ≥ 500
         Assert.Equal(0m, free.ShippingFee);
         Assert.Equal(560m, free.Total);
         Assert.Null(free.FreeShippingRemaining);
@@ -122,7 +122,7 @@ public class CheckoutTests : IAsyncLifetime
     {
         var w = await SeedAsync("sorun");
         await using var db = NewDb(w.Tenant);
-        var q = await Service(db, w.Tenant).QuoteAsync(w.Tenant, [new(w.Tee, 11), new(w.Cap, 3), new(w.Hidden, 1), new(w.Out, 1), new(Guid.NewGuid(), 1)], default);
+        var q = await Service(db, w.Tenant).QuoteAsync(w.Tenant, [new(w.Tee, 11), new(w.Cap, 3), new(w.Hidden, 1), new(w.Out, 1), new(Guid.NewGuid(), 1)], null, default);
 
         Assert.True(q.HasIssues);
         Assert.Equal(5, q.Lines.Count);
@@ -139,12 +139,12 @@ public class CheckoutTests : IAsyncLifetime
         var w = await SeedAsync("sinir");
         await using var db = NewDb(w.Tenant);
         var svc = Service(db, w.Tenant);
-        await Assert.ThrowsAsync<StoreException>(() => svc.QuoteAsync(w.Tenant, [], default));
-        await Assert.ThrowsAsync<StoreException>(() => svc.QuoteAsync(w.Tenant, [new(w.Tee, 0), new(w.Cap, -3)], default));
+        await Assert.ThrowsAsync<StoreException>(() => svc.QuoteAsync(w.Tenant, [], null, default));
+        await Assert.ThrowsAsync<StoreException>(() => svc.QuoteAsync(w.Tenant, [new(w.Tee, 0), new(w.Cap, -3)], null, default));
         var many = Enumerable.Range(0, CheckoutService.MaxLines + 1).Select(_ => new CartLineInput(Guid.NewGuid(), 1)).ToList();
-        await Assert.ThrowsAsync<StoreException>(() => svc.QuoteAsync(w.Tenant, many, default));
+        await Assert.ThrowsAsync<StoreException>(() => svc.QuoteAsync(w.Tenant, many, null, default));
 
-        var q = await svc.QuoteAsync(w.Tenant, [new(w.Tee, 1), new(w.Tee, 2)], default);
+        var q = await svc.QuoteAsync(w.Tenant, [new(w.Tee, 1), new(w.Tee, 2)], null, default);
         Assert.Single(q.Lines);
         Assert.Equal(3, q.Lines[0].Quantity);
     }
@@ -155,7 +155,7 @@ public class CheckoutTests : IAsyncLifetime
         var a = await SeedAsync("kira-a");
         var b = await SeedAsync("kira-b");
         await using var db = NewDb(a.Tenant);
-        var q = await Service(db, a.Tenant).QuoteAsync(a.Tenant, [new(b.Tee, 1)], default);
+        var q = await Service(db, a.Tenant).QuoteAsync(a.Tenant, [new(b.Tee, 1)], null, default);
         Assert.Equal("unavailable", q.Lines[0].Issue!.Kind);
     }
 
@@ -311,7 +311,7 @@ public class CheckoutTests : IAsyncLifetime
         var svc = Service(db, w.Tenant, fake: false);
         var ex = await Assert.ThrowsAsync<StoreException>(() => svc.SaveSettingsAsync(new B2CSettingsInput(30m, null, true, "IBAN", false, 0, true), default));
         Assert.Equal(409, ex.Status);
-        var q = await svc.QuoteAsync(w.Tenant, [new(w.Tee, 1)], default);
+        var q = await svc.QuoteAsync(w.Tenant, [new(w.Tee, 1)], null, default);
         Assert.DoesNotContain(q.PaymentOptions, o => o.Method == "Card");
     }
 

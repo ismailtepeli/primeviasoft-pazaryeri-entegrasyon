@@ -25,6 +25,34 @@ public enum PaymentStatus
     Expired,
 }
 
+/// <summary>
+/// B2C kargo firması. Kural yoksa sabit ücret (<see cref="FlatFee"/>) uygulanır; kural varsa sepetin toplam desisine uyan
+/// en küçük aralığın ücreti uygulanır, en büyük aralığı aşan sepet için firma sunulmaz.
+/// </summary>
+public class ShippingCarrier : TenantEntity
+{
+    public const int MaxNameLength = 60;
+    public const int MaxUrlLength = 300;
+    public const int MaxRates = 20;
+    public const string TrackingPlaceholder = "{takipNo}";
+
+    public string Name { get; set; } = string.Empty;
+    public bool Enabled { get; set; } = true;
+    public int SortOrder { get; set; }
+    public decimal FlatFee { get; set; }
+    /// <summary>Takip bağlantısı şablonu; "{takipNo}" yer tutucusu takip numarasıyla değişir. https olmalı. Boşsa bağlantı gösterilmez.</summary>
+    public string? TrackingUrlTemplate { get; set; }
+    public List<ShippingRate> Rates { get; set; } = [];
+}
+
+/// <summary>Desi aralığı ücreti: sepet desisi <see cref="UpToDesi"/> değerine kadar ise <see cref="Fee"/> uygulanır.</summary>
+public class ShippingRate : TenantEntity
+{
+    public Guid CarrierId { get; set; }
+    public decimal UpToDesi { get; set; }
+    public decimal Fee { get; set; }
+}
+
 /// <summary>Kiracının B2C mağaza kargo ve ödeme ayarları (kiracı başına tek kayıt).</summary>
 public class B2CSettings : TenantEntity
 {

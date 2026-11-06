@@ -53,8 +53,17 @@ export interface QuoteLine {
 
 export interface PaymentOption { method: string; label: string; fee: number; info: string | null }
 
+/** Sepete uygun kargo seçeneği; firma tanımlı olmayan mağazada tek, firmasız (carrierId boş) seçenek gelir. */
+export interface ShippingOption { carrierId: string | null; name: string; fee: number }
+
 export interface CartQuote {
   lines: QuoteLine[]; subtotal: number; shippingFee: number; freeShippingRemaining: number | null; total: number; currency: string; hasIssues: boolean; paymentOptions: PaymentOption[]
+  shippingOptions: ShippingOption[]; carrierId: string | null
+}
+
+/** Müşterinin seçebileceği firma var mı (firma tanımlıysa seçenekler firmalıdır). */
+export function hasCarrierChoice(quote: Pick<CartQuote, 'shippingOptions'>): boolean {
+  return quote.shippingOptions.some((o) => o.carrierId !== null)
 }
 
 export interface CheckoutResult { orderId: string; orderNumber: string; paymentMethod: string; paymentStatus: string; total: number; paymentInfo: string | null; paymentUrl: string | null }

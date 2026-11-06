@@ -43,6 +43,8 @@ public class Order : TenantEntity
     /// <summary>B2B: sevk bilgisi (bayiye görünür).</summary>
     public string? ShipmentCarrier { get; set; }
     public string? TrackingNumber { get; set; }
+    /// <summary>B2C: kargo firmasının takip sayfası (sevk anında firma şablonundan üretilir).</summary>
+    public string? TrackingUrl { get; set; }
     public DateTime? ShippedAt { get; set; }
     public DateTime? ApprovedAt { get; set; }
     /// <summary>B2B: ret/iptal gerekçesi (bayiye görünür).</summary>

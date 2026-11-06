@@ -40,6 +40,8 @@ public class AppDbContext(DbContextOptions<AppDbContext> options, ITenantProvide
     public DbSet<Notification> Notifications => Set<Notification>();
     public DbSet<Customer> Customers => Set<Customer>();
     public DbSet<B2CSettings> B2CSettings => Set<B2CSettings>();
+    public DbSet<ShippingCarrier> ShippingCarriers => Set<ShippingCarrier>();
+    public DbSet<ShippingRate> ShippingRates => Set<ShippingRate>();
     public DbSet<CustomerAddress> CustomerAddresses => Set<CustomerAddress>();
     public DbSet<WebhookEndpoint> WebhookEndpoints => Set<WebhookEndpoint>();
     public DbSet<WebhookEvent> WebhookEvents => Set<WebhookEvent>();
@@ -297,6 +299,23 @@ public class AppDbContext(DbContextOptions<AppDbContext> options, ITenantProvide
             b.HasOne<Tenant>().WithMany().HasForeignKey(s => s.TenantId).OnDelete(DeleteBehavior.Restrict);
         });
 
+        builder.Entity<ShippingCarrier>(b =>
+        {
+            b.Property(c => c.Name).HasMaxLength(ShippingCarrier.MaxNameLength);
+            b.Property(c => c.FlatFee).HasPrecision(18, 2);
+            b.Property(c => c.TrackingUrlTemplate).HasMaxLength(ShippingCarrier.MaxUrlLength);
+            b.HasMany(c => c.Rates).WithOne().HasForeignKey(r => r.CarrierId).OnDelete(DeleteBehavior.Cascade);
+            b.HasIndex(c => new { c.TenantId, c.SortOrder });
+            b.HasOne<Tenant>().WithMany().HasForeignKey(c => c.TenantId).OnDelete(DeleteBehavior.Restrict);
+        });
+
+        builder.Entity<ShippingRate>(b =>
+        {
+            b.Property(r => r.UpToDesi).HasPrecision(18, 2);
+            b.Property(r => r.Fee).HasPrecision(18, 2);
+            b.HasOne<Tenant>().WithMany().HasForeignKey(r => r.TenantId).OnDelete(DeleteBehavior.Restrict);
+        });
+
         builder.Entity<B2CSettings>(b =>
         {
             b.Property(s => s.ShippingFee).HasPrecision(18, 2);
@@ -388,6 +407,7 @@ public class AppDbContext(DbContextOptions<AppDbContext> options, ITenantProvide
             b.Property(o => o.Currency).HasMaxLength(3);
             b.Property(o => o.ShipmentCarrier).HasMaxLength(100);
             b.Property(o => o.TrackingNumber).HasMaxLength(100);
+            b.Property(o => o.TrackingUrl).HasMaxLength(ShippingCarrier.MaxUrlLength + 100);
             b.HasIndex(o => new { o.TenantId, o.CustomerId });
             b.Property(o => o.StatusNote).HasMaxLength(500);
             b.HasIndex(o => new { o.TenantId, o.DealerId, o.OrderDate });
