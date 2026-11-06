@@ -48,6 +48,14 @@ Açılış ekranı mağaza, stok ve sipariş durumunuzu özetler: kanal durumlar
 - **Görseller:** Ürün düzenleme sayfasında görsel ekleyin, sırasını değiştirin. İlk görsel ana görseldir.
 - **Fiyat güncelleme:** Satır içi (fiyata tıklayıp Enter), seçili ürünlere toplu (yüzde, tutar, sabit fiyat) veya Excel ile. Ayrıntı için B2B rehberinin 7. bölümü. Yeni fiyat kanallara bir sonraki stok-fiyat senkronunda gider.
 - **Toplu işlem:** Ürünleri işaretleyince çıkan çubuktan fiyat değiştirme, B2C'de gösterme/kaldırma ve B2C kampanya uygulayabilirsiniz.
+- **XML ile ürün aktarımı (dropshipping):** Sol menüdeki **XML aktarım** sayfasından tedarikçinin XML adresini ekleyin.
+  1. **Besleme ekle** > ad ve adresi yazıp **Adresi çözümle**'ye basın. Sistem XML'in biçimini kendisi tanır (Ticimax/T-Soft tarzı Türkçe alan adları, Google Merchant/RSS, İngilizce alan adları ve öznitelikli XML desteklenir) ve barkod, ad, fiyat, stok, marka, kategori, görsel, açıklama, KDV alanlarını eşler.
+  2. **Alan eşleme** tablosunda yanlış eşleneni değiştirin, **Önizleme**'de ilk ürünlerin doğru okunduğunu görün. Barkod, ad ve fiyat zorunludur. Yanlış satır seçildiyse (örn. varyant yerine ürün) **Ürün öğesi** listesinden değiştirin.
+  3. **Kâr yüzdesi** girin: satış fiyatı = tedarikçi fiyatı × (1 + kâr %); tedarikçi fiyatı ürünün maliyetine yazılır. Tedarikçi fiyatı KDV hariçse kutuyu kapatın.
+  4. Yeni ürünlerin B2C/B2B'de hemen görünmesini isteyip istemediğinizi seçin (kapalıysa yalnızca katalogda olur) ve **Kaydet ve ürünleri aktar**'a basın.
+  - Sonraki çalışmalarda (seçtiğiniz aralıkta, en sık 15 dk) **stok ve fiyat** güncellenir; ad, açıklama, görsel, marka ve kategori yalnızca ilk eklemede yazılır, sonradan yaptığınız düzenleme ezilmez. Beslemeden kalkan ürünün stoğu sıfırlanır (ürün silinmez).
+  - Barkodu elle eklediğiniz bir ürünle ya da başka beslemeyle çakışan ürüne **dokunulmaz**, hata listesinde gösterilir. Beslemeyi silerseniz eklediği ürünler katalogda kalır.
+  - Adres, sunucunun iç ağına bağlanamaz (güvenlik); boyut sınırı 150 MB, en çok 50.000 ürün.
 
 ## 5. Pazaryerleri
 
@@ -140,5 +148,6 @@ Sunucu ayarları (veritabanı, anahtarlar, Google, webhook adresi vb.) README'de
 **Bir kanalı kapattım, veriler gitti mi?** Hayır. Kanalı yeniden açınca kaldığı yerden devam eder.
 
 ## Bilinen sınırlar
+- XML aktarımında varyantlı (iç içe) beslemelerde varyant satırı ürün olarak alınır; ürün adı/açıklaması üst öğeden gelmez. Siparişlerin tedarikçiye iletilmesi henüz yok.
 - Dış firma API'leri (Trendyol, Hepsiburada, N11, Amazon, e-Fatura) henüz gerçek hesapla denenmedi; akışlar sahte sunucu ve otomatik testlerle doğrulandı.
 - B2B'de online ödeme, kredi limiti ve sevk sonrası iade; B2C'de sepet ve ödeme henüz yok.

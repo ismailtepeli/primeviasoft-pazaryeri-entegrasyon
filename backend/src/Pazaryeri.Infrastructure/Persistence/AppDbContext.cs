@@ -41,6 +41,7 @@ public class AppDbContext(DbContextOptions<AppDbContext> options, ITenantProvide
     public DbSet<Customer> Customers => Set<Customer>();
     public DbSet<B2CSettings> B2CSettings => Set<B2CSettings>();
     public DbSet<ShippingCarrier> ShippingCarriers => Set<ShippingCarrier>();
+    public DbSet<ProductFeed> ProductFeeds => Set<ProductFeed>();
     public DbSet<ShippingRate> ShippingRates => Set<ShippingRate>();
     public DbSet<CustomerAddress> CustomerAddresses => Set<CustomerAddress>();
     public DbSet<WebhookEndpoint> WebhookEndpoints => Set<WebhookEndpoint>();
@@ -133,6 +134,8 @@ public class AppDbContext(DbContextOptions<AppDbContext> options, ITenantProvide
             b.HasMany(p => p.Images).WithOne().HasForeignKey(i => i.ProductId).OnDelete(DeleteBehavior.Cascade);
             b.Property(p => p.Variant).HasMaxLength(500);
             b.HasIndex(p => new { p.TenantId, p.MainId });
+            b.HasIndex(p => new { p.TenantId, p.FeedId });
+            b.HasOne<ProductFeed>().WithMany().HasForeignKey(p => p.FeedId).OnDelete(DeleteBehavior.Restrict);
             b.Property(p => p.Price).HasPrecision(18, 2);
             b.Property(p => p.B2CSalePrice).HasPrecision(18, 2);
             b.Property(p => p.Cost).HasPrecision(18, 2);
@@ -297,6 +300,18 @@ public class AppDbContext(DbContextOptions<AppDbContext> options, ITenantProvide
             b.Property(s => s.StockDisplay).HasConversion<string>().HasMaxLength(20);
             b.HasIndex(s => s.TenantId).IsUnique();
             b.HasOne<Tenant>().WithMany().HasForeignKey(s => s.TenantId).OnDelete(DeleteBehavior.Restrict);
+        });
+
+        builder.Entity<ProductFeed>(b =>
+        {
+            b.Property(f => f.Name).HasMaxLength(ProductFeed.MaxNameLength).IsRequired();
+            b.Property(f => f.Url).HasMaxLength(ProductFeed.MaxUrlLength).IsRequired();
+            b.Property(f => f.ItemPath).HasMaxLength(500);
+            b.Property(f => f.Format).HasMaxLength(200);
+            b.Property(f => f.MarkupPercent).HasPrecision(9, 2);
+            b.Property(f => f.LastStatus).HasMaxLength(20);
+            b.Property(f => f.LastError).HasMaxLength(1000);
+            b.HasOne<Tenant>().WithMany().HasForeignKey(f => f.TenantId).OnDelete(DeleteBehavior.Restrict);
         });
 
         builder.Entity<ShippingCarrier>(b =>
