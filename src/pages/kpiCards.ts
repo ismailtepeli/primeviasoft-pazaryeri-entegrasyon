@@ -20,7 +20,7 @@ const number = new Intl.NumberFormat('tr-TR')
 export function kpiCards(s: DashboardSummary | undefined, enabled: Set<string> | null = null): KpiCardData[] {
   const v = (n: number | undefined) => (n === undefined ? '—' : number.format(n))
   const cards: KpiCardData[] = [
-    { label: 'Bugünkü sipariş', value: v(s?.todayOrders), hint: 'Bugün gelen siparişler', to: '/siparisler?tab=new', anyOf: ['orders'] },
+    { label: 'Bugünkü sipariş', value: v(s?.todayOrders), hint: 'Bugün gelen siparişler', to: '/siparisler?tab=all&period=today', anyOf: ['orders'] },
     { label: 'Bekleyen kargo', value: v(s?.awaitingShipment), hint: 'Hazırlanıyor, kargoya verilmedi', to: '/siparisler?tab=preparing', anyOf: ['orders'] },
     {
       label: 'Senkron hatası', value: v(s?.syncErrors), to: '/senkron-hatalari', anyOf: ['marketplace', 'orders'],

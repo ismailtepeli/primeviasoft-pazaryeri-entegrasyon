@@ -3,9 +3,9 @@ import type { BadgeVariant, TabItem } from '../components'
 
 export const ORDER_PAGE_SIZE = 20
 
-export type OrderTab = 'new' | 'preparing' | 'shipped' | 'delivered' | 'cancelled'
+export type OrderTab = 'all' | 'new' | 'preparing' | 'shipped' | 'delivered' | 'cancelled'
 
-const tabValues: OrderTab[] = ['new', 'preparing', 'shipped', 'delivered', 'cancelled']
+const tabValues: OrderTab[] = ['all', 'new', 'preparing', 'shipped', 'delivered', 'cancelled']
 
 /** Adres çubuğundaki ?tab= değeri geçerliyse o sekme, değilse 'new' (KPI kartlarından filtreli geçiş). */
 export function initialTab(value: string | null): OrderTab {
@@ -14,9 +14,11 @@ export function initialTab(value: string | null): OrderTab {
 
 export const emptyCounts: OrderCounts = { new: 0, preparing: 0, shipped: 0, delivered: 0, cancelled: 0 }
 
-/** Sayaçlı sekmeler: Yeni, Hazırlanıyor, Kargoda, Teslim edildi, İptal / İade. */
-export function orderTabs(counts: OrderCounts): (TabItem & { value: OrderTab })[] {
+/** Sayaçlı sekmeler: Yeni, Hazırlanıyor, Kargoda, Teslim edildi, İptal / İade. Dönem süzgeci varken başa, tüm durumları toplayan "Tümü" sekmesi eklenir. */
+export function orderTabs(counts: OrderCounts, withAll = false): (TabItem & { value: OrderTab })[] {
+  const all = counts.new + counts.preparing + counts.shipped + counts.delivered + counts.cancelled
   return [
+    ...(withAll ? [{ value: 'all' as const, label: 'Tümü', count: all }] : []),
     { value: 'new', label: 'Yeni', count: counts.new },
     { value: 'preparing', label: 'Hazırlanıyor', count: counts.preparing },
     { value: 'shipped', label: 'Kargoda', count: counts.shipped },
@@ -44,10 +46,11 @@ export function nextStep(status: OrderStatusKind): string {
   }
 }
 
-export function ordersQuery(tab: OrderTab, search: string, page: number, channel = ''): string {
+export function ordersQuery(tab: OrderTab, search: string, page: number, channel = '', period = ''): string {
   const qs = new URLSearchParams({ tab, page: String(page), pageSize: String(ORDER_PAGE_SIZE) })
   if (search.trim()) qs.set('q', search.trim())
   if (channel) qs.set('channel', channel)
+  if (period) qs.set('period', period)
   return qs.toString()
 }
 

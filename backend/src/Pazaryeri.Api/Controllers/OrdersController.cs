@@ -29,14 +29,21 @@ public class OrdersController(AppDbContext db, TimeProvider time) : ControllerBa
     /// <summary>Birleşik sipariş listesi: sekme (durum), arama (sipariş no / müşteri) ve sunucu taraflı sayfalama; en yeni önce.</summary>
     [HttpGet]
     public async Task<ActionResult<OrderListPage>> List([FromQuery] string? tab, [FromQuery] string? q,
-        [FromQuery] int page = 1, [FromQuery] int pageSize = 20, [FromQuery] string? channel = null, CancellationToken ct = default)
+        [FromQuery] int page = 1, [FromQuery] int pageSize = 20, [FromQuery] string? channel = null, [FromQuery] string? period = null, CancellationToken ct = default)
     {
         pageSize = Math.Clamp(pageSize, 1, MaxPageSize);
         page = Math.Max(page, 1);
         var statuses = OrderRules.StatusesForTab(tab);
-        if (tab is not null && statuses is null) return BadRequest(new { error = "Bilinmeyen sekme." });
+        if (tab is not null && statuses is null && !tab.Equals("all", StringComparison.OrdinalIgnoreCase)) return BadRequest(new { error = "Bilinmeyen sekme." });
+        if (period is not null && !period.Equals("today", StringComparison.OrdinalIgnoreCase)) return BadRequest(new { error = "Bilinmeyen dönem." });
 
         var all = db.Orders.AsNoTracking();
+        if (period is not null)
+        {
+            // Genel bakıştaki "Bugünkü sipariş" kartıyla aynı gün sınırı: Türkiye saatiyle bugün.
+            var startUtc = DashboardController.TurkeyDayStartUtc(time.GetUtcNow().UtcDateTime);
+            all = all.Where(o => o.OrderDate >= startUtc);
+        }
         if (!string.IsNullOrWhiteSpace(channel)) all = all.Where(o => o.Channel == channel);
         var byStatus = await all.GroupBy(o => o.Status).Select(g => new { g.Key, Count = g.Count() }).ToDictionaryAsync(g => g.Key, g => g.Count, ct);
         int Count(params OrderStatus[] s) => s.Sum(x => byStatus.GetValueOrDefault(x));

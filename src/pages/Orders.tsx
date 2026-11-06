@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { api } from '../api/client'
 import type { OrderPage, OrderRow } from '../api/types'
-import { DataTable, Select, StatusBadge, Tabs, type Column } from '../components'
+import { Button, DataTable, Select, StatusBadge, Tabs, type Column } from '../components'
 import { useModules } from '../modules/ModulesContext'
 import { isModuleEnabled } from '../modules/moduleState'
 import B2BOrderPanel from './B2BOrderPanel'
@@ -53,6 +53,8 @@ export default function Orders() {
   const [error, setError] = useState<string>()
   const [selected, setSelected] = useState<OrderRow>()
   const [channel, setChannel] = useState(params.get('channel') ?? '')
+  // ?period=today (genel bakıştaki "Bugünkü sipariş" kartı): yalnızca bugün gelenler; kullanıcı süzgeci kaldırabilir.
+  const [period, setPeriod] = useState(params.get('period') === 'today' ? 'today' : '')
   const [reloadKey, setReloadKey] = useState(0)
   const { enabled } = useModules()
   const b2bOn = isModuleEnabled('b2b-store', enabled)
@@ -68,19 +70,22 @@ export default function Orders() {
   useEffect(() => {
     let current = true
     setLoading(true)
-    api<OrderPage>(`/orders?${ordersQuery(tab, search, page, channel)}`)
+    api<OrderPage>(`/orders?${ordersQuery(tab, search, page, channel, period)}`)
       .then((d) => { if (current) { setData(d); setError(undefined) } })
       .catch((e: Error) => { if (current) setError(e.message) })
       .finally(() => { if (current) setLoading(false) })
     return () => { current = false }
-  }, [tab, search, page, channel, reloadKey])
+  }, [tab, search, page, channel, period, reloadKey])
 
   return (
     <div className="orders">
-      <Tabs items={orderTabs(data.counts)} value={tab} onChange={(v) => { setTab(v as OrderTab); setPage(1); setSelected(undefined) }} />
+      <Tabs items={orderTabs(data.counts, period !== '')} value={tab} onChange={(v) => { setTab(v as OrderTab); setPage(1); setSelected(undefined) }} />
       <div className="orders__toolbar">
         <input className="ps-input orders__search" type="search" placeholder="Sipariş no veya müşteri ara" aria-label="Sipariş no veya müşteri ara"
           value={input} onChange={(e) => setInput(e.target.value)} />
+        {period === 'today' && (
+          <Button onClick={() => { setPeriod(''); setPage(1); if (tab === 'all') setTab('new') }} aria-label="Bugün süzgecini kaldır">Bugün gelenler ✕</Button>
+        )}
         {b2bOn && (
           <Select label="Kanal" value={channel} onChange={(e) => { setChannel(e.target.value); setPage(1); setSelected(undefined) }}>
             <option value="">Tüm kanallar</option>

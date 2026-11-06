@@ -71,6 +71,26 @@ public class OrderListTests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task Bugun_donemi_Turkiye_gunune_gore_suzer_sekme_sayaclari_da_ayni_donemi_sayar_tum_durumlar_gorunur()
+    {
+        // Şimdi 30 Ekim 15:00 (TR); gün başlangıcı 29 Ekim 21:00 UTC. 20 saat önce (29 Ekim 16:00 UTC) dün sayılır.
+        var tenant = await SeedAsync("Bugun",
+            O("bugun-yeni", OrderStatus.New, TimeSpan.FromHours(1)), O("bugun-kargo", OrderStatus.Shipped, TimeSpan.FromHours(2)),
+            O("dun-yeni", OrderStatus.New, TimeSpan.FromHours(20)), O("eski", OrderStatus.Delivered, TimeSpan.FromDays(5)));
+        await using var db = NewDb(tenant);
+        var c = Controller(db);
+
+        var today = (await c.List("all", null, period: "today")).Value!;
+
+        Assert.Equal(["bugun-yeni", "bugun-kargo"], today.Items.Select(i => i.OrderNumber));
+        Assert.Equal(2, today.Total);
+        Assert.Equal((1, 0, 1, 0, 0), (today.Counts.New, today.Counts.Preparing, today.Counts.Shipped, today.Counts.Delivered, today.Counts.Cancelled));
+        Assert.Equal(4, (await c.List("all", null)).Value!.Total);
+        Assert.Equal(["bugun-yeni"], (await c.List("new", null, period: "today")).Value!.Items.Select(i => i.OrderNumber));
+        Assert.IsType<BadRequestObjectResult>((await c.List("all", null, period: "hafta")).Result);
+    }
+
+    [Fact]
     public async Task Sekmeler_duruma_gore_suzer_iptal_sekmesi_iade_de_icerir_ve_sayaclar_tum_siparisleri_sayar()
     {
         var tenant = await SeedAsync("Sekme",

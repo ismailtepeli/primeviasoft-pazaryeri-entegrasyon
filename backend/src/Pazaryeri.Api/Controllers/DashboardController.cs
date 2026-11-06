@@ -29,13 +29,15 @@ public class DashboardController(AppDbContext db, TimeProvider time) : Controlle
     public const string NotConnected = "NotConnected";
     private static readonly TimeSpan TurkeyOffset = TimeSpan.FromHours(3);
 
+    /// <summary>Türkiye saatiyle bugünün başlangıcı, UTC olarak.</summary>
+    public static DateTime TurkeyDayStartUtc(DateTime utcNow) => (utcNow + TurkeyOffset).Date - TurkeyOffset;
+
     /// <summary>Genel bakış KPI kartları: bugünkü sipariş, bekleyen kargo, senkron hatası, aktif ürün.</summary>
     [CoreModule]
     [HttpGet("summary")]
     public async Task<DashboardSummary> Summary(CancellationToken ct)
     {
-        var local = time.GetUtcNow().UtcDateTime + TurkeyOffset;
-        var startUtc = local.Date - TurkeyOffset; // yerel gün başlangıcı, UTC olarak
+        var startUtc = TurkeyDayStartUtc(time.GetUtcNow().UtcDateTime);
         var today = await db.Orders.CountAsync(o => o.OrderDate >= startUtc, ct);
         var awaiting = await db.Orders.CountAsync(o => o.Status == OrderStatus.Preparing, ct);
         var errors = await db.SyncJobs.CountAsync(j => j.Status == SyncJobStatus.Failed, ct);
