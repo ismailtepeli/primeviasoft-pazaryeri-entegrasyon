@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState, type FormEvent } from 'react'
 import { Link, NavLink, Outlet, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { ChevronRight, Home, MapPin, Package, Pencil, Plus, ShoppingBag, Star, Trash2, Truck, User } from 'lucide-react'
 import {
-  MAX_ADDRESSES, addressSummary, emptyAddress, formatDate, orderStatusLabel, orderStatusTone, orderSteps, pageCount, validateAddress, validateName, validatePassword, validatePhone,
+  MAX_ADDRESSES, addressSummary, emptyAddress, formatDate, formatDateTime, orderStatusLabel, orderStatusTone, orderSteps, pageCount, validateAddress, validateName, validatePassword, validatePhone,
   type Address, type AddressForm, type FormErrors, type OrderDetail, type OrderPage,
 } from './account'
 import { Field } from './authPages'
@@ -351,6 +351,7 @@ export function OrderDetailPage() {
       {order.paymentMethod && (
         <p className="order-pay"><span>{paymentMethodLabel[order.paymentMethod] ?? order.paymentMethod}</span>{order.paymentStatus && !(order.status === 'Cancelled' && order.paymentStatus === 'Failed') && <span className={`order-status order-status--${order.paymentStatus === 'Paid' ? 'success' : order.paymentStatus === 'Failed' || order.paymentStatus === 'Expired' ? 'danger' : 'progress'}`}>{paymentStatusLabel[order.paymentStatus] ?? order.paymentStatus}</span>}</p>
       )}
+      {order.paymentExpiresAt && order.status !== 'Cancelled' && order.paymentStatus === 'Pending' && <p className="store-note">Son ödeme zamanı: <strong>{formatDateTime(order.paymentExpiresAt)}</strong>. Bu zamana kadar ödeme alınmazsa sipariş iptal edilir.</p>}
       {order.paymentInfo && <section className="ps-card store-panel account-card"><h2>Havale / EFT bilgileri</h2><p className="done__pre">{order.paymentInfo}</p></section>}
 
       {steps.length > 0 && (

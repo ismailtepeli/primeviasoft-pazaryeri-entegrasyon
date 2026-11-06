@@ -34,6 +34,9 @@ public class B2CShippingController(CheckoutService checkout) : ControllerBase
     [HttpPost("orders/{id:guid}/approve-payment")]
     public Task<IActionResult> ApprovePayment(Guid id, CancellationToken ct) => Run(async () => { await checkout.ApprovePaymentAsync(id, ct); return NoContent(); });
 
+    [HttpPost("orders/{id:guid}/cancel")]
+    public Task<IActionResult> Cancel(Guid id, CancellationToken ct) => Run(async () => { await checkout.AdminCancelAsync(id, ct); return NoContent(); });
+
     [HttpPost("orders/{id:guid}/ship")]
     public Task<IActionResult> Ship(Guid id, ShipOrderInput input, CancellationToken ct) => Run(async () => { await checkout.ShipAsync(id, input, ct); return NoContent(); });
 }

@@ -23,6 +23,8 @@ public class CheckoutService(AppDbContext db, ShopCatalogService shop, IStockPoo
     public const int MaxLines = 50;
     public const int MaxQuantity = 99;
     public const int CardMinutes = 30;
+    /// <summary>Müşterinin aynı anda tutabileceği açık sipariş sayısı (ödemesi bekleyen havale/kart ya da henüz sevk edilmemiş kapıda ödeme); stok kilidini önler.</summary>
+    public const int MaxOpenOrders = 3;
     public const string Currency = "TRY";
 
     private DateTime Now() => time.GetUtcNow().UtcDateTime;
@@ -31,7 +33,7 @@ public class CheckoutService(AppDbContext db, ShopCatalogService shop, IStockPoo
 
     public async Task<B2CSettings> SettingsAsync(CancellationToken ct) => await db.B2CSettings.AsNoTracking().FirstOrDefaultAsync(ct) ?? new B2CSettings();
 
-    private B2CSettingsDto ToDto(B2CSettings s) => new(s.ShippingFee, s.FreeShippingThreshold, s.BankTransferEnabled, s.BankTransferInfo, s.CashOnDeliveryEnabled, s.CashOnDeliveryFee, s.CardEnabled, payments.Available);
+    private B2CSettingsDto ToDto(B2CSettings s) => new(s.ShippingFee, s.FreeShippingThreshold, s.BankTransferEnabled, s.BankTransferInfo, s.CashOnDeliveryEnabled, s.CashOnDeliveryFee, s.CardEnabled, payments.Available, s.BankTransferHoldHours);
 
     public async Task<B2CSettingsDto> GetSettingsAsync(CancellationToken ct) => ToDto(await SettingsAsync(ct));
 
@@ -43,6 +45,8 @@ public class CheckoutService(AppDbContext db, ShopCatalogService shop, IStockPoo
         var info = string.IsNullOrWhiteSpace(input.BankTransferInfo) ? null : input.BankTransferInfo.Trim();
         if (info is not null && info.Length > B2CSettings.MaxInfoLength) throw new StoreException(400, $"Havale bilgisi en fazla {B2CSettings.MaxInfoLength} karakter olabilir.");
         if (input.BankTransferEnabled && info is null) throw new StoreException(400, "Havale açıksa müşterinin göreceği banka/IBAN bilgisini yazın.");
+        if (input.BankTransferHoldHours is < B2CSettings.MinHoldHours or > B2CSettings.MaxHoldHours)
+            throw new StoreException(400, $"Havale bekleme süresi {B2CSettings.MinHoldHours} ile {B2CSettings.MaxHoldHours} saat arasında olmalı.");
         if (input.CardEnabled && !payments.Available) throw new StoreException(409, "Kart ödemesi için bir ödeme sağlayıcısı yapılandırılmamış.");
 
         var s = await db.B2CSettings.FirstOrDefaultAsync(ct);
@@ -51,7 +55,7 @@ public class CheckoutService(AppDbContext db, ShopCatalogService shop, IStockPoo
         s.FreeShippingThreshold = input.FreeShippingThreshold is { } th ? decimal.Round(th, 2) : null;
         s.BankTransferEnabled = input.BankTransferEnabled; s.BankTransferInfo = info;
         s.CashOnDeliveryEnabled = input.CashOnDeliveryEnabled; s.CashOnDeliveryFee = decimal.Round(input.CashOnDeliveryFee, 2);
-        s.CardEnabled = input.CardEnabled;
+        s.CardEnabled = input.CardEnabled; s.BankTransferHoldHours = input.BankTransferHoldHours;
         await db.SaveChangesAsync(ct);
         return ToDto(s);
     }
@@ -208,6 +212,12 @@ public class CheckoutService(AppDbContext db, ShopCatalogService shop, IStockPoo
         if (quote.HasIssues)
             throw new StoreException(409, "Sepetinizdeki bazı ürünler siparişe uygun değil.", new { issues = quote.Lines.Where(l => l.Issue is not null).Select(l => new { l.ProductId, l.Name, l.Issue }).ToList() });
 
+        var ownerId = customer.Id;
+        Task<int> OpenCount() => db.Orders.CountAsync(o => o.Channel == Channel && o.CustomerId == ownerId && o.Status == OrderStatus.New
+            && (o.PaymentStatus == PaymentStatus.Pending || o.PaymentStatus == PaymentStatus.OnDelivery), ct);
+        var limitMessage = $"Ödemesi bekleyen ya da henüz kargolanmamış en çok {MaxOpenOrders} siparişiniz olabilir. Bunlardan biri tamamlanınca ya da iptal edilince yeni sipariş verebilirsiniz.";
+        if (await OpenCount() >= MaxOpenOrders) throw new StoreException(409, limitMessage);
+
         var number = await NewNumberAsync(ct);
         var barcodes = lines.Select(l => products[l.ProductId].Barcode).ToList();
         var safeties = await db.Products.AsNoTracking().Where(p => barcodes.Contains(p.Barcode)).ToDictionaryAsync(p => p.Barcode, p => Math.Max(0, p.SafetyStock ?? 0), StringComparer.OrdinalIgnoreCase, ct);
@@ -241,7 +251,7 @@ public class CheckoutService(AppDbContext db, ShopCatalogService shop, IStockPoo
             Channel = Channel, OrderNumber = number, Status = OrderStatus.New, OrderDate = now, LastModifiedAt = now, CustomerName = customer.FullName, CustomerId = customer.Id,
             TotalPrice = quote.Total, TotalNet = decimal.Round(net, 2), Currency = Currency, Note = note, ShippingFee = quote.ShippingFee, PaymentFee = fee > 0 ? fee : null,
             ShippingAddress = FormatAddress(address), ShipmentCarrier = quote.CarrierId is null ? null : carrierName, PaymentMethod = method, PaymentStatus = paymentStatus,
-            PaymentExpiresAt = method == PaymentMethod.Card ? now.AddMinutes(CardMinutes) : null,
+            PaymentExpiresAt = method switch { PaymentMethod.Card => now.AddMinutes(CardMinutes), PaymentMethod.BankTransfer => now.AddHours(settings.BankTransferHoldHours), _ => null },
             Packages = [new OrderPackage { Channel = Channel, PackageId = number, ChannelStatus = "Created", Status = OrderStatus.New, LastModifiedAt = now, TotalPrice = quote.Total, Lines = orderLines }],
         };
         try
@@ -256,6 +266,13 @@ public class CheckoutService(AppDbContext db, ShopCatalogService shop, IStockPoo
                 for (var i = 0; i < lines.Count; i++)
                     await stock.RestoreAsync(Channel, references[i], "iptal:" + references[i], [new StockLine(products[lines[i].ProductId].Barcode, lines[i].Quantity)], ct);
             throw new StoreException(409, "Sipariş kaydedilemedi; stok geri eklendi, tekrar deneyin.");
+        }
+
+        // Eş zamanlı isteklerle ön denetim aşılmış olabilir: kayıttan sonra yeniden say, sınır aşıldıysa bu siparişi iptal edip stoğu geri ver.
+        if (await OpenCount() > MaxOpenOrders)
+        {
+            await CancelOrderAsync(order, PaymentStatus.Failed, ct);
+            throw new StoreException(409, limitMessage);
         }
 
         string? url = null;
@@ -277,7 +294,7 @@ public class CheckoutService(AppDbContext db, ShopCatalogService shop, IStockPoo
         if (order.PaymentStatus == PaymentStatus.Paid) return;
         if (order.PaymentMethod != PaymentMethod.BankTransfer || order.PaymentStatus != PaymentStatus.Pending || order.Status == OrderStatus.Cancelled)
             throw new StoreException(409, "Yalnızca ödemesi bekleyen havale siparişleri onaylanabilir.");
-        order.PaymentStatus = PaymentStatus.Paid; order.LastModifiedAt = Now();
+        order.PaymentStatus = PaymentStatus.Paid; order.PaymentExpiresAt = null; order.LastModifiedAt = Now();
         await db.SaveChangesAsync(ct);
     }
 
@@ -374,15 +391,28 @@ public class CheckoutService(AppDbContext db, ShopCatalogService shop, IStockPoo
         db.ChangeTracker.Clear();
         var now = Now();
         await db.OrderPackages.Where(p => p.OrderId == id).ExecuteUpdateAsync(s => s.SetProperty(p => p.Status, OrderStatus.Cancelled).SetProperty(p => p.ChannelStatus, "Cancelled").SetProperty(p => p.LastModifiedAt, now), ct);
-        await db.Orders.Where(o => o.Id == id && o.Status == OrderStatus.New)
+        await db.Orders.Where(o => o.Id == id && (o.Status == OrderStatus.New || o.Status == OrderStatus.Preparing))
             .ExecuteUpdateAsync(s => s.SetProperty(o => o.Status, OrderStatus.Cancelled).SetProperty(o => o.PaymentStatus, payment).SetProperty(o => o.PaymentExpiresAt, (DateTime?)null).SetProperty(o => o.LastModifiedAt, now), ct);
     }
 
-    /// <summary>Süresi dolmuş bekleyen kart siparişlerini iptal eder ve stoklarını geri ekler; iptal edilen sayıyı döner. Kiracı bağlamı kurulmuş olmalı.</summary>
+    /// <summary>
+    /// Yönetici B2C siparişini iptal eder (sevk edilmemiş sipariş); stok geri eklenir. Ödemesi alınmış siparişin iadesi bu sistemde yapılmaz,
+    /// ödeme durumu "ödendi" kalır ve iade ödeme sağlayıcısı/bankadan elle yapılır.
+    /// </summary>
+    public async Task AdminCancelAsync(Guid orderId, CancellationToken ct)
+    {
+        var order = await db.Orders.Include(o => o.Packages).ThenInclude(p => p.Lines).FirstOrDefaultAsync(o => o.Id == orderId && o.Channel == Channel, ct)
+            ?? throw new StoreException(404, "Sipariş bulunamadı.");
+        if (order.Status == OrderStatus.Cancelled) return;
+        if (order.Status is not (OrderStatus.New or OrderStatus.Preparing)) throw new StoreException(409, "Kargoya verilmiş sipariş iptal edilemez.");
+        await CancelOrderAsync(order, order.PaymentStatus == PaymentStatus.Pending ? PaymentStatus.Failed : order.PaymentStatus, ct);
+    }
+
+    /// <summary>Süresi dolmuş bekleyen kart ve havale siparişlerini iptal eder ve stoklarını geri ekler; iptal edilen sayıyı döner. Kiracı bağlamı kurulmuş olmalı.</summary>
     public async Task<int> ExpireCardOrdersAsync(CancellationToken ct)
     {
         var now = Now();
-        var ids = await db.Orders.AsNoTracking().Where(o => o.Channel == Channel && o.PaymentMethod == PaymentMethod.Card && o.PaymentStatus == PaymentStatus.Pending
+        var ids = await db.Orders.AsNoTracking().Where(o => o.Channel == Channel && o.PaymentStatus == PaymentStatus.Pending
             && o.Status == OrderStatus.New && o.PaymentExpiresAt != null && o.PaymentExpiresAt <= now).Select(o => o.Id).Take(200).ToListAsync(ct);
         var cancelled = 0;
         foreach (var id in ids)
@@ -395,7 +425,7 @@ public class CheckoutService(AppDbContext db, ShopCatalogService shop, IStockPoo
     }
 }
 
-/// <summary>Bekleyen kart siparişlerinin süresini dolduran periyodik iş (5 dk).</summary>
+/// <summary>Ödeme süresi dolan bekleyen kart ve havale siparişlerini iptal eden periyodik iş (5 dk).</summary>
 public class B2CPaymentExpiryJob(IServiceScopeFactory scopes, ILogger<B2CPaymentExpiryJob> logger) : IJob
 {
     public async ValueTask Execute(IJobExecutionContext context, CancellationToken ct)
@@ -405,7 +435,7 @@ public class B2CPaymentExpiryJob(IServiceScopeFactory scopes, ILogger<B2CPayment
         {
             var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
             var now = scope.ServiceProvider.GetRequiredService<TimeProvider>().GetUtcNow().UtcDateTime;
-            tenants = await db.Orders.IgnoreQueryFilters().AsNoTracking().Where(o => o.Channel == CheckoutService.Channel && o.PaymentMethod == PaymentMethod.Card
+            tenants = await db.Orders.IgnoreQueryFilters().AsNoTracking().Where(o => o.Channel == CheckoutService.Channel
                 && o.PaymentStatus == PaymentStatus.Pending && o.Status == OrderStatus.New && o.PaymentExpiresAt != null && o.PaymentExpiresAt <= now).Select(o => o.TenantId).Distinct().ToListAsync(ct);
         }
         foreach (var tenantId in tenants)

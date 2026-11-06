@@ -29,10 +29,10 @@ public record CheckoutResult(Guid OrderId, string OrderNumber, string PaymentMet
 
 /// <summary>Yönetici ekranındaki B2C kargo ve ödeme ayarları.</summary>
 public record B2CSettingsDto(decimal ShippingFee, decimal? FreeShippingThreshold, bool BankTransferEnabled, string? BankTransferInfo,
-    bool CashOnDeliveryEnabled, decimal CashOnDeliveryFee, bool CardEnabled, bool CardProviderAvailable);
+    bool CashOnDeliveryEnabled, decimal CashOnDeliveryFee, bool CardEnabled, bool CardProviderAvailable, int BankTransferHoldHours);
 
 public record B2CSettingsInput(decimal ShippingFee, decimal? FreeShippingThreshold, bool BankTransferEnabled, string? BankTransferInfo,
-    bool CashOnDeliveryEnabled, decimal CashOnDeliveryFee, bool CardEnabled);
+    bool CashOnDeliveryEnabled, decimal CashOnDeliveryFee, bool CardEnabled, int BankTransferHoldHours = 48);
 
 public record ShippingRateDto(decimal UpToDesi, decimal Fee);
 

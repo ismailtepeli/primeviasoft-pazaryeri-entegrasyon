@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import {
-  addressSummary, emptyAddress, formatDate, orderStatusTone, orderSteps, pageCount, safeNext, validateAddress, validateEmail, validatePassword, validatePhone, validateRegister,
+  addressSummary, emptyAddress, formatDate, formatDateTime, orderStatusTone, orderSteps, pageCount, safeNext, validateAddress, validateEmail, validatePassword, validatePhone, validateRegister,
 } from './account'
 
 describe('account', () => {
@@ -42,6 +42,7 @@ describe('account', () => {
 
   it('tarihi saat dilimi eki olmayan sunucu zamanını UTC sayarak yazar', () => {
     expect(formatDate('2026-11-02T10:00:00')).toMatch(/2 Kasım 2026/)
+    expect(formatDateTime('2026-11-02T10:00:00Z')).toMatch(/2 Kasım 2026/)
   })
 
   it('giriş sonrası dönüş adresi yalnızca uygulama içi olabilir', () => {

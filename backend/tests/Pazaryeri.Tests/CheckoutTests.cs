@@ -244,14 +244,28 @@ public class CheckoutTests : IAsyncLifetime
         Assert.Empty(await check.Orders.ToListAsync());
     }
 
+    /// <summary>Aynı kiracıda yeni bir müşteri ve adresi ekler; açık sipariş sınırı müşteri başınadır.</summary>
+    private static async Task<World> NewCustomerAsync(World w, string email)
+    {
+        await using var db = NewDb(w.Tenant);
+        var customer = new Customer { TenantId = w.Tenant, Email = email, FullName = "Müşteri " + email, Phone = "05550000000" };
+        var address = new CustomerAddress { TenantId = w.Tenant, CustomerId = customer.Id, Title = "Ev", FullName = customer.FullName, Phone = "05550000000", City = "Ankara", District = "Çankaya", AddressLine = "Atatürk Blv. 1", IsDefault = true };
+        customer.Addresses.Add(address);
+        db.Customers.Add(customer);
+        await db.SaveChangesAsync();
+        return w with { Customer = customer.Id, Address = address.Id };
+    }
+
     [Fact]
     public async Task Besi_ayni_anda_siparis_dortluk_stoktan_yalnizca_dordunu_alir()
     {
         var w = await SeedAsync("yaris", teeStock: 4);
-        var tasks = Enumerable.Range(0, 5).Select(async _ =>
+        var buyers = new List<World>();
+        for (var i = 0; i < 5; i++) buyers.Add(await NewCustomerAsync(w, $"y{i}@b.com")); // sınır müşteri başınadır
+        var tasks = buyers.Select(async b =>
         {
             await using var db = NewDb(w.Tenant);
-            try { await Service(db, w.Tenant).CheckoutAsync(w.Customer, Req(w, "BankTransfer", (w.Tee, 1)), default); return true; }
+            try { await Service(db, w.Tenant).CheckoutAsync(b.Customer, Req(b, "BankTransfer", (w.Tee, 1)), default); return true; }
             catch (StoreException) { return false; }
         }).ToArray();
         var results = await Task.WhenAll(tasks);
@@ -403,5 +417,167 @@ public class CheckoutTests : IAsyncLifetime
         Assert.Equal(20m, saved.ShippingFee);
         Assert.Equal("IBAN", saved.BankTransferInfo);
         Assert.False(saved.CardProviderAvailable);
+    }
+
+    // --- #107: stok kilidi ---
+
+    [Fact]
+    public async Task Havale_siparisine_varsayilan_48_saat_sure_verilir_sure_dolunca_iptal_olur_stok_doner()
+    {
+        var w = await SeedAsync("havalesure");
+        var clock = new Clock(DateTimeOffset.UtcNow);
+        await using var db = NewDb(w.Tenant);
+        var svc = Service(db, w.Tenant, time: clock);
+        var placed = await svc.CheckoutAsync(w.Customer, Req(w, "BankTransfer", (w.Tee, 3)), default);
+        await using (var read = NewDb(w.Tenant))
+        {
+            var order = await read.Orders.SingleAsync();
+            Assert.Equal(clock.Now.UtcDateTime.AddHours(48), order.PaymentExpiresAt!.Value, TimeSpan.FromSeconds(1));
+        }
+
+        clock.Now = clock.Now.AddHours(47);
+        Assert.Equal(0, await svc.ExpireCardOrdersAsync(default));
+        Assert.Equal(7, await StockAsync(w.Tenant, w.Tee));
+
+        clock.Now = clock.Now.AddHours(2);
+        Assert.Equal(1, await svc.ExpireCardOrdersAsync(default));
+        Assert.Equal(10, await StockAsync(w.Tenant, w.Tee));
+        await using var check = NewDb(w.Tenant);
+        var expired = await check.Orders.SingleAsync(o => o.Id == placed.OrderId);
+        Assert.Equal((OrderStatus.Cancelled, PaymentStatus.Expired), (expired.Status, expired.PaymentStatus!.Value));
+    }
+
+    [Fact]
+    public async Task Havale_bekleme_suresi_ayardan_gelir_24_72_disi_reddedilir()
+    {
+        var w = await SeedAsync("havaleayar");
+        await using var db = NewDb(w.Tenant);
+        var svc = Service(db, w.Tenant);
+        foreach (var bad in new[] { 23, 73, 0, -5 })
+            await Assert.ThrowsAsync<StoreException>(() => svc.SaveSettingsAsync(new B2CSettingsInput(30m, null, true, "IBAN", false, 0, false, bad), default));
+        var saved = await svc.SaveSettingsAsync(new B2CSettingsInput(30m, null, true, "IBAN", false, 0, false, 24), default);
+        Assert.Equal(24, saved.BankTransferHoldHours);
+
+        var clock = new Clock(DateTimeOffset.UtcNow);
+        await using var db2 = NewDb(w.Tenant);
+        var svc2 = Service(db2, w.Tenant, time: clock);
+        await svc2.CheckoutAsync(w.Customer, Req(w, "BankTransfer", (w.Tee, 1)), default);
+        clock.Now = clock.Now.AddHours(25);
+        Assert.Equal(1, await svc2.ExpireCardOrdersAsync(default));
+    }
+
+    [Fact]
+    public async Task Havale_odemesi_onaylanan_siparisin_suresi_kalkar_sure_dolumu_dokunmaz()
+    {
+        var w = await SeedAsync("havaleonay");
+        var clock = new Clock(DateTimeOffset.UtcNow);
+        await using var db = NewDb(w.Tenant);
+        var svc = Service(db, w.Tenant, time: clock);
+        var placed = await svc.CheckoutAsync(w.Customer, Req(w, "BankTransfer", (w.Tee, 2)), default);
+        await svc.ApprovePaymentAsync(placed.OrderId, default);
+
+        clock.Now = clock.Now.AddDays(10);
+        Assert.Equal(0, await svc.ExpireCardOrdersAsync(default));
+        await using var check = NewDb(w.Tenant);
+        var order = await check.Orders.SingleAsync();
+        Assert.Equal((OrderStatus.New, PaymentStatus.Paid, (DateTime?)null), (order.Status, order.PaymentStatus!.Value, order.PaymentExpiresAt));
+        Assert.Equal(8, await StockAsync(w.Tenant, w.Tee));
+    }
+
+    [Fact]
+    public async Task Musteri_basina_en_cok_uc_acik_siparis_olur_biri_kapaninca_yenisi_verilir()
+    {
+        var w = await SeedAsync("sinir");
+        await using var db = NewDb(w.Tenant);
+        var svc = Service(db, w.Tenant);
+        var first = await svc.CheckoutAsync(w.Customer, Req(w, "BankTransfer", (w.Tee, 1)), default);
+        await svc.CheckoutAsync(w.Customer, Req(w, "BankTransfer", (w.Tee, 1)), default);
+        await svc.CheckoutAsync(w.Customer, Req(w, "BankTransfer", (w.Tee, 1)), default);
+
+        var ex = await Assert.ThrowsAsync<StoreException>(() => svc.CheckoutAsync(w.Customer, Req(w, "BankTransfer", (w.Tee, 1)), default));
+        Assert.Equal(409, ex.Status);
+        Assert.Equal(7, await StockAsync(w.Tenant, w.Tee)); // reddedilen sipariş stok tutmaz
+
+        await svc.CancelAsync(w.Customer, first.OrderId, default);
+        await svc.CheckoutAsync(w.Customer, Req(w, "BankTransfer", (w.Tee, 1)), default);
+        Assert.Equal(7, await StockAsync(w.Tenant, w.Tee));
+
+        var other = await NewCustomerAsync(w, "baska@b.com"); // başka müşterinin hakkı ayrı
+        await using var db2 = NewDb(w.Tenant);
+        await Service(db2, w.Tenant).CheckoutAsync(other.Customer, Req(other, "BankTransfer", (w.Tee, 1)), default);
+    }
+
+    [Fact]
+    public async Task Ayni_musteriden_eszamanli_istekler_siniri_asamaz_fazlasi_iptal_olur_stok_doner()
+    {
+        var w = await SeedAsync("sinirYaris");
+        var tasks = Enumerable.Range(0, 8).Select(async _ =>
+        {
+            await using var db = NewDb(w.Tenant);
+            try { await Service(db, w.Tenant).CheckoutAsync(w.Customer, Req(w, "BankTransfer", (w.Tee, 1)), default); return true; }
+            catch (StoreException) { return false; }
+        }).ToArray();
+        var ok = (await Task.WhenAll(tasks)).Count(r => r);
+
+        await using var check = NewDb(w.Tenant);
+        var open = await check.Orders.CountAsync(o => o.Status == OrderStatus.New);
+        Assert.InRange(open, 0, CheckoutService.MaxOpenOrders);
+        Assert.Equal(10 - open, await StockAsync(w.Tenant, w.Tee)); // iptal edilenlerin stoğu geri gelmiş olmalı
+        Assert.True(ok >= open);
+    }
+
+    [Fact]
+    public async Task Kapida_odeme_siparisleri_de_acik_siparis_sinirina_sayilir()
+    {
+        var w = await SeedAsync("kapida");
+        await using (var db0 = NewDb(w.Tenant))
+        {
+            var s = await db0.B2CSettings.SingleAsync();
+            s.CashOnDeliveryEnabled = true;
+            await db0.SaveChangesAsync();
+        }
+        await using var db = NewDb(w.Tenant);
+        var svc = Service(db, w.Tenant);
+        for (var i = 0; i < CheckoutService.MaxOpenOrders; i++) await svc.CheckoutAsync(w.Customer, Req(w, "CashOnDelivery", (w.Tee, 1)), default);
+        await Assert.ThrowsAsync<StoreException>(() => svc.CheckoutAsync(w.Customer, Req(w, "CashOnDelivery", (w.Tee, 1)), default));
+        Assert.Equal(7, await StockAsync(w.Tenant, w.Tee));
+    }
+
+    [Fact]
+    public async Task Yonetici_siparisi_iptal_eder_stok_doner_odenmis_siparisin_odeme_durumu_korunur_sevk_edilen_iptal_edilemez()
+    {
+        var w = await SeedAsync("yoneticiiptal");
+        await using var db = NewDb(w.Tenant);
+        var svc = Service(db, w.Tenant);
+        var pending = await svc.CheckoutAsync(w.Customer, Req(w, "BankTransfer", (w.Tee, 2)), default);
+        var paid = await svc.CheckoutAsync(w.Customer, Req(w, "BankTransfer", (w.Tee, 3)), default);
+        var shipped = await svc.CheckoutAsync(w.Customer, Req(w, "BankTransfer", (w.Tee, 1)), default);
+        await svc.ApprovePaymentAsync(paid.OrderId, default);
+        await svc.ApprovePaymentAsync(shipped.OrderId, default);
+        await svc.ShipAsync(shipped.OrderId, new ShipOrderInput(null, "Yurtiçi", "TRK1"), default);
+        Assert.Equal(4, await StockAsync(w.Tenant, w.Tee));
+
+        await svc.AdminCancelAsync(pending.OrderId, default);
+        await svc.AdminCancelAsync(pending.OrderId, default); // ikinci iptal etkisiz
+        await svc.AdminCancelAsync(paid.OrderId, default);
+        Assert.Equal(9, await StockAsync(w.Tenant, w.Tee));
+
+        var ex = await Assert.ThrowsAsync<StoreException>(() => svc.AdminCancelAsync(shipped.OrderId, default));
+        Assert.Equal(409, ex.Status);
+        Assert.Equal(404, (await Assert.ThrowsAsync<StoreException>(() => svc.AdminCancelAsync(Guid.NewGuid(), default))).Status);
+
+        await using var check = NewDb(w.Tenant);
+        var orders = await check.Orders.ToDictionaryAsync(o => o.Id);
+        Assert.Equal((OrderStatus.Cancelled, PaymentStatus.Failed), (orders[pending.OrderId].Status, orders[pending.OrderId].PaymentStatus!.Value));
+        Assert.Equal((OrderStatus.Cancelled, PaymentStatus.Paid), (orders[paid.OrderId].Status, orders[paid.OrderId].PaymentStatus!.Value));
+        Assert.Equal(OrderStatus.Shipped, orders[shipped.OrderId].Status);
+    }
+
+    [Fact]
+    public void Ayar_satiri_yokken_havale_acik_sayilmaz()
+    {
+        var s = new B2CSettings();
+        Assert.False(s.BankTransferEnabled);
+        Assert.Equal(48, s.BankTransferHoldHours);
     }
 }

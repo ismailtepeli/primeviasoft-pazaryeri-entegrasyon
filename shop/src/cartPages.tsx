@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState, type FormEvent } from 'react'
 import { Link, Navigate, useNavigate, useParams } from 'react-router-dom'
 import { ChevronRight, CircleCheck, Minus, Package, Plus, ShoppingCart, Trash2, TriangleAlert } from 'lucide-react'
 import { ShopApiError, shopApi } from './api'
-import { addressSummary, type Address, type OrderDetail } from './account'
+import { addressSummary, formatDateTime, type Address, type OrderDetail } from './account'
 import { fixedQuantity, hasCarrierChoice, totalWith, type CartQuote, type CheckoutResult, type QuoteLine } from './cart'
 import { useCart } from './CartContext'
 import { useCustomer } from './CustomerContext'
@@ -290,6 +290,7 @@ export function OrderDonePage() {
           <h2>Havale / EFT bilgileri</h2>
           <p className="done__pre">{order.paymentInfo}</p>
           <p className="store-note">Açıklama kısmına sipariş numaranızı yazın. Ödemeniz onaylanınca siparişiniz hazırlanır.</p>
+          {order.paymentExpiresAt && <p className="store-note"><strong>Son ödeme zamanı: {formatDateTime(order.paymentExpiresAt)}.</strong> Bu zamana kadar ödeme alınmazsa siparişiniz iptal edilir.</p>}
         </div>
       )}
       {method === 'CashOnDelivery' && <p className="store-note">Tutarı ({formatMoney(order.total, order.currency)}) teslimat sırasında ödeyeceksiniz.</p>}

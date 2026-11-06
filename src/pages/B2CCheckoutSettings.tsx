@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { api } from '../api/client'
 import { Button, TextInput } from '../components'
-import { MAX_INFO, toForm, validateSettings, type B2CSettings, type B2CSettingsForm } from './b2cSettings'
+import { MAX_HOLD_HOURS, MAX_INFO, MIN_HOLD_HOURS, toForm, validateSettings, type B2CSettings, type B2CSettingsForm } from './b2cSettings'
 import './PriceLists.css'
 
 /** Ayarlar > B2C mağaza: kargo ücreti, ücretsiz kargo eşiği ve ödeme yöntemleri (havale, kapıda ödeme, kart). */
@@ -50,6 +50,11 @@ export default function B2CCheckoutSettings() {
             <textarea className="ps-input" rows={4} maxLength={MAX_INFO} value={form.bankTransferInfo} onChange={(e) => set('bankTransferInfo', e.target.value)} />
             <span className="field__hint">Banka, hesap sahibi ve IBAN. Sipariş sonrası ve sipariş detayında gösterilir.</span>
           </label>
+        )}
+        {form.bankTransferEnabled && (
+          <div className="price-form">
+            <TextInput label="Havale bekleme süresi (saat)" hint={`Bu sürede ödeme onaylanmazsa sipariş iptal olur ve stok geri eklenir (${MIN_HOLD_HOURS}–${MAX_HOLD_HOURS})`} inputMode="numeric" value={form.bankTransferHoldHours} onChange={(e) => set('bankTransferHoldHours', e.target.value)} />
+          </div>
         )}
         <label className="price-cat-row"><input type="checkbox" checked={form.cashOnDeliveryEnabled} onChange={(e) => set('cashOnDeliveryEnabled', e.target.checked)} /> Kapıda ödeme</label>
         {form.cashOnDeliveryEnabled && <div className="price-form"><TextInput label="Kapıda ödeme ücreti (₺)" inputMode="decimal" value={form.cashOnDeliveryFee} onChange={(e) => set('cashOnDeliveryFee', e.target.value)} /></div>}

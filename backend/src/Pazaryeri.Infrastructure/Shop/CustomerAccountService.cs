@@ -144,7 +144,7 @@ public class CustomerAccountService(AppDbContext db)
             o.ShipmentCarrier, o.TrackingNumber, o.ShippedAt, o.StatusNote, CheckoutService.CanCancel(o),
             lines.Select(l => new CustomerOrderLine(l.ProductId, l.Name, l.Quantity, l.Price, l.ProductId is { } pid ? covers.GetValueOrDefault(pid) : null)).ToList(),
             o.PaymentMethod?.ToString(), o.PaymentStatus?.ToString(), o.ShippingFee, o.PaymentFee, info,
-            o.PaymentMethod == PaymentMethod.Card && o.PaymentStatus == PaymentStatus.Pending ? o.PaymentExpiresAt : null, o.TrackingUrl);
+            o.PaymentStatus == PaymentStatus.Pending ? o.PaymentExpiresAt : null, o.TrackingUrl);
     }
 
     private async Task<Dictionary<Guid, string?>> Covers(List<Guid> productIds, CancellationToken ct)

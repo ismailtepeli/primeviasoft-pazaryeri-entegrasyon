@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { toForm, validateSettings, type B2CSettings, type B2CSettingsForm } from './b2cSettings'
 
-const settings: B2CSettings = { shippingFee: 49.9, freeShippingThreshold: 500, bankTransferEnabled: true, bankTransferInfo: 'IBAN TR00', cashOnDeliveryEnabled: false, cashOnDeliveryFee: 0, cardEnabled: false, cardProviderAvailable: false }
+const settings: B2CSettings = { shippingFee: 49.9, freeShippingThreshold: 500, bankTransferEnabled: true, bankTransferInfo: 'IBAN TR00', cashOnDeliveryEnabled: false, cashOnDeliveryFee: 0, cardEnabled: false, bankTransferHoldHours: 48, cardProviderAvailable: false }
 const form = (patch: Partial<B2CSettingsForm> = {}): B2CSettingsForm => ({ ...toForm(settings), ...patch })
 
 describe('B2C ayar formu', () => {
@@ -11,7 +11,7 @@ describe('B2C ayar formu', () => {
   })
 
   it('geçerli formu API gövdesine çevirir; boş eşik ücretsiz kargoyu kapatır', () => {
-    expect(validateSettings(form())).toEqual({ body: { shippingFee: 49.9, freeShippingThreshold: 500, bankTransferEnabled: true, bankTransferInfo: 'IBAN TR00', cashOnDeliveryEnabled: false, cashOnDeliveryFee: 0, cardEnabled: false } })
+    expect(validateSettings(form())).toEqual({ body: { shippingFee: 49.9, freeShippingThreshold: 500, bankTransferEnabled: true, bankTransferInfo: 'IBAN TR00', cashOnDeliveryEnabled: false, cashOnDeliveryFee: 0, cardEnabled: false, bankTransferHoldHours: 48 } })
     expect(validateSettings(form({ freeShippingThreshold: ' ', shippingFee: '1.250,50' }))).toMatchObject({ body: { freeShippingThreshold: null, shippingFee: 1250.5 } })
   })
 
@@ -21,6 +21,11 @@ describe('B2C ayar formu', () => {
     expect(validateSettings(form({ shippingFee: '100001' }))).toHaveProperty('error')
     expect(validateSettings(form({ freeShippingThreshold: '0' }))).toHaveProperty('error')
     expect(validateSettings(form({ cashOnDeliveryEnabled: true, cashOnDeliveryFee: 'x' }))).toHaveProperty('error')
+  })
+
+  it('havale bekleme süresi 24 ile 72 saat arasında tam sayı olmalı', () => {
+    expect(validateSettings(form({ bankTransferHoldHours: '72' }))).toMatchObject({ body: { bankTransferHoldHours: 72 } })
+    for (const bad of ['23', '73', '24,5', 'abc', '']) expect(validateSettings(form({ bankTransferHoldHours: bad }))).toHaveProperty('error')
   })
 
   it('havale açıkken bilgi zorunlu, hiçbir ödeme yöntemi açık değilse kayıt reddedilir', () => {

@@ -146,6 +146,12 @@ export function formatDate(iso: string): string {
   return new Date(utc).toLocaleDateString('tr-TR', { day: 'numeric', month: 'long', year: 'numeric' })
 }
 
+/** Ödeme son tarihi gibi saat gereken yerler için "2 Kasım 2026 14:30". */
+export function formatDateTime(iso: string): string {
+  const utc = /(Z|[+-]\d{2}:?\d{2})$/.test(iso) ? iso : iso + 'Z'
+  return new Date(utc).toLocaleString('tr-TR', { day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' })
+}
+
 /** Giriş sonrası dönülecek adres: yalnızca uygulama içi göreli yol kabul edilir (açık yönlendirme engeli). */
 export function safeNext(next: string | null | undefined): string {
   return next && next.startsWith('/') && !next.startsWith('//') && !next.includes('\\') ? next : '/hesap'

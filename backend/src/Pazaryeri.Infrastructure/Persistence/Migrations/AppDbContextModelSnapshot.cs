@@ -200,6 +200,9 @@ namespace Pazaryeri.Infrastructure.Persistence.Migrations
                     b.Property<bool>("BankTransferEnabled")
                         .HasColumnType("bit");
 
+                    b.Property<int>("BankTransferHoldHours")
+                        .HasColumnType("int");
+
                     b.Property<string>("BankTransferInfo")
                         .HasMaxLength(1000)
                         .HasColumnType("nvarchar(1000)");

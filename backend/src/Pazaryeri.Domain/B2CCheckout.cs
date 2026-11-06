@@ -61,7 +61,11 @@ public class B2CSettings : TenantEntity
     public decimal ShippingFee { get; set; } = 49.90m;
     /// <summary>Ara toplam bu tutara ulaşınca kargo ücretsizdir; boşsa her sipariş kargo ücretlidir.</summary>
     public decimal? FreeShippingThreshold { get; set; }
-    public bool BankTransferEnabled { get; set; } = true;
+    /// <summary>Ayar satırı yokken havale açık sayılmaz: banka bilgisi girilmeden müşteriye havale sunulamaz.</summary>
+    public bool BankTransferEnabled { get; set; }
+    public const int MinHoldHours = 24, MaxHoldHours = 72, DefaultHoldHours = 48;
+    /// <summary>Havale siparişinin ödeme bekleme süresi (saat, 24–72); dolunca sipariş iptal olur ve stok geri eklenir.</summary>
+    public int BankTransferHoldHours { get; set; } = DefaultHoldHours;
     /// <summary>Müşteriye gösterilen havale bilgisi (banka, IBAN, alıcı, açıklama).</summary>
     public string? BankTransferInfo { get; set; }
     public bool CashOnDeliveryEnabled { get; set; }
