@@ -115,7 +115,9 @@
 .notif__list li + li { border-top: 1px solid var(--line); }
 .notif__item { display: flex; align-items: flex-start; gap: var(--space-3); width: 100%; padding: var(--space-3) var(--space-4); border: 0; background: none; text-align: left; cursor: pointer; font: 14px var(--font-sans); color: var(--ink); }
 .notif__item:hover { background: var(--surface-alt); }
-.notif__item--unread { background: var(--teal-50); }
+.notif__item--unread { background: color-mix(in srgb, var(--accent) 14%, var(--surface)); }
+.notif__item--unread:hover { background: color-mix(in srgb, var(--accent) 22%, var(--surface)); }
+.notif__error { margin: 0; padding: var(--space-2) var(--space-4); font-size: 13px; color: var(--danger); border-bottom: 1px solid var(--line); }
 .notif__icon { flex: none; display: inline-grid; place-items: center; width: 32px; height: 32px; border-radius: var(--radius-pill); background: var(--surface-alt); color: var(--accent); }
 .notif__text { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
 .notif__title { font-weight: 600; overflow-wrap: anywhere; }
