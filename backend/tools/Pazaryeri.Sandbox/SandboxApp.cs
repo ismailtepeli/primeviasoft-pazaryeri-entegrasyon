@@ -12,6 +12,7 @@ namespace Pazaryeri.Sandbox;
 /// </summary>
 public static class SandboxApp
 {
+    private static readonly HashSet<string> WebhookStatuses = ["CREATED", "PICKING", "INVOICED", "SHIPPED", "CANCELLED", "DELIVERED", "UNDELIVERED", "RETURNED", "UNSUPPLIED", "AWAITING", "UNPACKED", "AT_COLLECTION_POINT", "VERIFIED"];
     private static readonly string[] Statuses = ["Created", "Picking", "Invoiced", "Shipped", "Delivered", "Cancelled", "UnSupplied"];
 
     /// <summary>Satıcının API ile yapabildiği geçişler. Shipped/Delivered kargo hareketidir, satıcı set edemez.</summary>
@@ -87,9 +88,9 @@ public static class SandboxApp
             return Json(new JsonObject { ["brands"] = brands });
         });
 
-        app.MapGet("/integration/product/product-categories", () => Json(new JsonObject
-        {
-            ["categories"] = new JsonArray(
+        // Belgedeki örnek yanıt sarmalayıcısız bir kategori dizisidir.
+        app.MapGet("/integration/product/product-categories", () => Json(
+            new JsonArray(
                 new JsonObject
                 {
                     ["id"] = 1, ["name"] = "Giyim", ["parentId"] = null,
@@ -98,8 +99,7 @@ public static class SandboxApp
                         new JsonObject { ["id"] = 12, ["name"] = "Pantolon", ["parentId"] = 1, ["subCategories"] = new JsonArray() }),
                 },
                 new JsonObject { ["id"] = 2, ["name"] = "Elektronik", ["parentId"] = null, ["subCategories"] = new JsonArray(
-                    new JsonObject { ["id"] = 21, ["name"] = "Kulaklık", ["parentId"] = 2, ["subCategories"] = new JsonArray() }) }),
-        }));
+                    new JsonObject { ["id"] = 21, ["name"] = "Kulaklık", ["parentId"] = 2, ["subCategories"] = new JsonArray() }) })));
 
         app.MapGet("/integration/product/categories/{categoryId:long}/attributes", (long categoryId) =>
         {
@@ -114,8 +114,19 @@ public static class SandboxApp
             });
         });
 
-        app.MapGet("/integration/product/categories/{categoryId:long}/attributes/{attributeId:long}/values", (long categoryId, long attributeId) =>
-            Json(new JsonObject { ["attributeValues"] = new JsonArray(Values(attributeId)) }));
+        app.MapGet("/integration/product/categories/{categoryId:long}/attributes/{attributeId:long}/values", (long categoryId, long attributeId, HttpRequest req) =>
+        {
+            var all = Values(attributeId);
+            var size = Math.Clamp(int.TryParse(req.Query["size"], out var sz) ? sz : 10, 1, 1000);
+            var page = int.TryParse(req.Query["page"], out var pg) ? Math.Max(pg, 0) : 0;
+            var content = all.Skip(page * size).Take(size)
+                .Select(v => (JsonNode)new JsonObject { ["attributeValueId"] = v["id"]!.DeepClone(), ["attributeValue"] = v["name"]!.DeepClone() }).ToArray();
+            return Json(new JsonObject
+            {
+                ["totalElements"] = all.Length, ["totalPages"] = (int)Math.Ceiling(all.Length / (double)size), ["page"] = page, ["size"] = size,
+                ["content"] = new JsonArray(content),
+            });
+        });
     }
 
     private static readonly HashSet<long> LeafCategories = [11, 12, 21];
@@ -124,7 +135,7 @@ public static class SandboxApp
     {
         ["attribute"] = new JsonObject { ["id"] = id, ["name"] = name },
         ["required"] = required, ["allowCustom"] = allowCustom, ["varianter"] = varianter, ["slicer"] = slicer,
-        ["attributeValues"] = new JsonArray(Values(id)),
+        ["allowMultipleAttributeValues"] = false,
     };
 
     private static JsonNode[] Values(long attributeId) => attributeId switch
@@ -232,7 +243,11 @@ public static class SandboxApp
 
         if (cat is not null && LeafCategories.Contains(cat.Value))
         {
-            var sent = (p["attributes"] as JsonArray ?? []).OfType<JsonObject>().Select(a => a["attributeId"]?.GetValue<long>()).ToHashSet();
+            var attrs = (p["attributes"] as JsonArray ?? []).OfType<JsonObject>().ToList();
+            foreach (var a in attrs)
+                if ((a["attributeValueId"] is null) == (a["customAttributeValue"] is null))
+                    r.Add($"Özellik {a["attributeId"]}: attributeValueId ya da customAttributeValue'dan yalnızca biri gönderilmeli.");
+            var sent = attrs.Select(a => a["attributeId"]?.GetValue<long>()).ToHashSet();
             foreach (var (id, name) in new[] { (338L, "Beden"), (47L, "Renk") })
                 if (!sent.Contains(id)) r.Add($"Zorunlu özellik eksik: {name} ({id}).");
         }
@@ -257,21 +272,26 @@ public static class SandboxApp
 
     private static void MapOrders(WebApplication app, SandboxState state)
     {
-        app.MapGet("/integration/order/sellers/{sellerId}/orders", (string sellerId, HttpRequest req) =>
+        app.MapGet("/integration/order/sellers/{sellerId}/v2/orders", (string sellerId, HttpRequest req) =>
         {
             var q = req.Query;
             var page = int.TryParse(q["page"], out var pg) ? Math.Max(pg, 0) : 0;
             var size = Math.Clamp(int.TryParse(q["size"], out var sz) ? sz : 50, 1, 200);
             var status = q["status"].ToString();
             if (status.Length > 0 && !Statuses.Contains(status)) return Json(Error($"Geçersiz status: {status}"), 400);
+            if (size != (int.TryParse(q["size"], out var asked) ? asked : 50)) return Json(Error("size en çok 200 olabilir."), 400);
+            if (long.TryParse(q["startDate"], out var s0) && long.TryParse(q["endDate"], out var e0) && e0 - s0 > TimeSpan.FromDays(14).TotalMilliseconds)
+                return Json(Error("startDate ile endDate arası en çok 2 hafta olabilir."), 400);
+            var byModified = q["orderByField"] == "PackageLastModifiedDate";
 
             lock (state.Gate)
             {
                 IEnumerable<SandboxOrder> orders = state.Orders;
                 if (status.Length > 0) orders = orders.Where(o => o.Status == status);
-                if (long.TryParse(q["startDate"], out var start)) orders = orders.Where(o => o.OrderDate.ToUnixTimeMilliseconds() >= start);
-                if (long.TryParse(q["endDate"], out var end)) orders = orders.Where(o => o.OrderDate.ToUnixTimeMilliseconds() <= end);
-                if (long.TryParse(q["lastModifiedStartDate"], out var mod)) orders = orders.Where(o => o.LastModified.ToUnixTimeMilliseconds() >= mod);
+                // PackageLastModifiedDate ile sıralanınca tarih süzgeci paketin son değişim zamanına uygulanır.
+                DateTimeOffset Stamp(SandboxOrder o) => byModified ? o.LastModified : o.OrderDate;
+                if (long.TryParse(q["startDate"], out var start)) orders = orders.Where(o => Stamp(o).ToUnixTimeMilliseconds() >= start);
+                if (long.TryParse(q["endDate"], out var end)) orders = orders.Where(o => Stamp(o).ToUnixTimeMilliseconds() <= end);
                 var list = orders.OrderByDescending(o => o.LastModified).ToList();
                 var totalPages = (int)Math.Ceiling(list.Count / (double)size);
                 return Json(new JsonObject
@@ -310,6 +330,8 @@ public static class SandboxApp
             if (body?["authenticationType"]?.ToString() != "BASIC_AUTHENTICATION"
                 || string.IsNullOrWhiteSpace(body["username"]?.ToString()) || string.IsNullOrWhiteSpace(body["password"]?.ToString()))
                 return Json(Error("BASIC_AUTHENTICATION için username ve password zorunlu."), 400);
+            var bad = (body?["subscribedStatuses"] as JsonArray ?? []).Select(x => x?.ToString() ?? "").FirstOrDefault(x => !WebhookStatuses.Contains(x));
+            if (bad is not null) return Json(Error($"Geçersiz subscribedStatuses değeri: {bad}"), 400);
             lock (state.Gate)
             {
                 if (state.Webhooks.Count >= 15) return Json(Error("En fazla 15 webhook tanımlanabilir."), 400);
@@ -323,14 +345,14 @@ public static class SandboxApp
 
     internal static JsonObject OrderJson(SandboxOrder o) => new()
     {
-        ["orderNumber"] = o.OrderNumber, ["id"] = o.PackageId, ["shipmentPackageId"] = o.PackageId,
+        ["orderNumber"] = o.OrderNumber, ["shipmentPackageId"] = o.PackageId,
         ["status"] = o.Status, ["orderDate"] = o.OrderDate.ToUnixTimeMilliseconds(),
         ["lastModifiedDate"] = o.LastModified.ToUnixTimeMilliseconds(),
-        ["totalPrice"] = o.Total, ["grossAmount"] = o.Total,
+        ["packageTotalPrice"] = o.Total, ["packageGrossAmount"] = o.Total,
         ["customerFirstName"] = o.CustomerFirstName, ["customerLastName"] = o.CustomerLastName,
         ["lines"] = new JsonArray(o.Lines.Select(l => (JsonNode)new JsonObject
         {
-            ["id"] = l.Id, ["barcode"] = l.Barcode, ["productName"] = l.Name, ["quantity"] = l.Quantity, ["amount"] = l.Amount,
+            ["lineId"] = l.Id, ["barcode"] = l.Barcode, ["productName"] = l.Name, ["quantity"] = l.Quantity, ["lineGrossAmount"] = l.Amount,
         }).ToArray()),
     };
 

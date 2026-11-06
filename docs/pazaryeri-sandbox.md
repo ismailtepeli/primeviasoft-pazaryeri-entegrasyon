@@ -45,6 +45,18 @@ Ortam değişkeni olarak: `Marketplace__Sandbox__Trendyol=http://localhost:5099`
 `TrendyolSandboxTests.cs` sandbox'ı süreç içinde rastgele portta açar ve `TrendyolClient`'ı gerçek HTTP ile sınar.
 `OrderFulfillmentTests.cs` (LocalDB gerekir) uçtan uca akışı sınar: sandbox siparişi → senkron → hazırlanıyor/faturalandı geri yazımı → kargo hareketi → senkron; ayrıca webhook alımı (tekrar bildirim, yanlış anahtar).
 
+## Belgeyle uyum (developers.trendyol.com)
+
+İstemci ve sandbox, Trendyol geliştirici belgesindeki şekillere göre hizalanmıştır:
+- Siparişler `GET .../v2/orders` (v1 15 Ekim 2026'da kapandı): `size` ≤ 200, tarih aralığı ≤ 2 hafta, `lines[].lineId`, `lineGrossAmount`, `packageTotalPrice`.
+- Ürün gönderiminde özellik `attributeValueId` ya da `customAttributeValue`; `currencyType` ve `cargoCompanyId` v2'de yoktur, gönderilmez.
+- Özellik değerleri ayrı ve sayfalıdır: `content[].attributeValueId/attributeValue`. Kategori özellik yanıtında değerler satır içi gelmez.
+- Webhook `subscribedStatuses` değerleri `AT_COLLECTION_POINT` gibi büyük harf/alt çizgilidir.
+- `User-Agent`: `Satıcı Id - Firma`; firma adı harf/rakam ve ≤ 30 karakter, yoksa `SelfIntegration`.
+- Test ortamı (`stageapigw`) yalnızca Trendyol'a bildirilen sunucu IP'lerine açıktır; 503 çoğunlukla IP yetkisizliğidir. Canlı ortamda IP kısıtı yoktur.
+
+Belgenin net olmadığı, ilk gerçek temasta doğrulanacak noktalar: `startDate/endDate`'in `PackageLastModifiedDate` sıralamasıyla son değişim zamanına uygulandığı varsayımı, kategori ağacının sarmalayıcısız dizi olması (iki biçim de okunur), çoklu değerli özelliklerin gövde biçimi.
+
 ## Sınır
 
 Sandbox, dokümanı doğru anladığımızı gösterir; Trendyol'un gerçekte nasıl davrandığını göstermez.

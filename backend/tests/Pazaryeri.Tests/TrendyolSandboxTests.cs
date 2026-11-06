@@ -79,7 +79,8 @@ public class TrendyolSandboxTests : IAsyncLifetime
         Assert.Equal([1000, 1000, 500], pages);
 
         var attrs = await client.GetCategoryAttributesAsync(11);
-        Assert.Contains(attrs, a => a.Id == 338 && a.Required && a.Values.Count == 3);
+        Assert.Contains(attrs, a => a.Id == 338 && a.Required);
+        Assert.Equal(["S", "M", "L"], (await client.GetAttributeValuesAsync(11, 338)).Select(v => v.Name));
         Assert.Contains(attrs, a => a.Id == 910 && a.AllowCustom);
     }
 

@@ -41,16 +41,12 @@ public class TrendyolClient(HttpClient http, MarketplaceCredentials credentials,
             listPrice = p.ListPrice,
             salePrice = p.SalePrice,
             vatRate = p.VatRate,
-            currencyType = p.CurrencyType,
-            cargoCompanyId = p.CargoCompanyId,
             dimensionalWeight = p.DimensionalWeight,
             images = p.ImageUrls.Select(u => new { url = u }),
-            attributes = p.Attributes.Select(a => new
-            {
-                attributeId = a.AttributeId,
-                attributeValueIds = a.ValueId is null ? null : new[] { a.ValueId.Value },
-                attributeValue = a.CustomValue,
-            }),
+            // v2 gövdesi: değerli özellikte attributeValueId, serbest metinde customAttributeValue (ikisi birden gönderilmez).
+            attributes = p.Attributes.Select(a => a.ValueId is { } valueId
+                ? (object)new { attributeId = a.AttributeId, attributeValueId = valueId }
+                : new { attributeId = a.AttributeId, customAttributeValue = a.CustomValue }),
         });
         using var doc = await SendAsync(HttpMethod.Post, $"/integration/product/sellers/{Seller}/v2/products", new { items }, TrendyolServiceGroup.ProductWrite, ct);
         return ReadBatch(doc);
@@ -94,13 +90,18 @@ public class TrendyolClient(HttpClient http, MarketplaceCredentials credentials,
 
     public async Task<OrderPage> GetOrdersAsync(OrderQuery query, CancellationToken ct = default)
     {
-        var qs = new List<string> { $"page={query.Page}", $"size={query.Size}", "orderByField=PackageLastModifiedDate", "orderByDirection=DESC" };
+        // v2 (v1 15 Ekim 2026'da kapandı): size en çok 200; tarih aralığı en çok 2 hafta, geçmiş en çok 1 ay.
+        var qs = new List<string> { $"page={query.Page}", $"size={Math.Clamp(query.Size, 1, MaxOrderPageSize)}", "orderByField=PackageLastModifiedDate", "orderByDirection=DESC" };
         if (query.Status is not null) qs.Add($"status={Uri.EscapeDataString(query.Status)}");
-        if (query.From is not null) qs.Add($"startDate={ToEpochMs(query.From.Value)}");
+        var start = query.ModifiedFrom ?? query.From;
+        if (start is not null)
+        {
+            var floor = DateTime.UtcNow - MaxOrderWindow;
+            qs.Add($"startDate={ToEpochMs(start.Value < floor ? floor : start.Value)}");
+        }
         if (query.To is not null) qs.Add($"endDate={ToEpochMs(query.To.Value)}");
-        if (query.ModifiedFrom is not null) qs.Add($"lastModifiedStartDate={ToEpochMs(query.ModifiedFrom.Value)}");
 
-        using var doc = await SendAsync(HttpMethod.Get, $"/integration/order/sellers/{Seller}/orders?{string.Join('&', qs)}", null, TrendyolServiceGroup.Other, ct);
+        using var doc = await SendAsync(HttpMethod.Get, $"/integration/order/sellers/{Seller}/v2/orders?{string.Join('&', qs)}", null, TrendyolServiceGroup.Other, ct);
         var root = doc.RootElement;
 
         var orders = new List<MarketplaceOrder>();
@@ -110,15 +111,15 @@ public class TrendyolClient(HttpClient http, MarketplaceCredentials credentials,
             {
                 var lines = o.TryGetProperty("lines", out var ls)
                     ? ls.EnumerateArray().Select(l => new MarketplaceOrderLine(
-                        Str(l, "id"), Str(l, "barcode"), Str(l, "productName"),
-                        Int(l, "quantity"), Dec(l, "amount"))).ToList()
+                        Str(l, "lineId", fallback: Str(l, "id")), Str(l, "barcode"), Str(l, "productName"),
+                        Int(l, "quantity"), Dec(l, "lineGrossAmount", fallback: Dec(l, "amount")))).ToList()
                     : [];
                 orders.Add(new MarketplaceOrder(
                     Str(o, "orderNumber"),
                     Str(o, "shipmentPackageId", fallback: Str(o, "id")),
                     Str(o, "status"),
                     DateTimeOffset.FromUnixTimeMilliseconds(o.TryGetProperty("orderDate", out var d) ? d.GetInt64() : 0).UtcDateTime,
-                    Dec(o, "totalPrice", fallback: Dec(o, "grossAmount")),
+                    Dec(o, "packageTotalPrice", fallback: Dec(o, "packageGrossAmount", fallback: Dec(o, "totalPrice", fallback: Dec(o, "grossAmount")))),
                     $"{Str(o, "customerFirstName")} {Str(o, "customerLastName")}".Trim(),
                     lines,
                     o.TryGetProperty("lastModifiedDate", out var lm) && lm.ValueKind == JsonValueKind.Number
@@ -152,7 +153,7 @@ public class TrendyolClient(HttpClient http, MarketplaceCredentials credentials,
             authenticationType = "BASIC_AUTHENTICATION",
             username = registration.Username,
             password = registration.Password,
-            subscribedStatuses = registration.Statuses,
+            subscribedStatuses = registration.Statuses.Select(WebhookStatus),
         };
         using var doc = await SendAsync(HttpMethod.Post, $"/integration/webhook/sellers/{Seller}/webhooks", body, TrendyolServiceGroup.Other, ct);
         return new WebhookRegistrationResult(doc.RootElement.ValueKind == JsonValueKind.Object ? Str(doc.RootElement, "id").NullIfEmpty() : null);
@@ -163,7 +164,7 @@ public class TrendyolClient(HttpClient http, MarketplaceCredentials credentials,
         using var request = new HttpRequestMessage(method, BaseUrl + path);
         var token = Convert.ToBase64String(Encoding.UTF8.GetBytes($"{credentials.ApiKey}:{credentials.ApiSecret}"));
         request.Headers.Authorization = new AuthenticationHeaderValue("Basic", token);
-        request.Headers.TryAddWithoutValidation("User-Agent", $"{credentials.SellerId} - {credentials.CompanyName}");
+        request.Headers.TryAddWithoutValidation("User-Agent", UserAgent(credentials.SellerId, credentials.CompanyName));
         request.Options.Set(MarketplaceRequestOptions.Channel, ChannelName);
         request.Options.Set(MarketplaceRequestOptions.SellerId, credentials.SellerId);
         request.Options.Set(MarketplaceRequestOptions.RateLimits, TrendyolRateLimits.RulesFor(credentials.Tier, group, method, path));
@@ -173,9 +174,25 @@ public class TrendyolClient(HttpClient http, MarketplaceCredentials credentials,
         using var response = await http.SendAsync(request, ct);
         var text = await response.Content.ReadAsStringAsync(ct);
         if (!response.IsSuccessStatusCode)
+        {
+            // Test ortamı yalnızca Trendyol'a bildirilen sunucu IP'lerine açıktır; 503 çoğunlukla IP'nin yetkili olmadığını gösterir.
+            if (response.StatusCode == System.Net.HttpStatusCode.ServiceUnavailable && credentials.UseStaging && baseUrlOverride is null)
+                text = $"{text} (Test ortamında 503: sunucunun çıkış IP'si Trendyol'a bildirilmemiş olabilir.)";
             throw new MarketplaceApiException(ChannelName, (int)response.StatusCode, text);
+        }
         return JsonDocument.Parse(string.IsNullOrWhiteSpace(text) ? "{}" : text);
     }
+
+    /// <summary>Belge: "Satıcı Id - {Entegrasyon Firması}"; firma adı harf/rakam ve en çok 30 karakter olmalı, yoksa SelfIntegration.</summary>
+    public static string UserAgent(string sellerId, string? company)
+    {
+        var name = new string((company ?? "").Where(char.IsAsciiLetterOrDigit).Take(30).ToArray());
+        return $"{sellerId} - {(name.Length == 0 ? "SelfIntegration" : name)}";
+    }
+
+    /// <summary>Webhook durum adları belgede BÜYÜK_HARF_ALT_ÇİZGİ'dir: AtCollectionPoint → AT_COLLECTION_POINT.</summary>
+    public static string WebhookStatus(string status) =>
+        string.Concat(status.Select((c, i) => i > 0 && char.IsUpper(c) && !char.IsUpper(status[i - 1]) ? "_" + c : c.ToString())).ToUpperInvariant();
 
     // --- katalog (kategori, marka, özellik) ---
 
@@ -187,7 +204,9 @@ public class TrendyolClient(HttpClient http, MarketplaceCredentials credentials,
     {
         using var doc = await SendAsync(HttpMethod.Get, "/integration/product/product-categories", null, TrendyolServiceGroup.ProductRead, ct);
         var result = new List<CatalogCategory>();
-        if (doc.RootElement.TryGetProperty("categories", out var roots)) Flatten(roots, null, result);
+        // Belgedeki örnek sarmalayıcısız bir dizidir; "categories" sarmalayıcılı biçim de kabul edilir.
+        if (doc.RootElement.ValueKind == JsonValueKind.Array) Flatten(doc.RootElement, null, result);
+        else if (doc.RootElement.TryGetProperty("categories", out var roots)) Flatten(roots, null, result);
         return result;
     }
 
@@ -234,19 +253,33 @@ public class TrendyolClient(HttpClient http, MarketplaceCredentials credentials,
 
     public async Task<IReadOnlyList<CatalogValue>> GetAttributeValuesAsync(long categoryId, long attributeId, CancellationToken ct = default)
     {
-        using var doc = await SendAsync(HttpMethod.Get, $"/integration/product/categories/{categoryId}/attributes/{attributeId}/values", null, TrendyolServiceGroup.ProductRead, ct);
-        var root = doc.RootElement;
-        // Yanıt şekli sürümler arasında değişebildiği için dizi, "attributeValues" ya da "values" olarak okunur.
-        if (root.ValueKind == JsonValueKind.Array) return ReadValues(root);
-        foreach (var name in new[] { "attributeValues", "values", "content" })
-            if (root.TryGetProperty(name, out var arr) && arr.ValueKind == JsonValueKind.Array) return ReadValues(arr);
-        return [];
+        // v2: sayfalı yanıt (content[].attributeValueId / attributeValue); size en çok 1000.
+        var all = new List<CatalogValue>();
+        for (var page = 0; page < MaxValuePages; page++)
+        {
+            using var doc = await SendAsync(HttpMethod.Get, $"/integration/product/categories/{categoryId}/attributes/{attributeId}/values?page={page}&size={ValuePageSize}", null, TrendyolServiceGroup.ProductRead, ct);
+            var root = doc.RootElement;
+            JsonElement arr = default;
+            var found = root.ValueKind == JsonValueKind.Array
+                || new[] { "content", "attributeValues", "values" }.Any(n => root.TryGetProperty(n, out arr) && arr.ValueKind == JsonValueKind.Array);
+            if (root.ValueKind == JsonValueKind.Array) arr = root;
+            if (!found) break;
+            all.AddRange(ReadValues(arr));
+            if (root.ValueKind == JsonValueKind.Array || page + 1 >= Int(root, "totalPages")) break;
+        }
+        return all;
     }
+
+    public const int ValuePageSize = 1000;
+    public const int MaxValuePages = 100;
+    public const int MaxOrderPageSize = 200;
+    public static readonly TimeSpan MaxOrderWindow = TimeSpan.FromDays(14);
 
     private static List<CatalogValue> ReadValues(JsonElement arr) =>
         arr.EnumerateArray()
-            .Where(v => v.TryGetProperty("id", out var id) && id.ValueKind == JsonValueKind.Number)
-            .Select(v => new CatalogValue(v.GetProperty("id").GetInt64(), Str(v, "name")))
+            .Select(v => (Id: v.TryGetProperty("attributeValueId", out var a) ? a : v.TryGetProperty("id", out var b) ? b : default, V: v))
+            .Where(x => x.Id.ValueKind == JsonValueKind.Number)
+            .Select(x => new CatalogValue(x.Id.GetInt64(), Str(x.V, "attributeValue", fallback: Str(x.V, "name"))))
             .ToList();
 
     private static bool Bool(JsonElement e, string name) => e.TryGetProperty(name, out var v) && v.ValueKind == JsonValueKind.True;

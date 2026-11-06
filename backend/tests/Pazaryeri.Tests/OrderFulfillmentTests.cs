@@ -153,7 +153,7 @@ public class OrderFulfillmentTests : IAsyncLifetime
     private async Task<string> SandboxStatusAsync(long packageId)
     {
         var state = await _http.GetFromJsonAsync<System.Text.Json.Nodes.JsonObject>($"{_sandboxUrl}/__sandbox/state");
-        return state!["orders"]!.AsArray().Single(o => o!["id"]!.GetValue<long>() == packageId)!["status"]!.ToString();
+        return state!["orders"]!.AsArray().Single(o => o!["shipmentPackageId"]!.GetValue<long>() == packageId)!["status"]!.ToString();
     }
 
     [Fact]
